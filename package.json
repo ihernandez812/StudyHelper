@@ -2,22 +2,48 @@
   "name": "study_helper",
   "version": "1.0.0",
   "main": "src/core/index.js",
+  "description": "Study Helper",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ihernandez812/StudyHelper"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
     "build": "electron-builder -m",
     "deploy": "electron-builder build -m --publish always"
   },
-  "author": "",
+  "author": "Isaiah Hernandez",
   "license": "ISC",
+  "publish": {
+    "provider": "github",
+    "host": "github.com",
+    "owner": "ihernandez812",
+    "repo": "StudyHelper"
+  },
+  "productName": "Study Helper",
+  "homepage": "https://github.com/ihernandez812/StudyHelper",
   "keywords": [],
-  "description": "",
   "devDependencies": {
-    "electron": "^32.1.2"
+    "electron": "^32.1.2",
+    "electron-builder": "^25.1.7",
+    "electron-updater": "^6.3.9"
   },
   "dependencies": {
-    "electron-builder": "^25.1.7",
     "electron-light-storage": "^1.2.0",
     "electron-window-state": "^5.0.3"
+  },
+  "build": {
+    "appId": "com.ih.StudyHelper",
+    "copyright": "Big Dog Inc.",
+    "publish": {
+      "provider": "github",
+      "host": "github.com",
+      "owner": "ihernandez812",
+      "repo": "StudyHelper"
+    },
+    "mac": {
+      "category": "public.app-category.utilities"
+    }
   }
 }

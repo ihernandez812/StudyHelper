@@ -4,6 +4,7 @@ const menuBuilder = require('./menu')
 const Storage = require('electron-light-storage')
 const store = new Storage()
 const windowStateKeeper = require('electron-window-state')
+const updater = require('./updater')
 
 let file_paths = {
     home : '../views/home.html',
@@ -24,12 +25,13 @@ const customMeunItems  = [
     }
 ]
 
+app.disableHardwareAcceleration()
 const menu = menuBuilder(customMeunItems)
 let win
 
 const createWindow = () => {
     
-
+    setTimeout(updater, 3000)
     let windState = windowStateKeeper({
         defaultHeight: 800,
         defaultWidth: 1200
@@ -169,9 +171,19 @@ ipcMain.handle('popup', (event, message) => {
     })
 })
 
-ipcMain.handle('loadChecklistTester', (event, data) => {
+ipcMain.handle('loadChecklistTester', (event) => {
     createChecklistTestWindow()
 })
 
+ipcMain.handle('reloadHome', (event) => {
+    if(win){
+        win.reload()
+    }
+})
+
 app.on('ready', createWindow)
+
+app.on('window-all-closed', () => {
+    app.quit()
+})
 

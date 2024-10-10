@@ -13,7 +13,7 @@ window.addEventListener('load', (e) => {
 
 
 const createDropdowns = () => {
-    let checklists = window.api.getChecklists()
+    let checklists = window.api.getChecklists() 
     for(let checklist of checklists){
         let checklistDropdown = createDropdown(checklist)
         checklistNav.append(checklistDropdown)

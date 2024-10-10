@@ -19,7 +19,10 @@ contextBridge.exposeInMainWorld(
     },
     loadChecklistTest: () => {
         console.log('inhere')
-        ipcRenderer.invoke('loadChecklistTester','here')
+        ipcRenderer.invoke('loadChecklistTester')
+    }, 
+    reloadHome: () => {
+        ipcRenderer.invoke('reloadHome')
     }
     
 }

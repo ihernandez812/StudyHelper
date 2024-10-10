@@ -93,6 +93,7 @@ saveChecklistBtn.addEventListener('click', () => {
             console.log(checklist)
             checklistTitleTxt.value = ''
             window.api.addChecklist(checklist)
+            window.api.reloadHome()
             reloadBodyPart()
         } 
         else{
