@@ -1,0 +1,23 @@
+{
+  "name": "study_helper",
+  "version": "1.0.0",
+  "main": "src/core/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron .",
+    "build": "electron-builder -m",
+    "deploy": "electron-builder build -m --publish always"
+  },
+  "author": "",
+  "license": "ISC",
+  "keywords": [],
+  "description": "",
+  "devDependencies": {
+    "electron": "^32.1.2"
+  },
+  "dependencies": {
+    "electron-builder": "^25.1.7",
+    "electron-light-storage": "^1.2.0",
+    "electron-window-state": "^5.0.3"
+  }
+}

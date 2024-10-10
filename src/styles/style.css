@@ -1,0 +1,66 @@
+.pad-5 {
+    padding-top: 5%;
+}
+
+.config-img {
+    /* padding-top: 5%;
+    padding-left: 5%;
+    padding-right: 25%;
+    padding-bottom: 30%; */
+     margin-top: 5%;
+    /*margin-left: 25%;
+     */
+    overflow: scroll;
+    border: 2px solid gray;
+    border-radius: 5px;
+}
+.wordbank {
+    border: 2px solid gray;
+    border-radius: 5px;
+    margin-left: 10%;
+    margin-right: 10%;
+    /* padding: auto; */
+}
+
+.wordbank-word {
+    padding: 5%;
+
+}
+
+.wordbank-used {
+    text-decoration-line: line-through;
+}
+
+.empty-wordbank{ 
+    padding: 5%;
+}
+
+.label {
+    color: gray;
+    padding-left: 11%;
+    padding-top: 1%;
+}
+.img_area {
+    width: 100%;
+    text-align:center;
+    overflow-y: scroll;
+ }
+ 
+ #body_part_area {
+    width: 100%;
+    text-align:center;
+ }
+
+ canvas {
+    display: inline;
+ }
+ img {
+    display: inline;
+ }
+.mt {
+    margin-top: 5%;
+}
+
+.pl-10 {
+    padding-left: 70%;
+}
