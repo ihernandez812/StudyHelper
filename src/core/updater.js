@@ -11,6 +11,7 @@ module.exports = () => {
         owner: 'ihernandez812',
         repo: 'StudyHelper',
         host: 'github.com',
+        private: true,
         token: getToken()
     })
 

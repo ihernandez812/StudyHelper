@@ -19,18 +19,20 @@
     "provider": "github",
     "host": "github.com",
     "owner": "ihernandez812",
-    "repo": "StudyHelper"
+    "protocol": "https",
+    "repo": "StudyHelper",
+    "private": true
   },
   "productName": "Study Helper",
   "homepage": "https://github.com/ihernandez812/StudyHelper",
   "keywords": [],
   "devDependencies": {
     "electron": "^32.1.2",
-    "electron-builder": "^25.1.7",
-    "electron-updater": "^6.3.9"
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
     "electron-light-storage": "^1.2.0",
+    "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3"
   },
   "build": {
@@ -40,7 +42,9 @@
       "provider": "github",
       "host": "github.com",
       "owner": "ihernandez812",
-      "repo": "StudyHelper"
+      "protocol": "https",
+      "repo": "StudyHelper",
+      "private": true
     },
     "mac": {
       "category": "public.app-category.utilities"

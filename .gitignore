@@ -3,3 +3,6 @@ node_modules/
 package-lock.json
 src/private/
 src/private/*
+dist/
+dist/*
+.DS_Store
