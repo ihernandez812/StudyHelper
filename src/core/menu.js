@@ -1,4 +1,5 @@
-const { Menu } = require('electron')
+const { Menu, shell } = require('electron')
+
 
 const toggleDarkMode = () => {
     useDarkMode = store.get().darkMode
@@ -13,6 +14,7 @@ const toggleDarkMode = () => {
     }
 }
 const getBaseMenu = () => {
+    const isMac = process.platform === 'darwin'
     return [
         {
             label: 'File',
@@ -65,29 +67,35 @@ const getBaseMenu = () => {
                 }
             ]
         },
-        {
-            label: 'Window',
-            submenu: [
-                { role: 'minimize' },
-                { role: 'zoom' },
-                ...(isMac ? [
-                    { type: 'separator' },
-                    { role: 'font' },
-                    { type: 'separator' },
-                    { role: 'window' }
-                ] : [
-                    { role: 'close' }
-                ])
-            ]
-        },
+        // {
+        //     label: 'Window',
+        //     submenu: [
+        //         { role: 'minimize' },
+        //         { role: 'zoom' },   
+        //         ...(isMac ? [
+        //             { type: 'separator' },
+        //             { role: 'font' },
+        //             { type: 'separator' },
+        //             { role: 'window' }
+        //         ] : [
+        //             { role: 'close' }
+        //         ]),
+        //     ]
+        // },
     ]
 }
 
 const getHelpMenu = () => {
     return {
-        label: 'help',
+        label: 'Help',
         submenu: [
-            { role: 'about' }
+            { role: 'about' },
+            {
+                label: 'Documentation',
+                click() {
+                    shell.openExternal('https://github.com/ihernandez812/StudyHelper')
+                }
+            }
         ]
     }
 }
@@ -101,6 +109,6 @@ const menuBuilder = (customMeunItems) => {
 
 }
 
-const isMac = process.platform === 'darwin'
+
 
 module.exports = menuBuilder
