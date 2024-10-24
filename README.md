@@ -3,7 +3,7 @@
 
 ## Installation
 
-Study helper is not code signed as it was written to help my girlfried pass Anatomy.
+Study helper is not code signed as it was written to help my girlfriend pass Anatomy.
 To install download the latest release from github and run the installer. Currently only supported on mac.
 
 When running for the first time you will have to allow the app to be opened from your System Settings.
