@@ -14,11 +14,21 @@ const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
 const bodyPartModal = new bootstrap.Modal(bodyPartModalElement)
 let noImgPath = '../images/no_image.jpeg'
 let coordinatesMap = {}
-const bodyPartList = []
+let isBodyPartSaved = false
+let bodyPartId = null
+let checklistId = null
+const bodyPartMap = {}
+const checklistMap = {}
 let currCoordinates = null
 
 window.addEventListener('load', (e) => {
     setNoImage()
+    let editBodyPartList = window.api.getEditBodyPart()
+    let editBodyPart = editBodyPartList[0]
+    bodyPartId = editBodyPartList[1]
+    if(editBodyPart){
+        setupEditBodyPart(editBodyPart, bodyPartId)
+    }
 })
 
 // Prevent default behavior (Prevent file from being opened)
@@ -29,18 +39,21 @@ dropArea.addEventListener('dragover', (event) => {
 dropArea.addEventListener('drop', (event) => {
     event.preventDefault();
     event.stopPropagation();
+    if(!isBodyPartSaved){
+        alert('Big dog save the body part')
+    } else{
+        const file = event.dataTransfer.files[0];
+        if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
 
-    const file = event.dataTransfer.files[0];
-    if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
+            reader.onload = async (event) => {
 
-        reader.onload = (event) => {
+                myImage.src = event.target.result;
+                await drawNewImage(myImage, 0, 0)
+            };
 
-            myImage.src = event.target.result;
-            drawNewImage(myImage, 0, 0)
-        };
-
-        reader.readAsDataURL(file);
+            reader.readAsDataURL(file);
+        }
     }
 });
 
@@ -67,15 +80,20 @@ newBodyPartBtn.addEventListener('click', () => {
     bodyPartModal.show()
 })
 
-bodyPartBtn.addEventListener('click', () => {
+bodyPartBtn.addEventListener('click', async () => {
     let txt = bodyPartTxt.value
     if(txt){
-        let bodyPart = {}
-        bodyPart[txt] = {
+        let bodyPart = {
+            'name': txt,
             'img': myImage.src,
             'coordinates': coordinatesMap
         }
-        bodyPartList.push(bodyPart)
+        if(bodyPartId == null){
+            bodyPartId = await window.api.generateId()
+        }
+        bodyPartMap[bodyPartId] = bodyPart
+        isBodyPartSaved = true
+        bodyPartId = null
         coordinatesMap = {}
         reloadBodyPart()
     } 
@@ -84,15 +102,21 @@ bodyPartBtn.addEventListener('click', () => {
     }
 })
 
-saveChecklistBtn.addEventListener('click', () => {
+saveChecklistBtn.addEventListener('click', async () => {
     let txt = checklistTitleTxt.value
     if(txt){
         let checklist = {}
-        if(bodyPartList.length > 0){
-            checklist[txt] = bodyPartList
-            console.log(checklist)
+        if(Object.keys(bodyPartMap).length > 0){
+            checklist = {
+                'name': txt,
+                'bodyParts': bodyPartMap
+            }
+            if(checklistId == null){
+                checklistId = await window.api.generateId()
+            }
             checklistTitleTxt.value = ''
-            window.api.addChecklist(checklist)
+            window.api.addChecklist(checklistId, checklist)
+            checklistId = null
             window.api.reloadHome()
             reloadBodyPart()
         } 
@@ -111,28 +135,34 @@ const reloadBodyPart = () => {
     setNoImage()
 }
 
-const setNoImage = () => {
+const setNoImage = async () => {
     myImage.src = noImgPath
-    drawNewImage(myImage, 0, 0)
+    await drawNewImage(myImage, 0, 0)
 }
 
-const drawNewImage = (img, x, y) => {
-    const ctx = imgCanvas.getContext("2d");
-    myImage.onload = () => {
-        ctx.canvas.width = myImage.width;
-        ctx.canvas.height = myImage.height;
-        ctx.drawImage(img, x, y);
-    }
+const drawNewImage = async (img, x, y) => {
+    return new Promise((resolve) => {
+        const ctx = imgCanvas.getContext("2d");
+        myImage.onload = async () => {
+            ctx.canvas.width = myImage.width;
+            ctx.canvas.height = myImage.height;
+            ctx.drawImage(img, x, y);
+        }
+        requestAnimationFrame(() => {
+          resolve();
+        });
+    })
+    
 }
 
 const drawNewText = (txt, currCoordinates) => {
     const ctx = imgCanvas.getContext('2d')
     ctx.font = "15px Arial"
     let coordinates = currCoordinates.split(' ')
-    ctx.fillText(txt, coordinates[0], coordinates[1]);
+    ctx.fillText(txt, coordinates[0], coordinates[1])
 }
 
-function getClickCoordinates(event) {
+const getClickCoordinates = (event) => {
     const image = event.target;
     const rect = image.getBoundingClientRect();
 
@@ -142,5 +172,24 @@ function getClickCoordinates(event) {
     currCoordinates = `${x} ${y}`
     bodyTagModal.show()
 }
+
+const setupEditBodyPart = async (bodyPart, id) => {
+    let image = bodyPart['img']
+    coordinatesMap = bodyPart['coordinates']
+    let checklistAndIdPair = window.api.getChecklistByBodyPartId(id)
+    let checklist = checklistAndIdPair[0]
+    checklistId = checklistAndIdPair[1]
+    checklistTitleTxt.value = checklist['name']
+    bodyPartTxt.value = bodyPart['name']
+    myImage.src = image
+    await drawNewImage(myImage, 0, 0)
+    requestAnimationFrame(() => {
+        let bodyPartCoordinates = bodyPart['coordinates']
+        for(let name in bodyPartCoordinates){
+            drawNewText(name, bodyPartCoordinates[name])
+        }
+      })   
+}
+
 
 imgCanvas.addEventListener('contextmenu', getClickCoordinates);

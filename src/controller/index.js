@@ -36,8 +36,8 @@ const addToWordBank = (word) => {
 
 const setupWordBank = () => {
     let bodyPart = window.api.getCurrBodyPart()
-    let title = Object.keys(bodyPart)[0]
-    coordinates = bodyPart[title]['coordinates']
+    let title = bodyPart['name']
+    coordinates = bodyPart['coordinates']
     for(let key in coordinates){
         addToWordBank(key)
     }
@@ -108,14 +108,14 @@ const updateBodyPartTest = () => {
     updateWordBank()
 }
 
-const setupbodyPartTest = () =>{
+const setupbodyPartTest = async () =>{
     let bodyPart = window.api.getCurrBodyPart()
-    let title = Object.keys(bodyPart)[0]
+    let title = bodyPart['name']
     checklistTitleTxt.value = title
-    let image = bodyPart[title]['img']
+    let image = bodyPart['img']
     myImage.src = image
-    setBaseImage(myImage, 0, 0)
-    bodyPartCoordinates = bodyPart[title]['coordinates']
+    await setBaseImage(myImage, 0, 0)
+    bodyPartCoordinates = bodyPart['coordinates']
     drawQuestionMarks(bodyPartCoordinates)
 }
 
@@ -131,6 +131,7 @@ const drawQuestionMarks = (coordinates) => {
             }
         }
         else{
+            console.log(key, coordinates)
             drawNewText(key, coordinates[key])
         }
         
@@ -138,26 +139,32 @@ const drawQuestionMarks = (coordinates) => {
 }
 
 const drawNewText = (txt, currCoordinates) => {
-    const ctx = imgCanvas.getContext('2d')
-    ctx.font = "15px Arial"
-    let coordinates = currCoordinates.split(' ')
-    ctx.fillText(txt, coordinates[0], coordinates[1]);
+    requestAnimationFrame(() => {
+        const ctx = imgCanvas.getContext('2d')
+        ctx.font = "15px Arial"
+        let coordinates = currCoordinates.split(' ')
+        ctx.fillText(txt, coordinates[0], coordinates[1]);
+    })   
+    
 }
 
-const setBaseImage = (img, x, y) => {
-    const ctx = imgCanvas.getContext("2d");
-    
-    img.onload = () => {
-        ctx.canvas.width = img.width;
-        ctx.canvas.height = img.height;
-        ctx.drawImage(img, x, y);
-    }
+const setBaseImage = async (img, x, y) => {
+    return new Promise((resolve) => {
+        const ctx = imgCanvas.getContext("2d");  
+        img.onload = () => {
+            ctx.canvas.width = img.width;
+            ctx.canvas.height = img.height;
+            ctx.drawImage(img, x, y);
+        }
+        requestAnimationFrame(() => {
+            resolve();
+          });
+    })
 }
 
 const drawNewImage = (img, currCoordinates) => {
     const ctx = imgCanvas.getContext("2d");
     let coordinates = currCoordinates.split(' ')
-    console.log(img, coordinates)
     ctx.drawImage(img, coordinates[0], coordinates[1] - 15);
 }
 
@@ -169,7 +176,6 @@ imgCanvas.addEventListener('click', (event) => {
         let coordinates = bodyPartCoordinates[key].split(' ')
         let tagX = parseFloat(coordinates[0])
         let tagY = parseFloat(coordinates[1])
-       // console.log(y, tagY)
         if (x >= tagX && x <= tagX + 17 && y >= tagY - 15 && y <= tagY + 5) {
             bodyTagModal.show()
             answerTag = key

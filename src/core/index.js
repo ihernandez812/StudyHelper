@@ -4,6 +4,7 @@ const menuBuilder = require('./menu')
 const Storage = require('electron-light-storage')
 const store = new Storage()
 const windowStateKeeper = require('electron-window-state')
+const { generateID } = require('id-generator.js');
 const updater = require('./updater')
 
 let file_paths = {
@@ -85,9 +86,7 @@ const createConfigWindow = () => {
     configWindow = new BrowserWindow({
         width: windState.width,
         height: windState.height,
-        show: false,
-        x: windState.x,
-        y: windState.y,
+        show: false,    
         minHeight: 800,
         minWidth: 1200,
         parent: win,
@@ -100,10 +99,6 @@ const createConfigWindow = () => {
     if (!Object.keys(store.get()).includes('darkMode')) {
         store.set({ 'darkMode': false })
     }
-
-    useDarkMode = store.get().darkMode
-
-    nativeTheme.themeSource = (useDarkMode) ? 'dark' : 'light'
 
     configWindow.loadFile(path.join(__dirname, file_paths.config))
 
@@ -132,23 +127,12 @@ const createChecklistTestWindow = () => {
         width: windState.width,
         height: windState.height,
         show: false,
-        x: windState.x,
-        y: windState.y,
         minHeight: 600,
         minWidth: 800,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js')
         }
     })
-
-
-    if (!Object.keys(store.get()).includes('darkMode')) {
-        store.set({ 'darkMode': false })
-    }
-
-    useDarkMode = store.get().darkMode
-
-    nativeTheme.themeSource = (useDarkMode) ? 'dark' : 'light'
 
     checklistTesterWindow.loadFile(path.join(__dirname, file_paths.index))
 
@@ -179,6 +163,43 @@ ipcMain.handle('reloadHome', (event) => {
     if(win){
         win.reload()
     }
+})
+
+ipcMain.handle('loadEditChecklist', (event) => {
+    createConfigWindow()
+})
+
+ipcMain.handle('generateId', (event) => {
+    return generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
+})
+
+ipcMain.handle('addIdsToChecklists', (event, checklists) => {
+    let sanatizedChecklists = {}
+    if(Array.isArray(checklists)){
+        for(let checklist of checklists){
+            let checklistName = Object.keys(checklist)[0]
+            let bodyParts = checklist[checklistName]
+            let checklistId = generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
+            let sanatizedBodyParts = {}
+            for(let bodyPartObj of bodyParts){
+                let bodyPartName = Object.keys(bodyPartObj)[0]
+                let bodyPartId = generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
+                let bodyPart = bodyPartObj[bodyPartName]
+                sanatizedBodyParts[bodyPartId] = {
+                    name: bodyPartName,
+                    coordinates: bodyPart['coordinates'],
+                    img: bodyPart['img']
+                }
+            }
+            sanatizedChecklists[checklistId] = {
+                name: checklistName,
+                bodyParts : sanatizedBodyParts
+            }
+        }
+    } else{
+        sanatizedChecklists = checklists
+    }
+    return sanatizedChecklists
 })
 
 app.on('ready', createWindow)

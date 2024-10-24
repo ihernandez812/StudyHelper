@@ -4,6 +4,7 @@ const checklistNav = document.querySelector("#checklists")
 
 
 window.addEventListener('load', (e) => {
+    window.api.addIdsToChecklists()
     const ctx = imgCanvas.getContext("2d");
     ctx.canvas.width = kianImage.width;
     ctx.canvas.height = kianImage.height;
@@ -14,16 +15,13 @@ window.addEventListener('load', (e) => {
 
 const createDropdowns = () => {
     let checklists = window.api.getChecklists() 
-    for(let checklist of checklists){
+    for(let key in checklists){
+        let checklist = checklists[key]
         let checklistDropdown = createDropdown(checklist)
         checklistNav.append(checklistDropdown)
     }
 
 }
-
-// <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-//           <span class="navbar-toggler-icon"></span>
-//         </button>
 
 
 const createDropdown = (checklist) => {
@@ -32,7 +30,8 @@ const createDropdown = (checklist) => {
     list.classList.add('dropdown')
     let titleElement = createChecklistTitle(checklist)
     list.appendChild(titleElement)
-    let bodyParts = Object.values(checklist)[0]
+    let bodyParts = checklist['bodyParts']
+    console.log(bodyParts)
     let dropdownItems = createDropdownList(bodyParts)
     list.appendChild(dropdownItems)
 
@@ -41,7 +40,7 @@ const createDropdown = (checklist) => {
 
 const createChecklistTitle = (checklist) =>{
     let link = document.createElement('a')
-    let checklistTitle = Object.keys(checklist)[0]
+    let checklistTitle = checklist['name']
     link.classList.add('nav-link')
     link.classList.add('dropdown-toggle')
     link.setAttribute('data-bs-toggle', 'dropdown')
@@ -52,8 +51,9 @@ const createChecklistTitle = (checklist) =>{
 const createDropdownList = (bodyParts) => {
     let list = document.createElement('ul')
     list.classList.add('dropdown-menu')
-    for(let bodyPart of bodyParts){
-        let dropDownItem = createDropdownItem(bodyPart)
+    for(let key in bodyParts){
+        let bodyPart = bodyParts[key]
+        let dropDownItem = createDropdownItem(bodyPart, key)
         list.appendChild(dropDownItem)
     }
     let divider = createDropdownDivider()
@@ -63,9 +63,9 @@ const createDropdownList = (bodyParts) => {
     return list
 }
 
-const createDropdownItem = (bodyPart) =>{
+const createDropdownItem = (bodyPart, key) =>{
     let link = document.createElement('a')
-    let title = Object.keys(bodyPart)[0]
+    let title = bodyPart['name']
     link.classList.add('dropdown-item')
     link.innerHTML = title
 
@@ -75,13 +75,17 @@ const createDropdownItem = (bodyPart) =>{
         window.api.setCurrBodyPart(bodyPart)
         window.api.loadChecklistTest()
     })
+
+    listItem.addEventListener('contextmenu', () => {
+        window.api.setEditBodyPart([bodyPart, key])
+        window.api.loadEditChecklist()
+    })
     return listItem
     
 }
 
 const createDropdownDivider = () => {
 
-    //<li><hr class="dropdown-divider"></li>
     let list = document.createElement('li')
     let line = document.createElement('hr')
     line.classList.add('dropdown-divider')
@@ -101,5 +105,6 @@ const createDropdownItemForRandom = (bodyParts) => {
         window.api.setCurrBodyPart(randomItem)
         window.api.loadChecklistTest()
     })
+    
     return listItem
 }
