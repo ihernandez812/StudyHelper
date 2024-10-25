@@ -36,7 +36,6 @@ const addToWordBank = (word) => {
 
 const setupWordBank = () => {
     let bodyPart = window.api.getCurrBodyPart()
-    let title = bodyPart['name']
     coordinates = bodyPart['coordinates']
     for(let key in coordinates){
         addToWordBank(key)
@@ -131,21 +130,55 @@ const drawQuestionMarks = (coordinates) => {
             }
         }
         else{
-            console.log(key, coordinates)
             drawNewText(key, coordinates[key])
         }
         
     }
 }
 
-const drawNewText = (txt, currCoordinates) => {
-    requestAnimationFrame(() => {
-        const ctx = imgCanvas.getContext('2d')
-        ctx.font = "15px Arial"
-        let coordinates = currCoordinates.split(' ')
-        ctx.fillText(txt, coordinates[0], coordinates[1]);
-    })   
+// const drawNewText = (txt, currCoordinates) => {
+//     requestAnimationFrame(() => {
+//         const ctx = imgCanvas.getContext('2d')
+//         ctx.font = "15px Arial"
+//         let coordinates = currCoordinates.split(' ')
+//         ctx.fillText(txt, coordinates[0], coordinates[1]);
+//     })   
     
+// }
+const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
+    return new Promise((resolve) => {
+        ctx.textBaseline = "top";
+        ctx.fillStyle = "#f7faf8";
+        ctx.font = font
+        var width = ctx.measureText(txt).width;
+        ctx.fillRect(x, y, width + padding, parseInt(font, 10) + padding);
+
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#f7faf8";
+        ctx.strokeRect(x, y, width + padding, parseInt(font, 10) + padding);
+        requestAnimationFrame(() => {
+          resolve();
+        });
+    })
+}
+
+const drawNewText = async (txt, currCoordinates) => {
+    const ctx = imgCanvas.getContext('2d')
+    let font = "16px Arial"
+    let coordinates = currCoordinates.split(' ')
+    let padding = 1
+    ctx.font = font;
+    let x = coordinates[0]
+    let y = coordinates[1]
+    await drawTextBackground(ctx, txt, x, y, font, padding)
+    await drawTextBackground(ctx, txt, x, y, font, padding)
+    ctx.fillStyle = "#070808";
+    ctx.font = font;
+    console.log(ctx)
+    ctx.fillText(txt, x , y + padding )
+   // ctx.restore();
+    
+
 }
 
 const setBaseImage = async (img, x, y) => {

@@ -1,6 +1,6 @@
 {
   "name": "study_helper",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "src/core/index.js",
   "description": "Study Helper",
   "repository": {
