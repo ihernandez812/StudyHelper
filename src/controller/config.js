@@ -24,9 +24,10 @@ let currCoordinates = null
 window.addEventListener('load', (e) => {
     setNoImage()
     let editBodyPartList = window.api.getEditBodyPart()
-    let editBodyPart = editBodyPartList[0]
-    bodyPartId = editBodyPartList[1]
-    if(editBodyPart){
+    if(editBodyPartList){
+        let editBodyPart = editBodyPartList[0]
+        bodyPartId = editBodyPartList[1]
+        window.api.clearEditBodyPart()
         setupEditBodyPart(editBodyPart, bodyPartId)
     }
 })
@@ -39,7 +40,7 @@ dropArea.addEventListener('dragover', (event) => {
 dropArea.addEventListener('drop', (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if(!isBodyPartSaved){
+    if(!isBodyPartSaved && Object.keys(coordinatesMap).length > 0){
         alert('Big dog save the body part')
     } else{
         const file = event.dataTransfer.files[0];
@@ -65,9 +66,10 @@ bodyTagBtn.addEventListener('click', (event) => {
     let txt = bodyTagTxt.value
     if (txt) {
         coordinatesMap[txt] = currCoordinates
+        bodyTagModal.hide()
         drawNewText(txt, currCoordinates)
         currCoordinates = null
-        bodyTagModal.hide()
+        
     }
     else {
         alert('You gotta type something big dog')
@@ -114,10 +116,10 @@ saveChecklistBtn.addEventListener('click', async () => {
             if(checklistId == null){
                 checklistId = await window.api.generateId()
             }
-            checklistTitleTxt.value = ''
+            
             window.api.addChecklist(checklistId, checklist)
-            checklistId = null
             window.api.reloadHome()
+            reloadChecklist()
             reloadBodyPart()
         } 
         else{
@@ -128,6 +130,14 @@ saveChecklistBtn.addEventListener('click', async () => {
         alert('You gotta type something big dog')
     }
 })
+
+const reloadChecklist = () => {
+    checklistTitleTxt.value = ''
+    checklistId = null
+    for(let key in bodyPartMap){
+        delete bodyPartMap[key]
+    }
+}
 
 const reloadBodyPart = () => {
     bodyPartModal.hide()
@@ -155,11 +165,39 @@ const drawNewImage = async (img, x, y) => {
     
 }
 
-const drawNewText = (txt, currCoordinates) => {
+const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
+    return new Promise((resolve) => {
+        ctx.textBaseline = "top";
+        ctx.fillStyle = "#f7faf8";
+
+        var width = ctx.measureText(txt).width;
+        ctx.fillRect(x, y, width + padding, parseInt(font, 10) + padding);
+
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#f7faf8";
+        ctx.strokeRect(x, y, width + padding, parseInt(font, 10) + padding);
+        requestAnimationFrame(() => {
+          resolve();
+        });
+    })
+}
+
+const drawNewText = async (txt, currCoordinates) => {
     const ctx = imgCanvas.getContext('2d')
-    ctx.font = "15px Arial"
+    let font = "16px Arial"
     let coordinates = currCoordinates.split(' ')
-    ctx.fillText(txt, coordinates[0], coordinates[1])
+    let padding = 1
+    ctx.font = font;
+    let x = coordinates[0]
+    let y = coordinates[1]
+    
+    await drawTextBackground(ctx, txt, x, y, font, padding)
+    ctx.fillStyle = "#070808";
+    //console.log(ctx)
+    ctx.fillText(txt, x , y + padding )
+    ctx.restore();
+    
+
 }
 
 const getClickCoordinates = (event) => {
@@ -173,12 +211,19 @@ const getClickCoordinates = (event) => {
     bodyTagModal.show()
 }
 
+const populateEditChecklistBodyParts = (bodyParts) => {
+    for(let key in bodyParts){
+        bodyPartMap[key] = bodyParts[key]
+    }
+}
+
 const setupEditBodyPart = async (bodyPart, id) => {
     let image = bodyPart['img']
     coordinatesMap = bodyPart['coordinates']
     let checklistAndIdPair = window.api.getChecklistByBodyPartId(id)
     let checklist = checklistAndIdPair[0]
     checklistId = checklistAndIdPair[1]
+    populateEditChecklistBodyParts(checklist['bodyParts'])
     checklistTitleTxt.value = checklist['name']
     bodyPartTxt.value = bodyPart['name']
     myImage.src = image
