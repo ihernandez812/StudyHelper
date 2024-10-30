@@ -36,9 +36,11 @@ const addToWordBank = (word) => {
 
 const setupWordBank = () => {
     let bodyPart = window.api.getCurrBodyPart()
-    coordinates = bodyPart['coordinates']
-    for(let key in coordinates){
-        addToWordBank(key)
+    coordinatesMap = bodyPart['coordinates']
+    for(let key in coordinatesMap){
+        let coordinates = coordinatesMap[key]
+        let tagName = coordinates['name']
+        addToWordBank(tagName)
     }
 
 }
@@ -118,19 +120,22 @@ const setupbodyPartTest = async () =>{
     drawQuestionMarks(bodyPartCoordinates)
 }
 
-const drawQuestionMarks = (coordinates) => {
-    for(let key in coordinates){
-        let isAnswered = correctTags.includes(key)
+const drawQuestionMarks = (coordinatesMap) => {
+    for(let key in coordinatesMap){
+        let coordinates = coordinatesMap[key]
+        console.log(coordinates)
+        let tagName = coordinates['name']
+        let isAnswered = correctTags.includes(tagName)
         if(!isAnswered){
             const img = document.createElement('img')
             img.src = question_mark_path
             img.onload = () => {
-                drawNewImage(img, coordinates[key])
+                drawNewImage(img, coordinates)
                 imgCanvas.appendChild(img)
             }
         }
         else{
-            drawNewText(key, coordinates[key])
+            drawNewText(tagName, coordinates)
         }
         
     }
@@ -165,16 +170,14 @@ const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
 const drawNewText = async (txt, currCoordinates) => {
     const ctx = imgCanvas.getContext('2d')
     let font = "16px Arial"
-    let coordinates = currCoordinates.split(' ')
     let padding = 1
     ctx.font = font;
-    let x = coordinates[0]
-    let y = coordinates[1]
+    let x = currCoordinates['x']
+    let y = currCoordinates['y']
     await drawTextBackground(ctx, txt, x, y, font, padding)
     await drawTextBackground(ctx, txt, x, y, font, padding)
     ctx.fillStyle = "#070808";
     ctx.font = font;
-    console.log(ctx)
     ctx.fillText(txt, x , y + padding )
    // ctx.restore();
     
@@ -197,8 +200,9 @@ const setBaseImage = async (img, x, y) => {
 
 const drawNewImage = (img, currCoordinates) => {
     const ctx = imgCanvas.getContext("2d");
-    let coordinates = currCoordinates.split(' ')
-    ctx.drawImage(img, coordinates[0], coordinates[1] - 15);
+    let x = currCoordinates['x']
+    let y = currCoordinates['y']
+    ctx.drawImage(img, x, y - 15);
 }
 
 imgCanvas.addEventListener('click', (event) => {
@@ -206,12 +210,14 @@ imgCanvas.addEventListener('click', (event) => {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     for(let key in bodyPartCoordinates){
-        let coordinates = bodyPartCoordinates[key].split(' ')
-        let tagX = parseFloat(coordinates[0])
-        let tagY = parseFloat(coordinates[1])
+
+        let coordinates = bodyPartCoordinates[key]
+        let tagName = coordinates['name']
+        let tagX = parseFloat(coordinates['x'])
+        let tagY = parseFloat(coordinates['y'])
         if (x >= tagX && x <= tagX + 17 && y >= tagY - 15 && y <= tagY + 5) {
             bodyTagModal.show()
-            answerTag = key
+            answerTag = tagName
           }
     }
 })
