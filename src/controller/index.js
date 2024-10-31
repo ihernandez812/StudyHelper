@@ -17,8 +17,8 @@ const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
 const settingsModal = new bootstrap.Modal(settingsModalElement)
 let question_mark_path = '../images/question-mark.png'
 let bodyPartCoordinates = {}
-let correctTags = []
-let answerTag = ''
+let correctTags = {}
+let answerTag = {}
 let hintTag = ''
 let numHints = 0 
 
@@ -27,10 +27,11 @@ window.addEventListener('load', (e) => {
     configureSettings()
 })
 
-const addToWordBank = (word) => {
+const addToWordBank = (id, word) => {
     let span = document.createElement('span')
     span.innerHTML = word
     span.classList.add('wordbank-word')
+    span.classList.add(id)
     wordbank.appendChild(span)
 }
 
@@ -40,15 +41,16 @@ const setupWordBank = () => {
     for(let key in coordinatesMap){
         let coordinates = coordinatesMap[key]
         let tagName = coordinates['name']
-        addToWordBank(tagName)
+        addToWordBank(key, tagName)
     }
 
 }
 
 const updateWordBank = () => {
     for(let child of wordbank.children){
-        let txt = child.innerHTML
-        let isUsed = correctTags.includes(txt)
+        //let txt = child.innerHTML
+        let keys = Object.keys(correctTags)
+        let isUsed = child.classList.contains(...keys)
         let isMarked = child.classList.contains('wordbank-used')
         if(isUsed && !isMarked){
             child.classList.add('wordbank-used')
@@ -70,7 +72,10 @@ const configureSettings = () => {
 }
 
 hintTagBtn.addEventListener('click', () => {
-    hintTag = answerTag.substring(0, hintTag.length+1)
+    //answer tag is an obj with only an id and the value(answer)
+    //so we just get the first value
+    let answer = Object.values(answerTag)[0]
+    hintTag = answer.substring(0, hintTag.length+1)
     numHints--
     enableDisableHints()
     alert(`Word Starts With : ${hintTag}`)
@@ -123,9 +128,9 @@ const setupbodyPartTest = async () =>{
 const drawQuestionMarks = (coordinatesMap) => {
     for(let key in coordinatesMap){
         let coordinates = coordinatesMap[key]
-        console.log(coordinates)
         let tagName = coordinates['name']
-        let isAnswered = correctTags.includes(tagName)
+        let possibleAnswer = correctTags[key]
+        let isAnswered = possibleAnswer == tagName
         if(!isAnswered){
             const img = document.createElement('img')
             img.src = question_mark_path
@@ -217,7 +222,7 @@ imgCanvas.addEventListener('click', (event) => {
         let tagY = parseFloat(coordinates['y'])
         if (x >= tagX && x <= tagX + 17 && y >= tagY - 15 && y <= tagY + 5) {
             bodyTagModal.show()
-            answerTag = tagName
+            answerTag[key] = tagName
           }
     }
 })
@@ -226,9 +231,11 @@ bodyTagBtn.addEventListener('click', () => {
     let txt = bodyTagTxt.value
 
     if(txt){
-        if(txt.toLowerCase() == answerTag.toLowerCase()){
+        let id = Object.keys(answerTag)[0]
+        let answer = answerTag[id]
+        if(txt.toLowerCase() == answer.toLowerCase()){
             bodyTagModal.hide()
-            correctTags.push(answerTag)
+            correctTags[id] = answer
             updateBodyPartTest()
             hintTag = ''
             alert("Correct!!")
