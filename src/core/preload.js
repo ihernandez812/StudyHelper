@@ -10,6 +10,14 @@ contextBridge.exposeInMainWorld(
         
         
     },
+    //Simply here for debuging purpose. When testing actual build I don't want the 
+    //previous checklist to get screwed up so in case it does save it so we have
+    //something to rollback to.
+    saveChecklistCopy: () => {
+        let checklists = JSON.parse(localStorage.getItem('checklists')) || {}
+        localStorage.setItem('checklistsCopy', JSON.stringify(checklists))
+        
+    },
     getChecklistByBodyPartId: (id) => {
         let checklists = JSON.parse(localStorage.getItem('checklists')) || {}
         let checklist = {}
@@ -52,11 +60,21 @@ contextBridge.exposeInMainWorld(
         let id = await ipcRenderer.invoke('generateId')
         return id
     },
+    //Essentially these are upgrade tasks. Could be compressed into one, but there were
+    //part of two different items so they are not
     addIdsToChecklists: async () => {
         let checklists = JSON.parse(localStorage.getItem('checklists'))
         if(checklists){
             let sanatizedChecklists = await ipcRenderer.invoke('addIdsToChecklists', checklists)
-            console.log(sanatizedChecklists)
+            if(sanatizedChecklists){
+                localStorage.setItem('checklists', JSON.stringify(sanatizedChecklists))
+            }
+        }
+    },
+    addIdsToTags: async () => {
+        let checklists = JSON.parse(localStorage.getItem('checklists'))
+        if(checklists){
+            let sanatizedChecklists = await ipcRenderer.invoke('addIdsToTags', checklists)
             if(sanatizedChecklists){
                 localStorage.setItem('checklists', JSON.stringify(sanatizedChecklists))
             }

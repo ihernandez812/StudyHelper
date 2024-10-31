@@ -3,8 +3,10 @@ const kianImage = document.querySelector("#kianImage")
 const checklistNav = document.querySelector("#checklists")
 
 
-window.addEventListener('load', (e) => {
-    window.api.addIdsToChecklists()
+window.addEventListener('load', async (e) => {
+    await window.api.addIdsToChecklists()
+    await window.api.addIdsToTags()
+    window.api.saveChecklistCopy()
     const ctx = imgCanvas.getContext("2d");
     ctx.canvas.width = kianImage.width;
     ctx.canvas.height = kianImage.height;
@@ -31,7 +33,6 @@ const createDropdown = (checklist) => {
     let titleElement = createChecklistTitle(checklist)
     list.appendChild(titleElement)
     let bodyParts = checklist['bodyParts']
-    console.log(bodyParts)
     let dropdownItems = createDropdownList(bodyParts)
     list.appendChild(dropdownItems)
 
@@ -101,7 +102,9 @@ const createDropdownItemForRandom = (bodyParts) => {
     let listItem = document.createElement('li')
     listItem.appendChild(link)
     listItem.addEventListener('click', () => {
-        let randomItem = bodyParts[Math.floor(Math.random()* bodyParts.length)]
+        console.log(bodyParts)
+        let bodyPartList = Object.values(bodyParts)
+        let randomItem = bodyPartList[Math.floor(Math.random()* bodyPartList.length)]
         window.api.setCurrBodyPart(randomItem)
         window.api.loadChecklistTest()
     })

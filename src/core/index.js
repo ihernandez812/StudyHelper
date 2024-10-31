@@ -129,6 +129,7 @@ const createChecklistTestWindow = () => {
         show: false,
         minHeight: 600,
         minWidth: 800,
+        parent: win,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js')
         }
@@ -201,6 +202,40 @@ ipcMain.handle('addIdsToChecklists', (event, checklists) => {
     }
     return sanatizedChecklists
 })
+
+ipcMain.handle('addIdsToTags', (event, checklists) => {
+    for(let key in checklists){
+        let checklist = checklists[key]
+        let bodyParts = checklist['bodyParts']
+        for(let key in bodyParts){
+            let bodyPart = bodyParts[key]
+            let coordinates = bodyPart['coordinates']
+            let sanatizedCoordinates = {}
+            for(let key in coordinates){
+                let coordinatesString = coordinates[key]
+                if(typeof coordinatesString == 'string'){
+                    let id = generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
+                    
+                    let x_coordinate = coordinatesString.split(' ')[0]
+                    let y_coordinate = coordinatesString.split(' ')[1]
+                    sanatizedCoordinates[id] = {
+                        name: key,
+                        x: x_coordinate,
+                        y: y_coordinate
+
+                    }
+                } else{
+                    sanatizedCoordinates[key] = coordinatesString
+                }
+            }
+            bodyPart['coordinates'] = sanatizedCoordinates
+        }
+    }
+
+    return checklists
+})
+
+
 
 app.on('ready', createWindow)
 

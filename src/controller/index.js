@@ -17,36 +17,45 @@ const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
 const settingsModal = new bootstrap.Modal(settingsModalElement)
 let question_mark_path = '../images/question-mark.png'
 let bodyPartCoordinates = {}
-let correctTags = []
-let answerTag = ''
+let correctTags = {}
+let answerTag = {}
 let hintTag = ''
 let numHints = 0 
+
+//by #
+//by class . document.querySelectorAll('.className')
+//by class . document.querySelector('.className')
 
 window.addEventListener('load', (e) => {
     setupbodyPartTest()
     configureSettings()
 })
 
-const addToWordBank = (word) => {
+const addToWordBank = (id, word) => {
     let span = document.createElement('span')
     span.innerHTML = word
     span.classList.add('wordbank-word')
+    span.classList.add(id)
     wordbank.appendChild(span)
 }
 
 const setupWordBank = () => {
     let bodyPart = window.api.getCurrBodyPart()
-    coordinates = bodyPart['coordinates']
-    for(let key in coordinates){
-        addToWordBank(key)
+    coordinatesMap = bodyPart['coordinates']
+    for(let key in coordinatesMap){
+        let coordinates = coordinatesMap[key]
+        let tagName = coordinates['name']
+        addToWordBank(key, tagName)
     }
 
 }
 
 const updateWordBank = () => {
     for(let child of wordbank.children){
-        let txt = child.innerHTML
-        let isUsed = correctTags.includes(txt)
+        //let txt = child.innerHTML
+        let keys = Object.keys(correctTags)
+        
+        let isUsed = keys.some(item => child.classList.contains(item))
         let isMarked = child.classList.contains('wordbank-used')
         if(isUsed && !isMarked){
             child.classList.add('wordbank-used')
@@ -68,7 +77,10 @@ const configureSettings = () => {
 }
 
 hintTagBtn.addEventListener('click', () => {
-    hintTag = answerTag.substring(0, hintTag.length+1)
+    //answer tag is an obj with only an id and the value(answer)
+    //so we just get the first value
+    let answer = Object.values(answerTag)[0]
+    hintTag = answer.substring(0, hintTag.length+1)
     numHints--
     enableDisableHints()
     alert(`Word Starts With : ${hintTag}`)
@@ -118,19 +130,23 @@ const setupbodyPartTest = async () =>{
     drawQuestionMarks(bodyPartCoordinates)
 }
 
-const drawQuestionMarks = (coordinates) => {
-    for(let key in coordinates){
-        let isAnswered = correctTags.includes(key)
+const drawQuestionMarks = (coordinatesMap) => {
+    for(let key in coordinatesMap){
+        let coordinates = coordinatesMap[key]
+        let tagName = coordinates['name']
+        console.log(correctTags)
+        let possibleAnswer = correctTags[key]
+        let isAnswered = possibleAnswer == tagName
         if(!isAnswered){
             const img = document.createElement('img')
             img.src = question_mark_path
             img.onload = () => {
-                drawNewImage(img, coordinates[key])
+                drawNewImage(img, coordinates)
                 imgCanvas.appendChild(img)
             }
         }
         else{
-            drawNewText(key, coordinates[key])
+            drawNewText(tagName, coordinates)
         }
         
     }
@@ -165,16 +181,14 @@ const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
 const drawNewText = async (txt, currCoordinates) => {
     const ctx = imgCanvas.getContext('2d')
     let font = "16px Arial"
-    let coordinates = currCoordinates.split(' ')
     let padding = 1
     ctx.font = font;
-    let x = coordinates[0]
-    let y = coordinates[1]
+    let x = currCoordinates['x']
+    let y = currCoordinates['y']
     await drawTextBackground(ctx, txt, x, y, font, padding)
     await drawTextBackground(ctx, txt, x, y, font, padding)
     ctx.fillStyle = "#070808";
     ctx.font = font;
-    console.log(ctx)
     ctx.fillText(txt, x , y + padding )
    // ctx.restore();
     
@@ -197,8 +211,9 @@ const setBaseImage = async (img, x, y) => {
 
 const drawNewImage = (img, currCoordinates) => {
     const ctx = imgCanvas.getContext("2d");
-    let coordinates = currCoordinates.split(' ')
-    ctx.drawImage(img, coordinates[0], coordinates[1] - 15);
+    let x = currCoordinates['x']
+    let y = currCoordinates['y']
+    ctx.drawImage(img, x, y - 15);
 }
 
 imgCanvas.addEventListener('click', (event) => {
@@ -206,12 +221,18 @@ imgCanvas.addEventListener('click', (event) => {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     for(let key in bodyPartCoordinates){
-        let coordinates = bodyPartCoordinates[key].split(' ')
-        let tagX = parseFloat(coordinates[0])
-        let tagY = parseFloat(coordinates[1])
+
+        let coordinates = bodyPartCoordinates[key]
+        let tagName = coordinates['name']
+        let tagX = parseFloat(coordinates['x'])
+        let tagY = parseFloat(coordinates['y'])
         if (x >= tagX && x <= tagX + 17 && y >= tagY - 15 && y <= tagY + 5) {
             bodyTagModal.show()
-            answerTag = key
+            if(answerTag){
+                answerTag = {}
+            }
+            answerTag[key] = tagName
+            console.log(answerTag)
           }
     }
 })
@@ -220,9 +241,11 @@ bodyTagBtn.addEventListener('click', () => {
     let txt = bodyTagTxt.value
 
     if(txt){
-        if(txt.toLowerCase() == answerTag.toLowerCase()){
+        let id = Object.keys(answerTag)[0]
+        let answer = answerTag[id]
+        if(txt.toLowerCase() == answer.toLowerCase()){
             bodyTagModal.hide()
-            correctTags.push(answerTag)
+            correctTags[id] = answer
             updateBodyPartTest()
             hintTag = ''
             alert("Correct!!")

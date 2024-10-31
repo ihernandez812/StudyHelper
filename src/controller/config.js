@@ -10,6 +10,7 @@ const dropArea = document.querySelector('#body_part_area');
 const newBodyPartBtn = document.querySelector("#new_body_part")
 const saveChecklistBtn = document.querySelector("#save_checklist")
 const checklistTitleTxt = document.querySelector("#checklist_title")
+const title = document.querySelector('title')
 const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
 const bodyPartModal = new bootstrap.Modal(bodyPartModalElement)
 let noImgPath = '../images/no_image.jpeg'
@@ -60,12 +61,14 @@ dropArea.addEventListener('drop', (event) => {
 
 
 
-bodyTagBtn.addEventListener('click', (event) => {
+bodyTagBtn.addEventListener('click', async (event) => {
     event.preventDefault()
     event.stopPropagation()
     let txt = bodyTagTxt.value
     if (txt) {
-        coordinatesMap[txt] = currCoordinates
+        let bodyTagId = await window.api.generateId()
+        currCoordinates['name'] = txt
+        coordinatesMap[bodyTagId] = currCoordinates
         bodyTagModal.hide()
         drawNewText(txt, currCoordinates)
         currCoordinates = null
@@ -185,11 +188,10 @@ const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
 const drawNewText = async (txt, currCoordinates) => {
     const ctx = imgCanvas.getContext('2d')
     let font = "16px Arial"
-    let coordinates = currCoordinates.split(' ')
     let padding = 1
     ctx.font = font;
-    let x = coordinates[0]
-    let y = coordinates[1]
+    let x = currCoordinates['x']
+    let y = currCoordinates['y']
     
     await drawTextBackground(ctx, txt, x, y, font, padding)
     ctx.fillStyle = "#070808";
@@ -207,7 +209,10 @@ const getClickCoordinates = (event) => {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    currCoordinates = `${x} ${y}`
+    currCoordinates = {
+        x: x,
+        y: y
+    }
     bodyTagModal.show()
 }
 
@@ -227,11 +232,14 @@ const setupEditBodyPart = async (bodyPart, id) => {
     checklistTitleTxt.value = checklist['name']
     bodyPartTxt.value = bodyPart['name']
     myImage.src = image
+    title.innerHTML = 'Edit Checklist'
     await drawNewImage(myImage, 0, 0)
     requestAnimationFrame(() => {
         let bodyPartCoordinates = bodyPart['coordinates']
-        for(let name in bodyPartCoordinates){
-            drawNewText(name, bodyPartCoordinates[name])
+        for(let key in bodyPartCoordinates){
+            let coordinates = bodyPartCoordinates[key]
+            let tagName = coordinates['name']
+            drawNewText(tagName, coordinates)
         }
       })   
 }
