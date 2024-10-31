@@ -129,6 +129,7 @@ const createChecklistTestWindow = () => {
         show: false,
         minHeight: 600,
         minWidth: 800,
+        parent: win,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js')
         }

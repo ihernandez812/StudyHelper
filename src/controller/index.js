@@ -22,6 +22,10 @@ let answerTag = {}
 let hintTag = ''
 let numHints = 0 
 
+//by #
+//by class . document.querySelectorAll('.className')
+//by class . document.querySelector('.className')
+
 window.addEventListener('load', (e) => {
     setupbodyPartTest()
     configureSettings()
@@ -50,7 +54,8 @@ const updateWordBank = () => {
     for(let child of wordbank.children){
         //let txt = child.innerHTML
         let keys = Object.keys(correctTags)
-        let isUsed = child.classList.contains(...keys)
+        
+        let isUsed = keys.some(item => child.classList.contains(item))
         let isMarked = child.classList.contains('wordbank-used')
         if(isUsed && !isMarked){
             child.classList.add('wordbank-used')
@@ -129,6 +134,7 @@ const drawQuestionMarks = (coordinatesMap) => {
     for(let key in coordinatesMap){
         let coordinates = coordinatesMap[key]
         let tagName = coordinates['name']
+        console.log(correctTags)
         let possibleAnswer = correctTags[key]
         let isAnswered = possibleAnswer == tagName
         if(!isAnswered){
@@ -222,7 +228,11 @@ imgCanvas.addEventListener('click', (event) => {
         let tagY = parseFloat(coordinates['y'])
         if (x >= tagX && x <= tagX + 17 && y >= tagY - 15 && y <= tagY + 5) {
             bodyTagModal.show()
+            if(answerTag){
+                answerTag = {}
+            }
             answerTag[key] = tagName
+            console.log(answerTag)
           }
     }
 })

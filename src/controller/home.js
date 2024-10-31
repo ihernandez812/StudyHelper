@@ -102,7 +102,9 @@ const createDropdownItemForRandom = (bodyParts) => {
     let listItem = document.createElement('li')
     listItem.appendChild(link)
     listItem.addEventListener('click', () => {
-        let randomItem = bodyParts[Math.floor(Math.random()* bodyParts.length)]
+        console.log(bodyParts)
+        let bodyPartList = Object.values(bodyParts)
+        let randomItem = bodyPartList[Math.floor(Math.random()* bodyPartList.length)]
         window.api.setCurrBodyPart(randomItem)
         window.api.loadChecklistTest()
     })
