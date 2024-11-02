@@ -15,8 +15,8 @@
         <div class="row pad-5">
             <div class="col-6">
                 <div class="p-3 input-group flex-nowrap">
-                    <input type="text" class="form-control" placeholder="Checklist Title" aria-label="Checklist Title"
-                        id="checklist_title">
+                    <input type="text" class="form-control" placeholder="Body Part Title" aria-label="Body Part Title"
+                        id="body_part_title">
                 </div>
             </div>
         </div>
@@ -31,11 +31,11 @@
             <div class="col-12">
                 <div class="p-3 input-group flex-nowrap">
                     <div class="col-6">
-                        <button type="submit" class="btn btn-secondary" id="new_body_part">Save Body Part</button>
+                        <button type="submit" class="btn btn-secondary" id="save_body_part">Save Body Part</button>
                     </div>
-                    <div class="col-6">
+                    <!-- <div class="col-6">
                         <button type="submit" class="btn btn-primary" id="save_checklist">Save Checklist</button>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </div>
@@ -45,7 +45,7 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">New Tag</h5>
+                    <h5 class="modal-title" id ="body_tag_title">Enter Tag</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -62,7 +62,7 @@
         </div>
     </div>
 
-    <div class="modal" id='body_part_modal' tabindex="-1">
+    <!-- <div class="modal" id='body_part_modal' tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -81,7 +81,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>

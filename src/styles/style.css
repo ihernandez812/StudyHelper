@@ -35,6 +35,14 @@
     padding: 5%;
 }
 
+.fa-icons {
+    padding-left: 50%;
+}
+
+i {
+    padding: 2%;
+}
+
 .label {
     color: gray;
     padding-left: 11%;

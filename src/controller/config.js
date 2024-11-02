@@ -2,34 +2,34 @@ const myImage = document.querySelector('#bodyPart');
 const bodyTagModalElement = document.querySelector("#body_tag_modal")
 const bodyTagBtn = document.querySelector('#tag_btn')
 const bodyTagTxt = document.querySelector("#body_tag")
-const bodyPartModalElement = document.querySelector("#body_part_modal")
-const bodyPartBtn = document.querySelector('#body_part_btn')
-const bodyPartTxt = document.querySelector("#body_part")
 const imgCanvas = document.querySelector("#img_canvas")
 const dropArea = document.querySelector('#body_part_area');
-const newBodyPartBtn = document.querySelector("#new_body_part")
-const saveChecklistBtn = document.querySelector("#save_checklist")
-const checklistTitleTxt = document.querySelector("#checklist_title")
+const saveBodyPartBtn = document.querySelector("#save_body_part")
+const bodyPartTitleTxt = document.querySelector("#body_part_title")
 const title = document.querySelector('title')
+const bodyTagTitle = document.querySelector("#body_tag_title")
 const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
-const bodyPartModal = new bootstrap.Modal(bodyPartModalElement)
 let noImgPath = '../images/no_image.jpeg'
 let coordinatesMap = {}
-let isBodyPartSaved = false
+let isEdit = false
 let bodyPartId = null
 let checklistId = null
-const bodyPartMap = {}
-const checklistMap = {}
+let bodyTagId = null
 let currCoordinates = null
 
 window.addEventListener('load', (e) => {
     setNoImage()
-    let editBodyPartList = window.api.getEditBodyPart()
-    if(editBodyPartList){
-        let editBodyPart = editBodyPartList[0]
-        bodyPartId = editBodyPartList[1]
-        window.api.clearEditBodyPart()
-        setupEditBodyPart(editBodyPart, bodyPartId)
+    bodyPartId = window.api.getEditBodyPart()
+    checklistId = window.api.getCurrChecklist()
+    if(checklistId){
+        if(bodyPartId){
+            isEdit = true
+            setupEditBodyPart(bodyPartId, checklistId)
+            window.api.clearEditBodyPart()
+        } else{
+            setupAddBodyPart(checklistId)
+        }
+        window.api.clearCurrChecklist()
     }
 })
 
@@ -41,9 +41,7 @@ dropArea.addEventListener('dragover', (event) => {
 dropArea.addEventListener('drop', (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if(!isBodyPartSaved && Object.keys(coordinatesMap).length > 0){
-        alert('Big dog save the body part')
-    } else{
+    if(!isEdit){
         const file = event.dataTransfer.files[0];
         if (file.type.startsWith("image/")) {
             const reader = new FileReader();
@@ -66,12 +64,24 @@ bodyTagBtn.addEventListener('click', async (event) => {
     event.stopPropagation()
     let txt = bodyTagTxt.value
     if (txt) {
-        let bodyTagId = await window.api.generateId()
+        let wasEdited = bodyTagId != null
+        if(wasEdited){
+            currCoordinates = coordinatesMap[bodyTagId]
+        }
+        else if(!wasEdited){
+            bodyTagId = await window.api.generateId()
+
+        }
         currCoordinates['name'] = txt
         coordinatesMap[bodyTagId] = currCoordinates
         bodyTagModal.hide()
-        drawNewText(txt, currCoordinates)
+        if(wasEdited){
+            redrawEverything()
+        } else{
+            drawNewText(txt, currCoordinates)
+        }
         currCoordinates = null
+        bodyTagTxt.value = null
         
     }
     else {
@@ -81,72 +91,30 @@ bodyTagBtn.addEventListener('click', async (event) => {
 
 })
 
-newBodyPartBtn.addEventListener('click', () => {
-    bodyPartModal.show()
-})
-
-bodyPartBtn.addEventListener('click', async () => {
-    let txt = bodyPartTxt.value
+saveBodyPartBtn.addEventListener('click', async () => {
+    let txt = bodyPartTitleTxt.value
     if(txt){
         let bodyPart = {
             'name': txt,
             'img': myImage.src,
             'coordinates': coordinatesMap
         }
+
         if(bodyPartId == null){
             bodyPartId = await window.api.generateId()
         }
-        bodyPartMap[bodyPartId] = bodyPart
-        isBodyPartSaved = true
-        bodyPartId = null
-        coordinatesMap = {}
-        reloadBodyPart()
+        window.api.addOrEditBodyPartById(bodyPartId, checklistId, bodyPart)
+        window.api.reloadHome()
+        window.api.closeConfig()
+        
     } 
     else{
         alert('You gotta type something big dog')
     }
 })
 
-saveChecklistBtn.addEventListener('click', async () => {
-    let txt = checklistTitleTxt.value
-    if(txt){
-        let checklist = {}
-        if(Object.keys(bodyPartMap).length > 0){
-            checklist = {
-                'name': txt,
-                'bodyParts': bodyPartMap
-            }
-            if(checklistId == null){
-                checklistId = await window.api.generateId()
-            }
-            
-            window.api.addChecklist(checklistId, checklist)
-            window.api.reloadHome()
-            reloadChecklist()
-            reloadBodyPart()
-        } 
-        else{
-            alert("You gotta add body parts big dog")
-        }
-    }
-    else{
-        alert('You gotta type something big dog')
-    }
-})
 
-const reloadChecklist = () => {
-    checklistTitleTxt.value = ''
-    checklistId = null
-    for(let key in bodyPartMap){
-        delete bodyPartMap[key]
-    }
-}
 
-const reloadBodyPart = () => {
-    bodyPartModal.hide()
-    bodyPartTxt.value = ''
-    setNoImage()
-}
 
 const setNoImage = async () => {
     myImage.src = noImgPath
@@ -195,7 +163,6 @@ const drawNewText = async (txt, currCoordinates) => {
     
     await drawTextBackground(ctx, txt, x, y, font, padding)
     ctx.fillStyle = "#070808";
-    //console.log(ctx)
     ctx.fillText(txt, x , y + padding )
     ctx.restore();
     
@@ -208,31 +175,65 @@ const getClickCoordinates = (event) => {
 
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+    const ctx = imgCanvas.getContext("2d");
 
     currCoordinates = {
         x: x,
         y: y
     }
+    setupAddBodyTag()
+    for(let key in coordinatesMap){
+        let coordinates = coordinatesMap[key]
+        let tagName = coordinates['name']
+        let metrics = ctx.measureText(tagName);
+        let width = metrics.width;
+        let fontHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+        let tagX = parseFloat(coordinates['x'])
+        let tagY = parseFloat(coordinates['y'])
+        if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + fontHeight) {
+            setupEditBodyTag(key)
+          }
+    }
     bodyTagModal.show()
 }
 
-const populateEditChecklistBodyParts = (bodyParts) => {
-    for(let key in bodyParts){
-        bodyPartMap[key] = bodyParts[key]
-    }
+
+
+const setupEditBodyTag = (key) => {
+    bodyTagId = key
+    bodyTagTitle.innerHTML = 'Edit Tag'
 }
 
-const setupEditBodyPart = async (bodyPart, id) => {
+const setupAddBodyTag = () => {
+    bodyTagId = null
+    bodyTagTitle.innerHTML = 'New Tag'
+}
+
+const redrawEverything = async () => {
+    const ctx = imgCanvas.getContext("2d");
+    ctx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
+    let bodyPart = window.api.getBodyPartById(bodyPartId, checklistId)
+    let image = bodyPart['img']
+    myImage.src = image
+    await drawNewImage(myImage, 0, 0)
+    requestAnimationFrame(() => {
+        for(let key in coordinatesMap){
+            let coordinates = coordinatesMap[key]
+            let tagName = coordinates['name']
+            drawNewText(tagName, coordinates)
+        }
+    })
+}
+
+
+const setupEditBodyPart = async (bodyPartId, checklistId) => {
+    let bodyPart = window.api.getBodyPartById(bodyPartId, checklistId)
+    let checklist = window.api.getChecklistById(checklistId)
     let image = bodyPart['img']
     coordinatesMap = bodyPart['coordinates']
-    let checklistAndIdPair = window.api.getChecklistByBodyPartId(id)
-    let checklist = checklistAndIdPair[0]
-    checklistId = checklistAndIdPair[1]
-    populateEditChecklistBodyParts(checklist['bodyParts'])
-    checklistTitleTxt.value = checklist['name']
-    bodyPartTxt.value = bodyPart['name']
+    bodyPartTitleTxt.value = bodyPart['name']
     myImage.src = image
-    title.innerHTML = 'Edit Checklist'
+    title.innerHTML = `Edit to ${checklist['name']} Checklist`
     await drawNewImage(myImage, 0, 0)
     requestAnimationFrame(() => {
         let bodyPartCoordinates = bodyPart['coordinates']
@@ -241,8 +242,14 @@ const setupEditBodyPart = async (bodyPart, id) => {
             let tagName = coordinates['name']
             drawNewText(tagName, coordinates)
         }
-      })   
+    })
 }
+
+const setupAddBodyPart = async (checklistId) => {
+    let checklist = window.api.getChecklistById(checklistId)
+    title.innerHTML = `Add to ${checklist['name']} Checklist`
+}
+
 
 
 imgCanvas.addEventListener('contextmenu', getClickCoordinates);

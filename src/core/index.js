@@ -15,15 +15,12 @@ let file_paths = {
 }
 
 const customMeunItems  = [
-    {
-        label : 'Configuration',
-        submenu : [
-            {
-                label: 'Add Checklist',
-                click(){ createConfigWindow() }
-            }
-        ]
-    }
+    // {
+    //     label : 'Configuration',
+    //     submenu : [
+            
+    //     ]
+    // }
 ]
 
 app.disableHardwareAcceleration()
@@ -156,6 +153,15 @@ ipcMain.handle('popup', (event, message) => {
     })
 })
 
+ipcMain.handle('dialogQuestion', async (event, message) => {
+    return dialog.showMessageBox({
+        type: 'info',
+        title: 'Update',
+        message: message,
+        buttons: ['Yes', 'No']
+    })
+})
+
 ipcMain.handle('loadChecklistTester', (event) => {
     createChecklistTestWindow()
 })
@@ -166,8 +172,14 @@ ipcMain.handle('reloadHome', (event) => {
     }
 })
 
-ipcMain.handle('loadEditChecklist', (event) => {
+ipcMain.handle('loadConfigBodyPart', (event) => {
     createConfigWindow()
+})
+
+ipcMain.handle('closeConfig', (event) => {
+    if(configWindow){
+        configWindow.close()
+    }
 })
 
 ipcMain.handle('generateId', (event) => {
