@@ -9,7 +9,6 @@ contextBridge.exposeInMainWorld(
         addChecklist:  (id, checklist) => {
             let checklists = JSON.parse(localStorage.getItem('checklists')) || {}
             checklists[id] = checklist
-            console.log(checklists)
             localStorage.setItem('checklists', JSON.stringify(checklists))
             
             

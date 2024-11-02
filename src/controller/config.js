@@ -103,7 +103,6 @@ saveBodyPartBtn.addEventListener('click', async () => {
         if(bodyPartId == null){
             bodyPartId = await window.api.generateId()
         }
-        console.log(bodyPartId, checklistId)
         window.api.addOrEditBodyPartById(bodyPartId, checklistId, bodyPart)
         window.api.reloadHome()
         window.api.closeConfig()
@@ -189,10 +188,8 @@ const getClickCoordinates = (event) => {
         let metrics = ctx.measureText(tagName);
         let width = metrics.width;
         let fontHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
-        let actualHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
         let tagX = parseFloat(coordinates['x'])
         let tagY = parseFloat(coordinates['y'])
-        console.log(y, tagY, tagName)
         if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + fontHeight) {
             setupEditBodyTag(key)
           }
@@ -220,7 +217,6 @@ const redrawEverything = async () => {
     myImage.src = image
     await drawNewImage(myImage, 0, 0)
     requestAnimationFrame(() => {
-        console.log(coordinatesMap)
         for(let key in coordinatesMap){
             let coordinates = coordinatesMap[key]
             let tagName = coordinates['name']

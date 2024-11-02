@@ -32,7 +32,6 @@ addChecklistBtn.addEventListener('click', () => {
 checklistBtn.addEventListener('click', async () => {
     let checklistTitle = checklistTxt.value
     if(checklistTitle){
-        console.log(checklistTitle)
         let id = await window.api.generateId()
         let checklist = {
             name: checklistTitle,

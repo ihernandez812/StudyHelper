@@ -134,7 +134,6 @@ const drawQuestionMarks = (coordinatesMap) => {
     for(let key in coordinatesMap){
         let coordinates = coordinatesMap[key]
         let tagName = coordinates['name']
-        console.log(correctTags)
         let possibleAnswer = correctTags[key]
         let isAnswered = possibleAnswer == tagName
         if(!isAnswered){
@@ -232,7 +231,6 @@ imgCanvas.addEventListener('click', (event) => {
                 answerTag = {}
             }
             answerTag[key] = tagName
-            console.log(answerTag)
           }
     }
 })
