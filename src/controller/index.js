@@ -12,6 +12,7 @@ const dropArea = document.querySelector('#body_part_area');
 const newBodyPartBtn = document.querySelector("#new_body_part")
 const saveChecklistBtn = document.querySelector("#save_checklist")
 const checklistTitleTxt = document.querySelector("#checklist_title")
+const bodyTagPropmt = document.querySelector('#body_tag_prompt')
 const wordbank = document.querySelector("#wordbank")
 const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
 const settingsModal = new bootstrap.Modal(settingsModalElement)
@@ -222,18 +223,31 @@ imgCanvas.addEventListener('click', (event) => {
     for(let key in bodyPartCoordinates){
 
         let coordinates = bodyPartCoordinates[key]
-        let tagName = coordinates['name']
         let tagX = parseFloat(coordinates['x'])
         let tagY = parseFloat(coordinates['y'])
         if (x >= tagX && x <= tagX + 17 && y >= tagY - 15 && y <= tagY + 5) {
-            bodyTagModal.show()
-            if(answerTag){
-                answerTag = {}
-            }
-            answerTag[key] = tagName
+            setupTagQuestion(coordinates, key)
+            
+            
           }
     }
 })
+
+const setupTagQuestion = (coordinates, key) => {
+    let tagName = coordinates['name']
+    let categoryId = coordinates['category']
+    let prompt = 'Enter Tag'
+    if(categoryId){
+        let category = window.api.getCategoryById(categoryId)
+        prompt = `What is this ${category}?`
+    }
+    if(answerTag){
+        answerTag = {}
+    }
+    answerTag[key] = tagName
+    bodyTagPropmt.innerHTML = prompt
+    bodyTagModal.show()
+}
 
 bodyTagBtn.addEventListener('click', () => {
     let txt = bodyTagTxt.value

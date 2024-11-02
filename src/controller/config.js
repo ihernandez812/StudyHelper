@@ -8,6 +8,7 @@ const saveBodyPartBtn = document.querySelector("#save_body_part")
 const bodyPartTitleTxt = document.querySelector("#body_part_title")
 const title = document.querySelector('title')
 const bodyTagTitle = document.querySelector("#body_tag_title")
+const categoriesSelect = document.querySelector('#categories')
 const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
 let noImgPath = '../images/no_image.jpeg'
 let coordinatesMap = {}
@@ -73,6 +74,9 @@ bodyTagBtn.addEventListener('click', async (event) => {
 
         }
         currCoordinates['name'] = txt
+        //It's fine if it is null. That means no category
+        //Which is the category for ones already created
+        currCoordinates['category'] = categoriesSelect.value
         coordinatesMap[bodyTagId] = currCoordinates
         bodyTagModal.hide()
         if(wasEdited){
@@ -181,31 +185,67 @@ const getClickCoordinates = (event) => {
         x: x,
         y: y
     }
+    //Just incase they changed body tag categories 
+    //at any point
+    setBodyTagCategories()
     setupAddBodyTag()
     for(let key in coordinatesMap){
         let coordinates = coordinatesMap[key]
         let tagName = coordinates['name']
+        let category = coordinates['category']
         let metrics = ctx.measureText(tagName);
         let width = metrics.width;
         let fontHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
         let tagX = parseFloat(coordinates['x'])
         let tagY = parseFloat(coordinates['y'])
         if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + fontHeight) {
-            setupEditBodyTag(key)
+            setupEditBodyTag(key, tagName, category)
           }
     }
+
+    
     bodyTagModal.show()
 }
 
+const setBodyTagCategories = () => {
+    let categories = window.api.getCategories()
+    for(let key in categories){ 
+        let category = categories[key]
+        //get option with this value if it exists
+        let option = document.querySelector(`#categories option[value='${key}']`)
+        if(option){
+            //option already exists just change the innerHTML if needed
+            option.innerHTML = category
+        }
+        else{
+            //option doesn't exists lets create it
+            option = createSelectOption(key, category)
+            categoriesSelect.appendChild(option)
+        }
+    }
+}
 
+const createSelectOption = (value, txt) => {
+    let option = document.createElement('option')
+    option.value = value
+    option.innerHTML = txt
+    return option
+}
 
-const setupEditBodyTag = (key) => {
+const setupEditBodyTag = (key, tagName, categoryId) => {
     bodyTagId = key
     bodyTagTitle.innerHTML = 'Edit Tag'
+    bodyTagTxt.value = tagName
+    for(let option of categoriesSelect.options){
+        if(option.value == categoryId){
+            option.selected = true
+        }
+    }
 }
 
 const setupAddBodyTag = () => {
     bodyTagId = null
+    bodyTagTxt.value = ''
     bodyTagTitle.innerHTML = 'New Tag'
 }
 

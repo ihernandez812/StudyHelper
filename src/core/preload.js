@@ -73,6 +73,24 @@ contextBridge.exposeInMainWorld(
 
             localStorage.setItem('checklists', JSON.stringify(checklists))
         },
+        getCategories: () => {
+            return JSON.parse(localStorage.getItem('categories')) || {}
+
+        },
+        getCategoryById: (id) => {
+            let categories = JSON.parse(localStorage.getItem('categories')) || {}
+            return categories[id]
+        },
+        removeCategory: (id) => {
+            let categories = JSON.parse(localStorage.getItem('categories')) || {}
+            delete categories[id]
+            localStorage.setItem('categories', JSON.stringify(categories))
+        },
+        addOrEditCategoryById: (id, category) => {
+            let categories = JSON.parse(localStorage.getItem('categories')) || {}
+            categories[id] = category
+            localStorage.setItem('categories', JSON.stringify(categories))
+        },
         loadChecklistTest: () => {
             ipcRenderer.invoke('loadChecklistTester')
         }, 
