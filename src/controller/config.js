@@ -109,7 +109,7 @@ saveBodyPartBtn.addEventListener('click', async () => {
         }
         window.api.addOrEditBodyPartById(bodyPartId, checklistId, bodyPart)
         window.api.reloadHome()
-        //window.api.closeConfig()
+        window.api.closeConfig()
         
     } 
     else{

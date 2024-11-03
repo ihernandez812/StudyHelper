@@ -18,8 +18,8 @@ contextBridge.exposeInMainWorld(
             if(categories){
                 ipcRenderer.invoke('setCategories', categories)
             }
-            localStorage.removeItem('checklists')
-            localStorage.removeItem('categories')
+            //localStorage.removeItem('checklists')
+            //localStorage.removeItem('categories')
         },
         addChecklist:  (id, checklist) => {
             ipcRenderer.invoke('addChecklist', id, checklist)

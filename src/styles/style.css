@@ -40,7 +40,23 @@
 }
 
 .fa-icons {
-    padding-left: 50%;
+    /* padding-left: 50%; */
+}
+
+.dropdown-item .dropdown-title {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.dropdown-menu {
+    max-width: 100%;
+}
+.dropdown-item {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+    align-items: center;
 }
 
 i {

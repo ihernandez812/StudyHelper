@@ -109,7 +109,13 @@ const createDropdownItem = (bodyPart, key, checklistKey) =>{
     let link = document.createElement('a')
     let title = bodyPart['name']
     link.classList.add('dropdown-item')
-    link.innerHTML = title
+    //data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+    
+
+    let linkSpan = document.createElement('span')
+    linkSpan.classList.add('dropdown-title')
+    linkSpan.innerHTML = title
+    
 
     let span = document.createElement('span')
     span.classList.add('fa-icons')
@@ -124,12 +130,15 @@ const createDropdownItem = (bodyPart, key, checklistKey) =>{
 
     span.appendChild(editIcon)
     span.appendChild(deleteIcon)
-
+    link.appendChild(linkSpan)
     link.appendChild(span)
 
 
     let listItem = document.createElement('li')
     listItem.appendChild(link)
+    listItem.setAttribute('data-bs-toggle', 'tooltip')
+    listItem.setAttribute('data-bs-placement', 'top')
+    listItem.setAttribute('title', title)
     //listItem.appendChild(span)
     link.addEventListener('click', () => {
         window.api.setCurrChecklist(checklistKey)
