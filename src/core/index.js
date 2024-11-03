@@ -11,16 +11,20 @@ let file_paths = {
     home : '../views/home.html',
     index : '../views/index.html',
     settings: '../views/settings.html',
-    config: '../views/config.html'
+    config: '../views/config.html',
+    category: '../views/categories.html'
 }
 
 const customMeunItems  = [
-    // {
-    //     label : 'Configuration',
-    //     submenu : [
-            
-    //     ]
-    // }
+    {
+        label : 'Configuration',
+        submenu : [
+            {
+                label: 'Config Tag Categories',
+                click(){ createCategoryWindow() }
+            }
+        ]
+    }
 ]
 
 app.disableHardwareAcceleration()
@@ -107,6 +111,46 @@ const createConfigWindow = () => {
     Menu.setApplicationMenu(menu)
     configWindow.once('ready-to-show', () => {
         configWindow.show()
+    })
+
+}
+
+
+let categoryWindow
+
+const createCategoryWindow = () => {
+    let windState = windowStateKeeper({
+        defaultHeight: 800,
+        defaultWidth: 1200
+    })
+
+    categoryWindow = new BrowserWindow({
+        width: windState.width,
+        height: windState.height,
+        show: false,    
+        minHeight: 800,
+        minWidth: 1200,
+        parent: win,
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js')
+        }
+    })
+
+
+    if (!Object.keys(store.get()).includes('darkMode')) {
+        store.set({ 'darkMode': false })
+    }
+
+    categoryWindow.loadFile(path.join(__dirname, file_paths.category))
+
+    categoryWindow.on('closed', () => {
+        categoryWindow = null
+    })
+
+    
+    Menu.setApplicationMenu(menu)
+    categoryWindow.once('ready-to-show', () => {
+        categoryWindow.show()
     })
 
 }
