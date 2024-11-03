@@ -22,12 +22,16 @@ let correctTags = {}
 let answerTag = {}
 let hintTag = ''
 let numHints = 0 
+let bodyPartId = null
+let checklistId = null
 
 //by #
 //by class . document.querySelectorAll('.className')
 //by class . document.querySelector('.className')
 
 window.addEventListener('load', (e) => {
+    bodyPartId = window.api.getCurrBodyPart()
+    checklistId = window.api.getCurrChecklist()
     setupbodyPartTest()
     configureSettings()
 })
@@ -40,8 +44,8 @@ const addToWordBank = (id, word) => {
     wordbank.appendChild(span)
 }
 
-const setupWordBank = () => {
-    let bodyPart = window.api.getCurrBodyPart()
+const setupWordBank = async () => {
+    let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
     coordinatesMap = bodyPart['coordinates']
     for(let key in coordinatesMap){
         let coordinates = coordinatesMap[key]
@@ -121,7 +125,9 @@ const updateBodyPartTest = () => {
 }
 
 const setupbodyPartTest = async () =>{
-    let bodyPart = window.api.getCurrBodyPart()
+    window.api.clearCurrBodyPart()
+    window.api.clearCurrChecklist()
+    let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
     let title = bodyPart['name']
     checklistTitleTxt.value = title
     let image = bodyPart['img']
@@ -233,12 +239,12 @@ imgCanvas.addEventListener('click', (event) => {
     }
 })
 
-const setupTagQuestion = (coordinates, key) => {
+const setupTagQuestion = async (coordinates, key) => {
     let tagName = coordinates['name']
     let categoryId = coordinates['category']
     let prompt = 'Enter Tag'
     if(categoryId){
-        let category = window.api.getCategoryById(categoryId)
+        let category = await window.api.getCategoryById(categoryId)
         prompt = `What is this ${category}?`
     }
     if(answerTag){
@@ -246,6 +252,7 @@ const setupTagQuestion = (coordinates, key) => {
     }
     answerTag[key] = tagName
     bodyTagPropmt.innerHTML = prompt
+    bodyTagTxt.value = ''
     bodyTagModal.show()
 }
 

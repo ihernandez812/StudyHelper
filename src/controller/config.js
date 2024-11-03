@@ -18,15 +18,15 @@ let checklistId = null
 let bodyTagId = null
 let currCoordinates = null
 
-window.addEventListener('load', (e) => {
+window.addEventListener('load', async (e) => {
     setNoImage()
-    bodyPartId = window.api.getEditBodyPart()
+    bodyPartId = window.api.getCurrBodyPart()
     checklistId = window.api.getCurrChecklist()
     if(checklistId){
         if(bodyPartId){
             isEdit = true
             setupEditBodyPart(bodyPartId, checklistId)
-            window.api.clearEditBodyPart()
+            window.api.clearCurrBodyPart()
         } else{
             setupAddBodyPart(checklistId)
         }
@@ -109,7 +109,7 @@ saveBodyPartBtn.addEventListener('click', async () => {
         }
         window.api.addOrEditBodyPartById(bodyPartId, checklistId, bodyPart)
         window.api.reloadHome()
-        window.api.closeConfig()
+        //window.api.closeConfig()
         
     } 
     else{
@@ -207,8 +207,8 @@ const getClickCoordinates = (event) => {
     bodyTagModal.show()
 }
 
-const setBodyTagCategories = () => {
-    let categories = window.api.getCategories()
+const setBodyTagCategories = async () => {
+    let categories = await window.api.getCategories()
     for(let key in categories){ 
         let category = categories[key]
         //get option with this value if it exists
@@ -252,7 +252,7 @@ const setupAddBodyTag = () => {
 const redrawEverything = async () => {
     const ctx = imgCanvas.getContext("2d");
     ctx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
-    let bodyPart = window.api.getBodyPartById(bodyPartId, checklistId)
+    let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
     let image = bodyPart['img']
     myImage.src = image
     await drawNewImage(myImage, 0, 0)
@@ -267,8 +267,8 @@ const redrawEverything = async () => {
 
 
 const setupEditBodyPart = async (bodyPartId, checklistId) => {
-    let bodyPart = window.api.getBodyPartById(bodyPartId, checklistId)
-    let checklist = window.api.getChecklistById(checklistId)
+    let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
+    let checklist = await window.api.getChecklistById(checklistId)
     let image = bodyPart['img']
     coordinatesMap = bodyPart['coordinates']
     bodyPartTitleTxt.value = bodyPart['name']
@@ -286,7 +286,7 @@ const setupEditBodyPart = async (bodyPartId, checklistId) => {
 }
 
 const setupAddBodyPart = async (checklistId) => {
-    let checklist = window.api.getChecklistById(checklistId)
+    let checklist = await window.api.getChecklistById(checklistId)
     title.innerHTML = `Add to ${checklist['name']} Checklist`
 }
 

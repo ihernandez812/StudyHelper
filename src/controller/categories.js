@@ -1,8 +1,8 @@
 const newCategoryBtn = document.querySelector('#new_category')
 const categoryContainer = document.querySelector("#category_container")
 
-window.addEventListener('load', (e) => {
-    let categories = window.api.getCategories()
+window.addEventListener('load', async (e) => {
+    let categories = await window.api.getCategories()
     let isFirst = true
     let rows = []
     for(let id in categories){

@@ -1,12 +1,10 @@
 const { app, BrowserWindow, Menu, nativeTheme, ipcMain, dialog } = require('electron')
 const path = require('path')
 const menuBuilder = require('./menu')
-const Storage = require('electron-light-storage')
-const store = new Storage()
 const windowStateKeeper = require('electron-window-state')
 const { generateID } = require('id-generator.js');
 const updater = require('./updater')
-
+const localStorage = require('../storage/storageUtils')
 let file_paths = {
     home : '../views/home.html',
     index : '../views/index.html',
@@ -54,13 +52,10 @@ const createWindow = () => {
 
     windState.manage(win)
 
-    if (!Object.keys(store.get()).includes('darkMode')) {
-        store.set({ 'darkMode': false })
-    }
 
-    useDarkMode = store.get().darkMode
 
-    nativeTheme.themeSource = (useDarkMode) ? 'dark' : 'light'
+
+   // nativeTheme.themeSource = (useDarkMode) ? 'dark' : 'light'
 
     win.loadFile(path.join(__dirname, file_paths.home))
 
@@ -96,11 +91,6 @@ const createConfigWindow = () => {
         }
     })
 
-
-    if (!Object.keys(store.get()).includes('darkMode')) {
-        store.set({ 'darkMode': false })
-    }
-
     configWindow.loadFile(path.join(__dirname, file_paths.config))
 
     configWindow.on('closed', () => {
@@ -135,11 +125,6 @@ const createCategoryWindow = () => {
             preload: path.join(__dirname, 'preload.js')
         }
     })
-
-
-    if (!Object.keys(store.get()).includes('darkMode')) {
-        store.set({ 'darkMode': false })
-    }
 
     categoryWindow.loadFile(path.join(__dirname, file_paths.category))
 
@@ -229,6 +214,44 @@ ipcMain.handle('closeConfig', (event) => {
 ipcMain.handle('generateId', (event) => {
     return generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
 })
+
+ipcMain.handle('setChecklists', (event, checklists) => {
+    localStorage.setChecklists(checklists)
+})
+ipcMain.handle('addChecklist', (event, id, checklist) => {
+    localStorage.addChecklist(id, checklist)
+})
+ipcMain.handle('getChecklists', (event) => {
+    return localStorage.getChecklists()
+})
+ipcMain.handle('getChecklistById', (event, id) => {
+    return localStorage.getChecklistById(id)
+})
+ipcMain.handle('getBodyPartById', (event, bodyPartId, checklistId) => {
+    return localStorage.getBodyPartById(bodyPartId, checklistId)
+})
+ipcMain.handle('addOrEditBodyPartById', (event, bodyPartId, checklistId, bodyPart) => {
+    localStorage.addOrEditBodyPartById(bodyPartId, checklistId, bodyPart)
+})
+ipcMain.handle('removeBodyPart', (event, bodyPartId, checklistId) => {
+    localStorage.removeBodyPart(bodyPartId, checklistId)
+})
+ipcMain.handle('setCategories', (event, categories) => {
+    return localStorage.setCategories(categories)
+})
+ipcMain.handle('getCategories', (event) => {
+    return localStorage.getCategories()
+})
+ipcMain.handle('getCategoryById', (event, categoryId) => {
+    return localStorage.getCategoryById(categoryId)
+})
+ipcMain.handle('addOrEditCategoryById', (event, categoryId, category) => {
+    localStorage.addOrEditCategoryById(categoryId, category)
+})
+ipcMain.handle('removeCategory', (event, categoryId) => {
+    localStorage.removeCategory(categoryId)
+})
+
 
 ipcMain.handle('addIdsToChecklists', (event, checklists) => {
     let sanatizedChecklists = {}
