@@ -6,90 +6,51 @@ contextBridge.exposeInMainWorld(
             return ipcRenderer.invoke('dialogQuestion', message)
             
         },
-        addChecklist:  (id, checklist) => {
-            let checklists = JSON.parse(localStorage.getItem('checklists')) || {}
-            checklists[id] = checklist
-            localStorage.setItem('checklists', JSON.stringify(checklists))
+        addChecklistAndCategoriesToDB: () => {
+            let unparsedChecklists = localStorage.getItem('checklists')
+            let unparsedCategories = localStorage.getItem('categories')
             
-            
+            let checklists = JSON.parse(unparsedChecklists) || {}
+            let categories = JSON.parse(unparsedCategories) || {}
+            if(checklists){
+                ipcRenderer.invoke('setChecklists', checklists)
+            }
+            if(categories){
+                ipcRenderer.invoke('setCategories', categories)
+            }
+            //localStorage.removeItem('checklists')
+            //localStorage.removeItem('categories')
         },
-        //Simply here for debuging purpose. When testing actual build I don't want the 
-        //previous checklist to get screwed up so in case it does save it so we have
-        //something to rollback to.
-        saveChecklistCopy: () => {
-            let checklists = JSON.parse(localStorage.getItem('checklists')) || {}
-            localStorage.setItem('checklistsCopy', JSON.stringify(checklists))
-            
+        addChecklist:  (id, checklist) => {
+            ipcRenderer.invoke('addChecklist', id, checklist)
         },
         getBodyPartById: (bodyPartId, checklistId) => {
-            let checklists = JSON.parse(localStorage.getItem('checklists')) || {}
-            let checklist = checklists[checklistId]
-            let bodyParts = checklist['bodyParts']
-            return bodyParts[bodyPartId]
+            return ipcRenderer.invoke('getBodyPartById', bodyPartId, checklistId)
         },
         addOrEditBodyPartById: (bodyPartId, checklistId, bodyPart) => {
-            let checklists = JSON.parse(localStorage.getItem('checklists')) || {}
-            let checklist = checklists[checklistId]
-            let bodyParts = checklist['bodyParts']
-            bodyParts[bodyPartId] = bodyPart
-            localStorage.setItem('checklists', JSON.stringify(checklists))
+            ipcRenderer.invoke('addOrEditBodyPartById', bodyPartId, checklistId, bodyPart)
         },
         getChecklists: () => {
-            return JSON.parse(localStorage.getItem('checklists')) || {}
+            return ipcRenderer.invoke('getChecklists')
         },
-        getChecklistById: (key) => {
-            let checklists = JSON.parse(localStorage.getItem('checklists')) || {}
-            return checklists[key]
-        },
-        setCurrChecklist: (key) => {
-            localStorage.setItem('currChecklist', key)
-        },
-        getCurrChecklist: () => {
-            return localStorage.getItem('currChecklist')
-        },
-        clearCurrChecklist: () => {
-            localStorage.removeItem('currChecklist')
-        },
-        setCurrBodyPart: (bodyPart) => {
-            localStorage.setItem('currBodyPart', JSON.stringify(bodyPart))
-        },
-        setEditBodyPart: (key) => {
-            localStorage.setItem('editBodyPart', key)
-        },
-        getEditBodyPart: () => {
-            return localStorage.getItem('editBodyPart')
-        },
-        clearEditBodyPart: () => {
-            localStorage.removeItem('editBodyPart')
-        },
-        getCurrBodyPart: () => {
-            return JSON.parse(localStorage.getItem('currBodyPart')) || {}
-        },
-        removeBodyPart: (key, checklistKey) => {
-            let checklists = JSON.parse(localStorage.getItem('checklists'))
-            let checklist = checklists[checklistKey]
-            let bodyParts = checklist['bodyParts']
-            delete bodyParts[key]
-
-            localStorage.setItem('checklists', JSON.stringify(checklists))
+        getChecklistById: (id) => {
+            return ipcRenderer.invoke('getChecklistById', id)
+        },   
+        removeBodyPart: (bodyPartId, checklistId) => {
+            ipcRenderer.invoke('removeBodyPart', bodyPartId, checklistId)
         },
         getCategories: () => {
-            return JSON.parse(localStorage.getItem('categories')) || {}
+            return ipcRenderer.invoke('getCategories')
 
         },
         getCategoryById: (id) => {
-            let categories = JSON.parse(localStorage.getItem('categories')) || {}
-            return categories[id]
+            return ipcRenderer.invoke('getCategoryById', id)
         },
         removeCategory: (id) => {
-            let categories = JSON.parse(localStorage.getItem('categories')) || {}
-            delete categories[id]
-            localStorage.setItem('categories', JSON.stringify(categories))
+            ipcRenderer.invoke('removeCategory', id)
         },
         addOrEditCategoryById: (id, category) => {
-            let categories = JSON.parse(localStorage.getItem('categories')) || {}
-            categories[id] = category
-            localStorage.setItem('categories', JSON.stringify(categories))
+            return ipcRenderer.invoke('addOrEditCategoryById', id, category)
         },
         loadChecklistTest: () => {
             ipcRenderer.invoke('loadChecklistTester')
@@ -120,6 +81,24 @@ contextBridge.exposeInMainWorld(
                     localStorage.setItem('checklists', JSON.stringify(sanatizedChecklists))
                 }
             }
+        },
+        setCurrChecklist: (id) => {
+            localStorage.setItem('currChecklist', id)
+        },
+        getCurrChecklist: () => {
+            return localStorage.getItem('currChecklist')
+        },
+        clearCurrChecklist: () => {
+            localStorage.removeItem('currChecklist')
+        },
+        setCurrBodyPart: (bodyPart) => {
+            localStorage.setItem('currBodyPart', JSON.stringify(bodyPart))
+        },
+        getCurrBodyPart: () => {
+            return localStorage.getItem('currBodyPart')
+        },
+        clearCurrBodyPart: () => {
+            localStorage.removeItem('currBodyPart')
         },
         loadConfigBodyPart: () => {
             ipcRenderer.invoke('loadConfigBodyPart')

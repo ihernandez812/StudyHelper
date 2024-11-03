@@ -17,7 +17,7 @@ let deleteClicked = false
 window.addEventListener('load', async (e) => {
     await window.api.addIdsToChecklists()
     await window.api.addIdsToTags()
-    window.api.saveChecklistCopy()
+    await window.api.addChecklistAndCategoriesToDB()
     const ctx = imgCanvas.getContext("2d");
     ctx.canvas.width = kianImage.width;
     ctx.canvas.height = kianImage.height;
@@ -48,8 +48,8 @@ checklistBtn.addEventListener('click', async () => {
 })
 
 
-const createDropdowns = () => {
-    let checklists = window.api.getChecklists() 
+const createDropdowns = async () => {
+    let checklists = await window.api.getChecklists() 
     for(let key in checklists){
         let checklist = checklists[key]
         let checklistDropdown = createDropdown(checklist, key)
@@ -109,7 +109,13 @@ const createDropdownItem = (bodyPart, key, checklistKey) =>{
     let link = document.createElement('a')
     let title = bodyPart['name']
     link.classList.add('dropdown-item')
-    link.innerHTML = title
+    //data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+    
+
+    let linkSpan = document.createElement('span')
+    linkSpan.classList.add('dropdown-title')
+    linkSpan.innerHTML = title
+    
 
     let span = document.createElement('span')
     span.classList.add('fa-icons')
@@ -124,21 +130,25 @@ const createDropdownItem = (bodyPart, key, checklistKey) =>{
 
     span.appendChild(editIcon)
     span.appendChild(deleteIcon)
-
+    link.appendChild(linkSpan)
     link.appendChild(span)
 
 
     let listItem = document.createElement('li')
     listItem.appendChild(link)
+    listItem.setAttribute('data-bs-toggle', 'tooltip')
+    listItem.setAttribute('data-bs-placement', 'top')
+    listItem.setAttribute('title', title)
     //listItem.appendChild(span)
     link.addEventListener('click', () => {
-        window.api.setCurrBodyPart(bodyPart)
+        window.api.setCurrChecklist(checklistKey)
+        window.api.setCurrBodyPart(key)
         window.api.loadChecklistTest()
     })
 
     editIcon.addEventListener('click', (event) => {
         event.stopImmediatePropagation()
-        window.api.setEditBodyPart(key)
+        window.api.setCurrBodyPart(key)
         window.api.setCurrChecklist(checklistKey)
         window.api.loadConfigBodyPart()
     })
@@ -186,11 +196,12 @@ const createDropdownItemForRandom = (checklistKey) => {
     //delete the last body part won't happen often but 
     //irked me during testing 
     listItem.setAttribute('id', `random_${checklistKey}`)
-    listItem.addEventListener('click', () => {
-        let checklist = window.api.getChecklistById(checklistKey)
+    listItem.addEventListener('click', async () => {
+        let checklist = await window.api.getChecklistById(checklistKey)
         let bodyParts = checklist['bodyParts']
-        let bodyPartList = Object.values(bodyParts)
+        let bodyPartList = Object.keys(bodyParts)
         let randomItem = bodyPartList[Math.floor(Math.random()* bodyPartList.length)]
+        window.api.setCurrChecklist(checklistKey)
         window.api.setCurrBodyPart(randomItem)
         window.api.loadChecklistTest()
     })
