@@ -33,10 +33,19 @@
           </ul>
          
           
-          <!-- <form class="d-flex">
-            <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-            <button class="btn btn-outline-success" type="submit">Search</button>
-          </form> -->
+          <form class="d-flex">
+            <!-- <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search"> -->
+            
+            <div class="input-group">
+              <input class="form-control" type="search" placeholder="Search" id="search_input">
+              <span class="input-group-text" id="filter_btn">
+                <i class="fa fa-filter"></i>
+              </span>
+              <ul class="dropdown-menu" data-bs-popper="static" id="search_dropdown">
+              </ul>
+            </div>
+            <!-- <button class="btn btn-outline-success" type="submit">Search</button> -->
+          </form>
           <div class="d-flex">
             <button class="btn btn-outline-link" id="add_checklist"> <i class="fa fa-plus"></i></button>
           </div>
@@ -66,6 +75,41 @@
               <div class="modal-footer">
                   <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                   <button type="button" class="btn btn-primary" id="checklist_btn">Save Checklist</button>
+              </div>
+          </div>
+      </div>
+    </div>
+
+    <div class="modal" id='filter_modal' tabindex="-1">
+      <div class="modal-dialog">
+          <div class="modal-content">
+              <div class="modal-header">
+                  <h5 class="modal-title">Filter Search</h5>
+                  <!-- <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button> -->
+              </div>
+              <div class="modal-body">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="checklist_filter" checked>
+                  <label class="form-check-label" for="checklist_filter">
+                    Checklists
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="body_part_filter" checked>
+                  <label class="form-check-label" for="body_part_filter">
+                    Body Parts
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="body_tag_filter" checked>
+                  <label class="form-check-label" for="body_tag_filter">
+                    Body Tag
+                  </label>
+                </div>
+              </div>
+              <div class="modal-footer">
+                  <!-- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button> -->
+                  <button type="button" class="btn btn-primary" id="save_filter_btn">Save Filter</button>
               </div>
           </div>
       </div>

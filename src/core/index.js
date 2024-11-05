@@ -252,6 +252,9 @@ ipcMain.handle('removeCategory', (event, categoryId) => {
     localStorage.removeCategory(categoryId)
 })
 
+ipcMain.handle('search', (event, isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
+   return localStorage.search(isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)
+})
 
 ipcMain.handle('addIdsToChecklists', (event, checklists) => {
     let sanatizedChecklists = {}
