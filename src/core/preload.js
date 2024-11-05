@@ -105,6 +105,9 @@ contextBridge.exposeInMainWorld(
         },
         closeConfig: () => {
             ipcRenderer.invoke('closeConfig')
+        }, 
+        search: (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
+            return ipcRenderer.invoke('search', isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)
         }
         
 }

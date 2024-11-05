@@ -7,8 +7,9 @@ const sanatizeId = (id) => {
     //this doesn't work all that well
     //sub object keys are strings with "
     //so we have to remove them
-    while(id.includes('"')){
+    while(id.includes('"') || id.includes(' ')){
         id = id.replace('"', '')
+        id = id.replace(' ', '')
     }
     return id
 }
@@ -107,6 +108,64 @@ const addOrEditCategoryById = (id, category) => {
     })
 }
 
+const checkSearchInput = (possibleValue, query) => {
+    let result = false
+    possibleValue = possibleValue.toLowerCase()
+    query = query.toLowerCase()
+    if(query && query.length > 0){
+        if(query.length >= 3){
+            if(possibleValue.includes(query)){
+                result = true
+            }
+        } 
+        else{
+            if(possibleValue.startsWith(query)){
+                result = true
+            }
+        }
+    }
+    return result
+}
+
+const search = (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
+    let checklists = localStorage.get('checklists') || {}
+    let foundChecklists = {}
+    let foundBodyParts = {}
+    let foundBodyTags = {}
+    for(let checklistId in checklists){
+        let checklist = checklists[checklistId]
+        let checklistName = checklist['name']
+        if(isChecklistFilterChecked && checkSearchInput(checklistName, searchQuery)){
+            foundChecklists[checklistId] = checklistName
+        }
+        let bodyParts = checklist['bodyParts']
+        for(let bodyPartId in bodyParts){
+            let bodyPart = bodyParts[bodyPartId]
+            let bodyPartName = bodyPart['name']
+            if(isBodyPartFilterChecked && checkSearchInput(bodyPartName, searchQuery)){
+                let key = `${checklistId}_ ${bodyPartId}`
+                foundBodyParts[key] = `${bodyPartName} - ${checklistName}`
+            }
+            let bodyTags = bodyPart['coordinates']
+            for(let bodyTagId in bodyTags){
+                let bodyTag = bodyTags[bodyTagId]
+                let bodyTagName = bodyTag['name']
+                if(isBodyTagFilterChecked && checkSearchInput(bodyTagName, searchQuery)){
+                    let key = `${checklistId}_ ${bodyPartId}`
+                    foundBodyTags[key] = `${bodyTagName} - ${bodyPartName}`
+                }
+            }
+        }
+    }
+
+    return {
+        checklists: foundChecklists,
+        bodyParts: foundBodyParts,
+        bodyTags: foundBodyTags
+    }
+
+}
+
 module.exports = {
     setChecklists,
     addChecklist, 
@@ -119,5 +178,6 @@ module.exports = {
     getCategories,
     getCategoryById,
     removeCategory,
-    addOrEditCategoryById
+    addOrEditCategoryById,
+    search
 }

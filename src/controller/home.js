@@ -5,6 +5,15 @@ const addChecklistBtn = document.querySelector("#add_checklist")
 const checklistModalElement = document.querySelector("#checklist_modal")
 const checklistBtn = document.querySelector('#checklist_btn')
 const checklistTxt = document.querySelector("#checklist_title")
+const filterModalElement = document.querySelector('#filter_modal')
+const filterBtn = document.querySelector('#filter_btn')
+const searchDropdown = document.querySelector('#search_dropdown')
+const searchInput = document.querySelector('#search_input')
+const saveFilterBtn = document.querySelector("#save_filter_btn")
+const checklistFilter = document.querySelector('#checklist_filter')
+const bodyPartFilter = document.querySelector('#body_part_filter')
+const bodyTagFilter = document.querySelector('#body_tag_filter')
+const filterModal = new bootstrap.Modal(filterModalElement)
 const checklistModal = new bootstrap.Modal(checklistModalElement)
 let editClicked = false
 let deleteClicked = false
@@ -23,6 +32,133 @@ window.addEventListener('load', async (e) => {
     ctx.canvas.height = kianImage.height;
     ctx.drawImage(kianImage, -1400, 0);
     createDropdowns()
+})
+
+searchInput.addEventListener('focus', () => {
+    searchDropdown.classList.add('show')
+})
+
+searchInput.addEventListener('blur', async() => {
+    await new Promise(r => setTimeout(r, 200));
+    searchDropdown.classList.remove('show')
+})
+
+searchInput.addEventListener('search', (event) => {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    search()
+})
+
+//There will be no submitting lol
+document.addEventListener('submit', (event) => {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    search()
+}, false)
+
+searchInput.addEventListener('keyup', () => {
+    search()
+})
+
+const search = async () => {
+    let isChecklistFilterChecked = checklistFilter.checked
+    let isBodyPartFilterChecked = bodyPartFilter.checked
+    let isBodyTagFilterChecked = bodyTagFilter.checked
+    let searchValue = searchInput.value
+    let searchResults = await window.api.search(isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchValue)
+    let checklists = searchResults['checklists']
+    let bodyParts = searchResults['bodyParts']
+    let bodyTags = searchResults['bodyTags']
+    searchDropdown.innerHTML = ''
+    for(let key in checklists){
+        let checklist = checklists[key]
+        let listItem = createSearchDropdownItem(key, checklist, false)
+        if(listItem){
+            searchDropdown.appendChild(listItem)
+        }
+    }
+    for(let key in bodyParts){
+        let bodyPart = bodyParts[key]
+        let listItem = createSearchDropdownItem(key, bodyPart)
+        if(listItem){
+            searchDropdown.appendChild(listItem)
+        }
+    }
+    for(let key in bodyTags){
+        let bodyTag = bodyTags[key]
+        let listItem = createSearchDropdownItem(key, bodyTag)
+        if(listItem){
+            searchDropdown.appendChild(listItem)
+        }
+    }
+}
+
+
+const createSearchDropdownItem = (key, txt, canEdit=true) => {
+    let link = document.createElement('a')
+    link.classList.add('dropdown-item')
+
+    let linkSpan = document.createElement('span')
+    linkSpan.classList.add('dropdown-title')
+    linkSpan.innerHTML = txt
+    
+    let span = document.createElement('span')
+    span.classList.add('fa-icons')
+
+    let editIcon = document.createElement('i')
+    editIcon.classList.add('fa')
+    editIcon.classList.add('fa-pencil-square-o')
+    if(canEdit){
+        span.appendChild(editIcon)
+    }
+    link.appendChild(linkSpan)
+    link.appendChild(span)
+
+
+    let listItem = document.createElement('li')
+    listItem.appendChild(link)
+    listItem.setAttribute('data-bs-toggle', 'tooltip')
+    listItem.setAttribute('data-bs-placement', 'top')
+    listItem.setAttribute('title', txt)
+    //listItem.appendChild(span)
+    
+    let idList = key.split('_')
+    let checklistId = idList[0]
+    let bodyPartId = ''
+    //If the search is on a checklist then there will only be one id
+    //if it is on a body part or body tag it will have 2 ids
+    if(idList.length > 1){
+        bodyPartId = idList[1]
+    }
+
+    //we only want these event listeners is a body part
+    //or body tag. 
+    if(checklistId && bodyPartId) {
+        listItem.addEventListener('click', () => {
+            window.api.setCurrChecklist(checklistId)
+            window.api.setCurrBodyPart(bodyPartId)
+            window.api.loadChecklistTest()
+        })
+        editIcon.addEventListener('click', (event) => {
+            console.log('clciked edit')
+            event.stopImmediatePropagation()
+            window.api.setCurrBodyPart(bodyPartId)
+            window.api.setCurrChecklist(checklistId)
+            window.api.loadConfigBodyPart()
+        })
+    }
+    
+    return listItem
+}
+
+saveFilterBtn.addEventListener('click', () => {
+    //reload search 
+    search()
+    filterModal.hide()
+})
+
+filterBtn.addEventListener('click', () => {
+    filterModal.show()
 })
 
 addChecklistBtn.addEventListener('click', () => {
