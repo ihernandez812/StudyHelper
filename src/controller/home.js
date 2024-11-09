@@ -140,7 +140,6 @@ const createSearchDropdownItem = (key, txt, canEdit=true) => {
             window.api.loadChecklistTest()
         })
         editIcon.addEventListener('click', (event) => {
-            console.log('clciked edit')
             event.stopImmediatePropagation()
             window.api.setCurrBodyPart(bodyPartId)
             window.api.setCurrChecklist(checklistId)

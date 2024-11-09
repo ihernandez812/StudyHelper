@@ -1,6 +1,7 @@
 const myImage = document.querySelector('#bodyPart');
 const bodyTagModalElement = document.querySelector("#body_tag_modal")
 const bodyTagBtn = document.querySelector('#tag_btn')
+const deleteTagBtn = document.querySelector("#delete_tag")
 const bodyTagTxt = document.querySelector("#body_tag")
 const imgCanvas = document.querySelector("#img_canvas")
 const dropArea = document.querySelector('#body_part_area');
@@ -58,7 +59,26 @@ dropArea.addEventListener('drop', (event) => {
     }
 });
 
-
+deleteTagBtn.addEventListener('click', async (event) => {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    window.api.dialogQuestion('Are you sure you want to delete?')
+    .then(res => {
+        let result = res.response
+        if(result == 0){
+            let wasEdited = bodyTagId != null
+            if(wasEdited){
+                delete coordinatesMap[bodyTagId]
+            }
+            bodyTagModal.hide()
+            if(wasEdited){
+                redrawEverything()
+            }
+            currCoordinates = null
+            bodyTagTxt.value = null
+        }
+    })
+})
 
 bodyTagBtn.addEventListener('click', async (event) => {
     event.preventDefault()
@@ -91,8 +111,6 @@ bodyTagBtn.addEventListener('click', async (event) => {
     else {
         alert('You gotta type something big dog')
     }
-
-
 })
 
 saveBodyPartBtn.addEventListener('click', async () => {
@@ -236,6 +254,7 @@ const setupEditBodyTag = (key, tagName, categoryId) => {
     bodyTagId = key
     bodyTagTitle.innerHTML = 'Edit Tag'
     bodyTagTxt.value = tagName
+    deleteTagBtn.classList.remove('hide')
     for(let option of categoriesSelect.options){
         if(option.value == categoryId){
             option.selected = true
@@ -247,6 +266,7 @@ const setupAddBodyTag = () => {
     bodyTagId = null
     bodyTagTxt.value = ''
     bodyTagTitle.innerHTML = 'New Tag'
+    deleteTagBtn.classList.add('hide')
 }
 
 const redrawEverything = async () => {

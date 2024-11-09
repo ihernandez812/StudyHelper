@@ -39,10 +39,6 @@
     padding: 5%;
 }
 
-.fa-icons {
-    /* padding-left: 50%; */
-}
-
 .grade{
     float: right;
 }
@@ -86,13 +82,15 @@ i {
     overflow-y: scroll;
  }
  
- .body_part_area {
+ #body_part_area {
     width: 100%;
     text-align:center;
  }
 
  canvas {
-    display: inline;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
  }
  .canvas-row{
     overflow: scroll;
