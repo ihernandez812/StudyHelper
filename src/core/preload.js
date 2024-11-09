@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld(
     'api', {
+        popup: async (message) => {
+            return ipcRenderer.invoke('popup', message)
+            
+        },
         dialogQuestion: async (message) => {
             return ipcRenderer.invoke('dialogQuestion', message)
             
@@ -51,6 +55,15 @@ contextBridge.exposeInMainWorld(
         },
         addOrEditCategoryById: (id, category) => {
             return ipcRenderer.invoke('addOrEditCategoryById', id, category)
+        },
+        addPractical: (id, practical) => {
+            ipcRenderer.invoke('addPractical', id, practical)
+        },
+        getPracticals: () => {
+            return ipcRenderer.invoke('getPracticals')
+        },
+        getPractialById: (id) => {
+            return ipcRenderer.invoke('getPracticalById', id)
         },
         loadChecklistTest: () => {
             ipcRenderer.invoke('loadChecklistTester')
@@ -105,6 +118,9 @@ contextBridge.exposeInMainWorld(
         },
         closeConfig: () => {
             ipcRenderer.invoke('closeConfig')
+        },
+        closePracticalTest: () => {
+            ipcRenderer.invoke('closePracticalTest')
         }, 
         search: (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
             return ipcRenderer.invoke('search', isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)

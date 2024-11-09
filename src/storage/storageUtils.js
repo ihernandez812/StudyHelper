@@ -127,6 +127,23 @@ const checkSearchInput = (possibleValue, query) => {
     return result
 }
 
+const addPractical = (practicalId, practical) => {
+    let practicals = localStorage.get('practicals')|| {}
+    practicals[practicalId] = practical 
+    localStorage.set({
+        practicals: practicals
+    })
+}
+
+const getPracticals = () => {
+    return localStorage.get('practicals')
+}
+
+const getPracticalById = (practicalId) => {
+    let practicals = localStorage.get('practicals')|| {}
+    return practicals[practicalId]
+}
+
 const search = (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
     let checklists = localStorage.get('checklists') || {}
     let foundChecklists = {}
@@ -179,5 +196,8 @@ module.exports = {
     getCategoryById,
     removeCategory,
     addOrEditCategoryById,
-    search
+    search,
+    addPractical,
+    getPracticals,
+    getPracticalById
 }
