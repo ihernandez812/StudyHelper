@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, nativeTheme, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron')
 const path = require('path')
 const menuBuilder = require('./menu')
 const windowStateKeeper = require('electron-window-state')
@@ -10,10 +10,25 @@ let file_paths = {
     index : '../views/index.html',
     settings: '../views/settings.html',
     config: '../views/config.html',
-    category: '../views/categories.html'
+    category: '../views/categories.html',
+    practicalTest: '../views/practicalTest.html',
+    practicalResults: '../views/practicalResults.html',
 }
 
 const customMeunItems  = [
+    {
+        label : 'Pratical Simulation',
+        submenu : [
+            {
+                label: 'Take Practical Test',
+                click(){ createPracticalTestWindow() }
+            },
+            {
+                label: 'View Past Results',
+                click(){ createPracticalResultsWindow() }
+            },
+        ]
+    },
     {
         label : 'Configuration',
         submenu : [
@@ -175,8 +190,78 @@ const createChecklistTestWindow = () => {
 
 }
 
+let practicalTestWindow
+
+const createPracticalTestWindow = () => {
+    let windState = windowStateKeeper({
+        defaultHeight: 800,
+        defaultWidth: 1200
+    })
+
+    practicalTestWindow = new BrowserWindow({
+        width: windState.width,
+        height: windState.height,
+        show: false,
+        minHeight: 600,
+        minWidth: 800,
+        parent: win,
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js')
+        }
+    })
+
+    practicalTestWindow.loadFile(path.join(__dirname, file_paths.practicalTest))
+
+    practicalTestWindow.on('closed', () => {
+        practicalTestWindow = null
+    })
+
+    
+    Menu.setApplicationMenu(menu)
+    practicalTestWindow.once('ready-to-show', () => {
+        practicalTestWindow.show()
+    })
+
+}
+let practicalResultsWindow
+
+const createPracticalResultsWindow = () => {
+    let windState = windowStateKeeper({
+        defaultHeight: 800,
+        defaultWidth: 1200
+    })
+
+    practicalResultsWindow = new BrowserWindow({
+        width: windState.width,
+        height: windState.height,
+        show: false,
+        minHeight: 600,
+        minWidth: 800,
+        parent: win,
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js')
+        }
+    })
+
+    practicalResultsWindow.loadFile(path.join(__dirname, file_paths.practicalResults))
+
+    practicalResultsWindow.on('closed', () => {
+        practicalResultsWindow = null
+    })
+
+    
+    Menu.setApplicationMenu(menu)
+    practicalResultsWindow.once('ready-to-show', () => {
+        practicalResultsWindow.show()
+    })
+
+}
+
+
+
+
 ipcMain.handle('popup', (event, message) => {
-    dialog.showMessageBox(win, {
+    return dialog.showMessageBox(win, {
         title: 'Study Helper',
         message: message,
     })
@@ -250,6 +335,22 @@ ipcMain.handle('addOrEditCategoryById', (event, categoryId, category) => {
 })
 ipcMain.handle('removeCategory', (event, categoryId) => {
     localStorage.removeCategory(categoryId)
+})
+
+ipcMain.handle('addPractical', (event, practicalId, practical) => {
+    localStorage.addPractical(practicalId, practical)
+})
+ipcMain.handle('getPracticals', (event) => {
+    return localStorage.getPracticals()
+})
+ipcMain.handle('getPracticalById', (event, practicalId) => {
+    return localStorage.getPracticalById(practicalId)
+})
+
+ipcMain.handle('closePracticalTest', (event) => {
+    if(practicalTestWindow){
+        practicalTestWindow.close()
+    }
 })
 
 ipcMain.handle('search', (event, isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {

@@ -12,24 +12,32 @@ When running for the first time you will have to allow the app to be opened from
 - Checklist
     - Body part
         - Tags
-
+            - Categories
 ## How to Use
 ##### Adding checkist
 
-    Once in the app you can create a checklist by navigating to Configuration > Add Checklist
-    From there you can give the check list a name and start adding body parts
-    To add a body part you can drag and drop any image onto the canvas and add tags
-    Adding tags is as simiple as right clicking anywhere on the canvas and giving the tag a name
-    When you are done adding tags you can save the body part and give it a name
-    When done adding body parts you can save the checklist and exit the Add Checklist page
+    Once in the app you can create a checklist by clicking the plus button on the 
+    home screen. Once added it will display in the nav bar. Where you can add a
+    body part
 
-##### Editing a checklist
-    From the home page you can select a checklist dropdown and right click on
-    the body part you want to edit
-    Currently editing a body part only supports checklist name change,
-    body part name change, and adding tags.
-    Once you are done adding editing a body part save the body part
-    From there you can Add a new body part to the checklist or save the checklist
+
+
+##### Body Parts
+    From the home page you can use the nav menu to select a checklist and see
+    body parts you have created. To create a body part select a checklist and
+    click add body part. Created body parts will be in the checklist dropdown
+    where you can edit or delete them. 
+    Steps To Create a Body Part select a checklist dropdown then select add
+    a body part. From there you can give the body part a name, image and tags.
+    To add an image drag and drop any imgae onto the image box.
+    To add Tags right click on the image and you will shown a modal where you
+    can give the tag a value and category. 
+    Once you are done adding tags you can save the body part
+
+##### Categories
+    Categories are give you the option to label a tag. This can be helpful if
+    you have multiple tags in the same area. 
+    Steps 
 
 ##### Testing yourself
     From the home page you can select the a checklist drop down and select a body

@@ -43,6 +43,18 @@
     /* padding-left: 50%; */
 }
 
+.grade{
+    float: right;
+}
+
+.grade-header{
+    float: right;
+    align-self:flex-end;
+    flex-direction: column;
+}
+.practical-name:hover {
+    color: #5abce6;
+}
 .dropdown-item .dropdown-title {
     text-overflow: ellipsis;
     overflow: hidden;
@@ -74,13 +86,16 @@ i {
     overflow-y: scroll;
  }
  
- #body_part_area {
+ .body_part_area {
     width: 100%;
     text-align:center;
  }
 
  canvas {
     display: inline;
+ }
+ .canvas-row{
+    overflow: scroll;
  }
  img {
     display: inline;
@@ -93,8 +108,18 @@ i {
     padding-left: 70%;
 }
 
+.pl-12 {
+    padding-left: 75%;
+}
+
 .pl-5 {
     padding-left: 25%;
+}
+
+#timer{
+    color: red;
+    font-size: 250%;
+    position: fixed;
 }
 
 body {
@@ -103,4 +128,14 @@ body {
 
 #nav-bar {
     background-color: #f7dfe8;
+}
+
+.hide {
+    display: none;
+}
+
+.back-btn{
+    padding-bottom: 1%;
+    font-size: larger;
+    color: #506c7d;
 }
