@@ -108,7 +108,7 @@ contextBridge.exposeInMainWorld(
             localStorage.setItem('currBodyPart', JSON.stringify(bodyPart))
         },
         getCurrBodyPart: () => {
-            return localStorage.getItem('currBodyPart')
+            return JSON.parse(localStorage.getItem('currBodyPart'))
         },
         clearCurrBodyPart: () => {
             localStorage.removeItem('currBodyPart')

@@ -301,6 +301,7 @@ const createBodyPartCanvas = (id) =>{
     let row = document.createElement("div")
     row.classList.add('row')
     row.classList.add('canvas-row')
+    row.style.width = '100%'
     let col = document.createElement('div')
     col.classList.add('col-6')
     col.classList.add('body_part_area')
