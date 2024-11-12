@@ -277,7 +277,7 @@ const createDropdownItem = (bodyPart, key, checklistKey) =>{
     //listItem.appendChild(span)
     link.addEventListener('click', () => {
         window.api.setCurrChecklist(checklistKey)
-        window.api.setCurrBodyPart(key)
+        window.api.setCurrBodyPart([key])
         window.api.loadChecklistTest()
     })
 
@@ -325,23 +325,64 @@ const createDropdownItemForRandom = (checklistKey) => {
     link.classList.add('dropdown-item')
     link.innerHTML = 'Random'
 
+    let arrowIcon = document.createElement('i')
+    arrowIcon.classList.add('fa')
+    arrowIcon.classList.add('fa-caret-right')
+    link.appendChild(arrowIcon)
+
     let listItem = document.createElement('li')
     listItem.appendChild(link)
     //Used so we can delete the random list item if they
     //delete the last body part won't happen often but 
     //irked me during testing 
+    let randomSubmenu = document.createElement('ul')
+    randomSubmenu.classList.add('submenu')
+    randomSubmenu.classList.add('dropdown-menu')
+
+    let singleRandom = document.createElement('li')
+    let singleRandomLink = document.createElement('a')
+    singleRandomLink.classList.add('dropdown-item')
+    singleRandomLink.innerHTML = 'Single Body Part'
+
+    let continuousRandom = document.createElement('li')
+    let continuousRandomLink = document.createElement('a')
+    continuousRandomLink.classList.add('dropdown-item')
+    continuousRandomLink.innerHTML = 'All Body Parts'
+
+    singleRandom.appendChild(singleRandomLink)
+    continuousRandom.appendChild(continuousRandomLink)
+    randomSubmenu.append(singleRandom, continuousRandom)
+    listItem.appendChild(randomSubmenu)
+
+    
     listItem.setAttribute('id', `random_${checklistKey}`)
-    listItem.addEventListener('click', async () => {
-        let checklist = await window.api.getChecklistById(checklistKey)
-        let bodyParts = checklist['bodyParts']
-        let bodyPartList = Object.keys(bodyParts)
+    singleRandom.addEventListener('click', async (event) => {
+        event.stopImmediatePropagation()
+        event.preventDefault()
+        let bodyPartList = await getBodyPartKeys(checklistKey)
         let randomItem = bodyPartList[Math.floor(Math.random()* bodyPartList.length)]
         window.api.setCurrChecklist(checklistKey)
-        window.api.setCurrBodyPart(randomItem)
+        window.api.setCurrBodyPart([randomItem])
+        window.api.loadChecklistTest()
+    })
+
+    continuousRandom.addEventListener('click', async (event) => {
+        event.stopImmediatePropagation()
+        event.preventDefault()
+        let bodyPartList = await getBodyPartKeys(checklistKey)
+        window.api.setCurrChecklist(checklistKey)
+        window.api.setCurrBodyPart(bodyPartList)
         window.api.loadChecklistTest()
     })
     
     return listItem
+}
+
+const getBodyPartKeys = async (checklistKey) => {
+    let checklist = await window.api.getChecklistById(checklistKey)
+    let bodyParts = checklist['bodyParts']
+    let bodyPartList = Object.keys(bodyParts)
+    return bodyPartList
 }
 
 const createDropdownItemForAddBodyPart = (checklistKey) => {

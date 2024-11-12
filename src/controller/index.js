@@ -14,6 +14,7 @@ const saveChecklistBtn = document.querySelector("#save_checklist")
 const checklistTitleTxt = document.querySelector("#checklist_title")
 const bodyTagPropmt = document.querySelector('#body_tag_prompt')
 const wordbank = document.querySelector("#wordbank")
+const nextBodyPartBtn = document.querySelector("#next_body_part")
 const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
 const settingsModal = new bootstrap.Modal(settingsModalElement)
 let question_mark_path = '../images/question-mark.png'
@@ -23,18 +24,40 @@ let answerTag = {}
 let hintTag = ''
 let numHints = 0 
 let bodyPartId = null
+let bodyPartIdList = [] 
 let checklistId = null
+let usedIds = []
 
 //by #
 //by class . document.querySelectorAll('.className')
 //by class . document.querySelector('.className')
 
 window.addEventListener('load', (e) => {
-    bodyPartId = window.api.getCurrBodyPart()
+    bodyPartIdList = window.api.getCurrBodyPart()
     checklistId = window.api.getCurrChecklist()
+    if(bodyPartIdList.length > 1){
+        nextBodyPartBtn.classList.remove('hide')
+    }
+    startBodyPartTest()
+})
+
+nextBodyPartBtn.addEventListener('click', () => {
+    clearWordBank()
+    startBodyPartTest()
+})
+
+const startBodyPartTest = () => {
+    setBodyPartIdFromList()
+    if(usedIds.length == bodyPartIdList.length){
+        nextBodyPartBtn.classList.add('hide')
+    }
     setupbodyPartTest()
     configureSettings()
-})
+}
+
+const clearWordBank = () => {
+    wordbank.innerHTML = ''
+}
 
 const addToWordBank = (id, word) => {
     let span = document.createElement('span')
@@ -156,6 +179,15 @@ const drawQuestionMarks = (coordinatesMap) => {
         }
         
     }
+}
+
+const setBodyPartIdFromList = () => {
+    
+    do{
+        bodyPartId = bodyPartIdList[Math.floor(Math.random()* bodyPartIdList.length)]
+    }
+    while(usedIds.includes(bodyPartId))
+    usedIds.push(bodyPartId)
 }
 
 // const drawNewText = (txt, currCoordinates) => {
