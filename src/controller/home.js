@@ -15,8 +15,8 @@ const bodyPartFilter = document.querySelector('#body_part_filter')
 const bodyTagFilter = document.querySelector('#body_tag_filter')
 const filterModal = new bootstrap.Modal(filterModalElement)
 const checklistModal = new bootstrap.Modal(checklistModalElement)
-let editClicked = false
-let deleteClicked = false
+let editChecklistId = null
+let editChecklistTitleElement = null
 //fa icons
 //<i class="fa-regular fa-trash"></i>
 //<i class="fa-solid fa-plus"></i>
@@ -167,14 +167,13 @@ addChecklistBtn.addEventListener('click', () => {
 checklistBtn.addEventListener('click', async () => {
     let checklistTitle = checklistTxt.value
     if(checklistTitle){
-        let id = await window.api.generateId()
-        let checklist = {
-            name: checklistTitle,
-            bodyParts: {}
+        if(editChecklistId && editChecklistTitleElement){
+            editChecklist(editChecklistId, editChecklistTitleElement, checklistTitle)
         }
-        window.api.addChecklist(id, checklist)
-        let checklistDropdown = createDropdown(checklist, id)
-        checklistNav.appendChild(checklistDropdown)
+        else{
+            addChecklist(checklistTitle)
+        }
+        
         checklistModal.hide()
     }
     else{
@@ -182,6 +181,26 @@ checklistBtn.addEventListener('click', async () => {
     }
 })
 
+const editChecklist = async (editChecklistId, editChecklistTitleElement, checklistTitle) => {
+    let checklist = await window.api.getChecklistById(editChecklistId)
+
+    checklist['name'] = checklistTitle
+    window.api.addOrEditChecklistById(editChecklistId, checklist)
+    editChecklistTitleElement.innerHTML = checklistTitle
+    editChecklistTitleElement = null
+    editChecklistId = null
+}
+
+const addChecklist = async () => {
+    let id = await window.api.generateId()
+    let checklist = {
+        name: checklistTitle,
+        bodyParts: {}
+    }
+    window.api.addOrEditChecklistById(id, checklist)
+    let checklistDropdown = createDropdown(checklist, id)
+    checklistNav.appendChild(checklistDropdown)
+}
 
 const createDropdowns = async () => {
     let checklists = await window.api.getChecklists() 
@@ -203,8 +222,16 @@ const createDropdown = (checklist, key) => {
     let bodyParts = checklist['bodyParts']
     let dropdownItems = createDropdownList(bodyParts, key)
     list.appendChild(dropdownItems)
-
+    list.addEventListener('contextmenu', () => {
+        setupEditChecklist(titleElement, key)
+    })
     return list
+}
+
+const setupEditChecklist = (titleElement, checklistId) => {
+    editChecklistTitleElement = titleElement
+    editChecklistId = checklistId
+    checklistModal.show()
 }
 
 const createChecklistTitle = (checklist) =>{

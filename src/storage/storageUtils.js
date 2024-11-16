@@ -22,7 +22,7 @@ const setChecklists = (checklists) => {
     })
 }
 
-const addChecklist =  (id, checklist) => {
+const addOrEditChecklistById =  (id, checklist) => {
     let checklists = localStorage.get('checklists')|| {}
     checklists[id] = checklist
     localStorage.set({
@@ -185,7 +185,7 @@ const search = (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilt
 
 module.exports = {
     setChecklists,
-    addChecklist, 
+    addOrEditChecklistById, 
     getChecklists,
     getChecklistById,
     getBodyPartById,
