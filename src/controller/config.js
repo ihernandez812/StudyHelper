@@ -74,7 +74,6 @@ scaleUpBtn.addEventListener('click', () => {
     if(resizeScale < 2.0){
         resizeScale+=.05
         resizeScale = Math.round(resizeScale * 100) / 100
-        console.log(resizeScale)
         redrawEverything()
     }
 })
@@ -83,7 +82,6 @@ scaleDownBtn.addEventListener('click', () => {
     if(resizeScale >.1){
         resizeScale-=.05
         resizeScale = Math.round(resizeScale * 100) / 100
-        console.log(resizeScale)
         redrawEverything()
     }
 })
@@ -313,10 +311,6 @@ const setupAddBodyTag = () => {
 
 const redrawEverything = async () => {
     let image = myImage.src
-    // if(bodyPartId && checklistId){
-    //     let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
-    //     let image = bodyPart['img']
-    // }
     const ctx = imgCanvas.getContext("2d");
     ctx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
     ctx.save()
@@ -329,8 +323,6 @@ const redrawEverything = async () => {
             drawNewText(tagName, coordinates)
         }
     })
-    imgCanvas.removeEventListener('contextmenu', getClickCoordinates);
-    imgCanvas.addEventListener('contextmenu', getClickCoordinates);
 }
 
 

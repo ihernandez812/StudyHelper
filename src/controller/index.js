@@ -156,7 +156,6 @@ const setupbodyPartTest = async () =>{
     let title = bodyPart['name']
     scale = bodyPart['scale'] || 1
     fontSize = bodyPart['fontSize'] || 16
-    console.log(bodyPart)
     checklistTitleTxt.value = title
     let image = bodyPart['img']
     myImage.src = image
@@ -168,7 +167,6 @@ const setupbodyPartTest = async () =>{
 
 const scaleImage = () => {
     let ctx = imgCanvas.getContext('2d')
-    console.log(scale)
     ctx.scale(scale, scale)
 }
 
