@@ -303,8 +303,8 @@ ipcMain.handle('generateId', (event) => {
 ipcMain.handle('setChecklists', (event, checklists) => {
     localStorage.setChecklists(checklists)
 })
-ipcMain.handle('addChecklist', (event, id, checklist) => {
-    localStorage.addChecklist(id, checklist)
+ipcMain.handle('addOrEditChecklistById', (event, id, checklist) => {
+    localStorage.addOrEditChecklistById(id, checklist)
 })
 ipcMain.handle('getChecklists', (event) => {
     return localStorage.getChecklists()
