@@ -5,6 +5,8 @@ const windowStateKeeper = require('electron-window-state')
 const { generateID } = require('id-generator.js');
 const updater = require('./updater')
 const localStorage = require('../storage/storageUtils')
+const canvasUtils = require('../HTMLUtils/canvasUtils')
+
 let file_paths = {
     home : '../views/home.html',
     index : '../views/index.html',
@@ -345,6 +347,30 @@ ipcMain.handle('getPracticals', (event) => {
 })
 ipcMain.handle('getPracticalById', (event, practicalId) => {
     return localStorage.getPracticalById(practicalId)
+})
+
+ipcMain.handle('drawNewImage', (event, canvas, imgElement, img, x, y, scale) => {
+    canvasUtils.drawNewImage(canvas, imgElement, img, x, y, scale)
+})
+
+ipcMain.handle('drawNewText', (event, canvas, txt, currCoordinates, fontSize) => {
+    canvasUtils.drawNewText(canvas, txt, currCoordinates, fontSize)
+})
+
+ipcMain.handle('checkCoordinatesExist', (event, ctx, x, y, coordinatesMap) => {
+    canvasUtils.checkCoordinatesExist(ctx, x, y, coordinatesMap)
+})
+
+ipcMain.handle('getClickCoordinates', (event, windowEvent) => {
+    canvasUtils.getClickCoordinates(windowEvent)
+})
+
+ipcMain.handle('redrawEverything', (event, canvas, imgElement, coordinatesMap) => {
+    canvasUtils.redrawEverything(canvas, imgElement, coordinatesMap)
+})
+
+ipcMain.handle('drawBodyPartWithTags', (event, canvas, imgElement, coordinatesMap) => {
+    canvasUtils.drawBodyPartWithTags(canvas, imgElement, coordinatesMap)
 })
 
 ipcMain.handle('closePracticalTest', (event) => {

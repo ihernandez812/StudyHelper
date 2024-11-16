@@ -1,17 +1,22 @@
-const drawNewImage = async (canvas, imgElement, img, x, y) => {
+const drawNewImage = async (canvas, imgElement, img, x, y, scale) => {
     return new Promise((resolve) => {
         const ctx = canvas.getContext("2d");
         imgElement.onload = async () => {
-            ctx.canvas.width = myImage.width;
-            ctx.canvas.height = myImage.height;
-            ctx.drawImage(img, x, y);
+            let width = imgElement.width;
+            let height = imgElement.height;
+            ctx.canvas.width = width * scale;
+            ctx.canvas.height = height * scale;
+            ctx.drawImage(img, x, y, width * scale, height * scale);
+            ctx.scale(scale, scale)
         }
+        
         requestAnimationFrame(() => {
           resolve();
         });
     })
     
 }
+
 
 const drawTextBackground = async (ctx, txt, x, y, font, padding, fillColor) => {
     return new Promise((resolve) => {
@@ -30,69 +35,72 @@ const drawTextBackground = async (ctx, txt, x, y, font, padding, fillColor) => {
     })
 }
 
-const drawNewText = async (txt, currCoordinates) => {
-    const ctx = imgCanvas.getContext('2d')
-    let font = "16px Arial"
+const drawNewText = async (canvas, txt, currCoordinates, fontSize) => {
+    const ctx = canvas.getContext('2d')
+    let font = `${fontSize} px Arial`
     let padding = 1
     ctx.font = font;
     let x = currCoordinates['x']
     let y = currCoordinates['y']
     
-    await drawTextBackground(ctx, txt, x, y, font, padding)
+    await drawTextBackground(ctx, txt, x, y, font, padding, fillColor)
     ctx.fillStyle = "#070808";
     ctx.fillText(txt, x , y + padding )
     ctx.restore();
 }
 
-const getClickCoordinates = (event, canvas, coordinatesMap) => {
-    const image = event.target;
-    const rect = image.getBoundingClientRect();
-
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const ctx = canvas.getContext("2d");
-
-    currCoordinates = {
-        x: x,
-        y: y
-    }
-    //Just incase they changed body tag categories 
-    //at any point
-    let doesCorridatesHaveElement = false
+const checkCoordinatesExist = (ctx, x, y, coordinatesMap) => {
+    let foundKey = null
     for(let key in coordinatesMap){
         let coordinates = coordinatesMap[key]
         let tagName = coordinates['name']
-        let category = coordinates['category']
         let metrics = ctx.measureText(tagName);
         let width = metrics.width;
         let fontHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
         let tagX = parseFloat(coordinates['x'])
         let tagY = parseFloat(coordinates['y'])
         if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + fontHeight) {
-            doesCorridatesHaveElement = true
+            foundKey = key
+            break
           }
     }
+    return foundKey
+} 
 
-    return {
-        coordinates: currCoordinates,
-        hasElement: doesCorridatesHaveElement
+const getClickCoordinates = (event) => {
+    const image = event.target;
+    const rect = image.getBoundingClientRect();
+
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    let deltaX = x / resizeScale
+    let deltaY = y / resizeScale
+
+    currCoordinates = {
+        x: deltaX,
+        y: deltaY
     }
+    
+
+    return currCoordinates
 }
 
 const clearCanvas = (canvas) => {
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save()
 }
 
-const redrawEverything = async (canvas, imgElement, bodyPart) => {
+const redrawEverything = async (canvas, imgElement, coordinatesMap) => {
+    let image = imgElement.src
     clearCanvas(canvas)
-    drawBodyPartWithTags(canvas, imgElement, bodyPart)
+    imgElement.src = image
+    drawBodyPartWithTags(canvas, imgElement, coordinatesMap)
 }
 
-const drawBodyPartWithTags = async(canvas, imgElement, bodyPart) => {
-    let image = bodyPart['img']
-    imgElement.src = image
-    await drawNewImage(canvas, imgElement, 0, 0)
+const drawBodyPartWithTags = async(canvas, imgElement, coordinatesMap) => {
+    drawNewImage(canvas, imgElement, 0, 0)
     requestAnimationFrame(() => {
         for(let key in coordinatesMap){
             let coordinates = coordinatesMap[key]
@@ -102,3 +110,12 @@ const drawBodyPartWithTags = async(canvas, imgElement, bodyPart) => {
     })
 }
 
+
+module.exports = {
+    drawNewImage, 
+    drawNewText,
+    checkCoordinatesExist,
+    getClickCoordinates,
+    redrawEverything,
+    drawBodyPartWithTags
+}
