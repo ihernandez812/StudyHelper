@@ -20,6 +20,7 @@ let timerInterval
 let practicalDate = null
 let checklists = {}
 let stationBodyPartToTags = {}
+let bodyPartToImageSettings = {}
 let currStation = 0
 let clickedStationId = null
 let bodyTagPos = 0
@@ -98,15 +99,12 @@ const initStation = () => {
     for(let canvas of canvases){
         canvas.remove()
     }
-    timeLeft = 10
     stationBodyPartToTags = {}
+    bodyPartToImageSettings = {}
 }
 
 const saveStationChoices = () => {
-    // let bodyTags = []
-    // for(let key in stationBodyPartToTags){
-    //     bodyTags.push(...stationBodyPartToTags[key])
-    // }
+ 
 } 
 
 const startPracticalTest = () => {
@@ -148,29 +146,30 @@ const endPracticalTest = () => {
     practicalModal.show()
 }
 
-const checkTagClicked = (event, canvas, id, bodyTags) => {
+const checkTagClicked = (event, canvas, id, bodyTags, imgaeSettings) => {
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
+        let scale = imgaeSettings['scale']
         for(let i=0; i<bodyTags.length; i++){
             let bodyTag = bodyTags[i]
-            let tagX = parseFloat(bodyTag['x'])
-            let tagY = parseFloat(bodyTag['y'])
-            let width = 17
-            let height = 5
-            let yDiff = 15
+            let tagX = parseFloat(bodyTag['x']) * scale
+            let tagY = parseFloat(bodyTag['y']) * scale
+            const img = document.createElement('img')
+            img.src = question_mark_path  
+            let width = img.width / scale
+            let height = img.height / scale
             let answer = bodyTag['answer']
             if(answer){
                 let ctx = canvas.getContext('2d')
                 let metrics = ctx.measureText(answer);
                 width = metrics.width;
                 height = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
-                tagX = parseFloat(bodyTag['x'])
-                tagY = parseFloat(bodyTag['y'])
                 yDiff = 0
             }
+            console.log(x, tagX, y, tagY)
             //x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + fontHeight
-            if (x >= tagX && x <= tagX + width && y >= tagY - yDiff && y <= tagY + height) {
+            if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + height) {
                 clickedStationId = id
                 bodyTagPos = i
                 setupTagQuestion(bodyTag)
@@ -189,12 +188,12 @@ bodyTagBtn.addEventListener('click', async () => {
 })
 
 const addStationEventListeners = () => {
-    console.log('')
     for(let id in stationBodyPartToTags){
         let bodyTags = stationBodyPartToTags[id]
         let canvas = document.querySelector(`#${id}`)
-        canvas.addEventListener('click', (event) => {
-            checkTagClicked(event, canvas, id, bodyTags)
+        let imgaeSettings = bodyPartToImageSettings[id]
+        canvas.addEventListener('click', (event) => {            
+            checkTagClicked(event, canvas, id, bodyTags, imgaeSettings)
         })
     }
 }
@@ -219,21 +218,26 @@ const setupTagQuestion = async (coordinates) => {
 
 const redrawBodyPart = async (stationId) => {
     let stationBodyPart = stationBodyPartToTags[stationId]
+    let bodyPartImageSettings = bodyPartToImageSettings[stationId]
     let canvas = document.querySelector(`#${stationId}`)
     let baseImage = canvas.querySelector('.img-fluid')
     let imgSrc = baseImage.src
+    console.log(stationBodyPart, bodyPartToImageSettings)
+    let scale = bodyPartImageSettings['scale']
+    let font = bodyPartImageSettings['font']
+
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let img = document.createElement('img')
     img.src = imgSrc
-    setBaseImage(img, canvas, 0, 0)
+    setBaseImage(img, canvas, 0, 0, scale)
     for(let coordinates of stationBodyPart){
         let answer = coordinates['answer']
         if(answer){
-            await drawNewText(answer, canvas, coordinates)
+            await drawNewText(answer, canvas, coordinates, font)
         }
         else{
-            drawNewQuestion(canvas, coordinates)
+            drawNewQuestion(canvas, coordinates, scale)
         }
     }
     //addStationEventListeners()
@@ -256,9 +260,9 @@ const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
     })
 }
 
-const drawNewText = async (txt, canvas, currCoordinates) => {
+const drawNewText = async (txt, canvas, currCoordinates, fontSize) => {
     const ctx = canvas.getContext('2d')
-    let font = "16px Arial"
+    let font = `${fontSize}px Arial`
     let padding = 1
     ctx.font = font;
     let x = currCoordinates['x']
@@ -278,6 +282,8 @@ const displayStation = async (station) => {
     stationTitle.value = `Station ${currStation+1}`
     for(let bodyTag of station){
         let bodyPartId = bodyTag['bodyPart']
+        let scale = 1
+        let font = 16
         let bodyPartCanvas = document.querySelector(`#${bodyPartId}`)
         if(!bodyPartCanvas){
             let bodyPartRow = createBodyPartCanvas(bodyPartId)
@@ -287,16 +293,22 @@ const displayStation = async (station) => {
             let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
             let img = bodyPartCanvas.querySelector('img')
             img.src = bodyPart['img']
-            await setBaseImage(img, bodyPartCanvas, 0, 0)
+            scale = bodyPart['scale'] || 1
+            font = bodyPart['fontSize'] || 16
+            await setBaseImage(img, bodyPartCanvas, 0, 0, scale)
+            bodyPartToImageSettings[bodyPartId] = {
+                scale: scale,
+                font: font 
+            }
         }
-        drawNewQuestion(bodyPartCanvas, bodyTag)
+        drawNewQuestion(bodyPartCanvas, bodyTag, scale)
         let bodyTagList = stationBodyPartToTags[bodyPartId] || []
         bodyTagList.push(bodyTag)
         stationBodyPartToTags[bodyPartId] = bodyTagList
     }
 }
 
-const drawNewQuestion = (canvas, coordinates) => {
+const drawNewQuestion = (canvas, coordinates, scale) => {
         let isAnswered = false
         let id = `${coordinates['x']}_${coordinates['y']}`
         if(!isAnswered){
@@ -304,7 +316,7 @@ const drawNewQuestion = (canvas, coordinates) => {
             img.src = question_mark_path
             img.setAttribute('id', id)
             img.onload = () => {
-                drawNewImage(img, canvas, coordinates)
+                drawNewImage(img, canvas, coordinates, scale)
                 canvas.appendChild(img)
             }
         }
@@ -313,26 +325,34 @@ const drawNewQuestion = (canvas, coordinates) => {
         // }
 }
 
-const drawNewImage = (img, canvas, currCoordinates) => {
+const drawNewImage = (img, canvas, currCoordinates, scale) => {
     const ctx = canvas.getContext("2d");
     let x = currCoordinates['x']
     let y = currCoordinates['y']
-    ctx.drawImage(img, x, y - 15);
+    let width = img.width / scale
+    let height = img.height / scale
+    ctx.drawImage(img, x, y - 15, width, height);
 }
 
-const setBaseImage = async (img, bodyPartCanvas, x, y) => {
+const setBaseImage = async (img, bodyPartCanvas, x, y, scale) => {
     return new Promise((resolve) => {
         const ctx = bodyPartCanvas.getContext("2d");  
         img.onload = () => {
-            ctx.canvas.width = img.width;
-            ctx.canvas.height = img.height;
-            ctx.drawImage(img, x, y);
+            let width = img.width;
+            let height = img.height;
+            let scaledWidth = width * scale
+            let scaledHeight = height * scale
+            ctx.canvas.width = scaledWidth;
+            ctx.canvas.height = scaledHeight;
+            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+            ctx.scale(scale, scale)
         }
         requestAnimationFrame(() => {
             resolve();
           });
     })
 }
+
 
 const createBodyPartCanvas = (id) =>{
     let row = document.createElement("div")

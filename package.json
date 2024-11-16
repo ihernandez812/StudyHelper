@@ -10,7 +10,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
-    "build": "electron-builder -m",
+    "build": "electron-builder -mw",
     "deploy": "electron-builder build -m --publish always"
   },
   "author": "Isaiah Hernandez",

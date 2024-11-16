@@ -27,6 +27,8 @@ let bodyPartId = null
 let bodyPartIdList = [] 
 let checklistId = null
 let usedIds = []
+let scale = 1
+let fontSize = 16
 
 //by #
 //by class . document.querySelectorAll('.className')
@@ -152,15 +154,25 @@ const setupbodyPartTest = async () =>{
     window.api.clearCurrChecklist()
     let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
     let title = bodyPart['name']
+    scale = bodyPart['scale'] || 1
+    fontSize = bodyPart['fontSize'] || 16
+    console.log(bodyPart)
     checklistTitleTxt.value = title
     let image = bodyPart['img']
     myImage.src = image
     await setBaseImage(myImage, 0, 0)
     bodyPartCoordinates = bodyPart['coordinates']
-    drawQuestionMarks(bodyPartCoordinates)
+    await drawQuestionMarks(bodyPartCoordinates)
+    
 }
 
-const drawQuestionMarks = (coordinatesMap) => {
+const scaleImage = () => {
+    let ctx = imgCanvas.getContext('2d')
+    console.log(scale)
+    ctx.scale(scale, scale)
+}
+
+const drawQuestionMarks = async (coordinatesMap) => {
     for(let key in coordinatesMap){
         let coordinates = coordinatesMap[key]
         let tagName = coordinates['name']
@@ -170,7 +182,9 @@ const drawQuestionMarks = (coordinatesMap) => {
             const img = document.createElement('img')
             img.src = question_mark_path
             img.onload = () => {
-                drawNewImage(img, coordinates)
+                let width = img.width / scale
+                let height = img.height / scale
+                drawNewImage(img, coordinates, width, height)
                 imgCanvas.appendChild(img)
             }
         }
@@ -218,7 +232,7 @@ const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
 
 const drawNewText = async (txt, currCoordinates) => {
     const ctx = imgCanvas.getContext('2d')
-    let font = "16px Arial"
+    let font = `${fontSize}px Arial`
     let padding = 1
     ctx.font = font;
     let x = currCoordinates['x']
@@ -237,9 +251,14 @@ const setBaseImage = async (img, x, y) => {
     return new Promise((resolve) => {
         const ctx = imgCanvas.getContext("2d");  
         img.onload = () => {
-            ctx.canvas.width = img.width;
-            ctx.canvas.height = img.height;
-            ctx.drawImage(img, x, y);
+            let width = img.width;
+            let height = img.height;
+            let scaledWidth = width * scale
+            let scaledHeight = height * scale
+            ctx.canvas.width = scaledWidth
+            ctx.canvas.height = scaledHeight
+            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+            scaleImage()
         }
         requestAnimationFrame(() => {
             resolve();
@@ -247,11 +266,11 @@ const setBaseImage = async (img, x, y) => {
     })
 }
 
-const drawNewImage = (img, currCoordinates) => {
+const drawNewImage = (img, currCoordinates, width, height) => {
     const ctx = imgCanvas.getContext("2d");
     let x = currCoordinates['x']
     let y = currCoordinates['y']
-    ctx.drawImage(img, x, y - 15);
+    ctx.drawImage(img, x, y - 15, width, height);
 }
 
 imgCanvas.addEventListener('click', (event) => {
@@ -261,9 +280,14 @@ imgCanvas.addEventListener('click', (event) => {
     for(let key in bodyPartCoordinates){
 
         let coordinates = bodyPartCoordinates[key]
-        let tagX = parseFloat(coordinates['x'])
-        let tagY = parseFloat(coordinates['y'])
-        if (x >= tagX && x <= tagX + 17 && y >= tagY - 15 && y <= tagY + 5) {
+        let tagX = parseFloat(coordinates['x']) * scale
+        let tagY = parseFloat(coordinates['y']) * scale
+        const img = document.createElement('img')
+        img.src = question_mark_path  
+        let width = img.width / scale
+        let height = img.height / scale
+
+        if (x >= tagX, x <= tagX + width, y >= tagY, y <= tagY + height) {
             setupTagQuestion(coordinates, key)
             
             
