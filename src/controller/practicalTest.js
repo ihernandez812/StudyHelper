@@ -169,7 +169,7 @@ const checkTagClicked = (event, canvas, id, bodyTags, imgaeSettings) => {
             }
             console.log(x, tagX, y, tagY)
             //x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + fontHeight
-            if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + height) {
+            if (x >= tagX && x <= tagX + width && y >= tagY - 15 && y <= tagY + height - 15) {
                 clickedStationId = id
                 bodyTagPos = i
                 setupTagQuestion(bodyTag)

@@ -274,12 +274,10 @@ imgCanvas.addEventListener('click', (event) => {
         let tagY = parseFloat(coordinates['y']) * scale
         const img = document.createElement('img')
         img.src = question_mark_path  
-        let width = img.width
-        let height = img.height
-        console.log(x, tagX, y, tagY, height, height)
+        let width = img.width / scale
+        let height = img.height / scale
 
-        if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + height) {
-            console.log(coordinates)
+        if (x >= tagX && x <= tagX + width && y >= tagY - 15 && y <= tagY + height - 15) {
             setupTagQuestion(coordinates, key)    
         }
     }
