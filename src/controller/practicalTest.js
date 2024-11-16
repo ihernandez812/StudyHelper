@@ -157,8 +157,8 @@ const checkTagClicked = (event, canvas, id, bodyTags, imgaeSettings) => {
             let tagY = parseFloat(bodyTag['y']) * scale
             const img = document.createElement('img')
             img.src = question_mark_path  
-            let width = img.width / scale
-            let height = img.height / scale
+            let width = img.width
+            let height = img.height
             let answer = bodyTag['answer']
             if(answer){
                 let ctx = canvas.getContext('2d')

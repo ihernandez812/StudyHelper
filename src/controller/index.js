@@ -202,15 +202,7 @@ const setBodyPartIdFromList = () => {
     usedIds.push(bodyPartId)
 }
 
-// const drawNewText = (txt, currCoordinates) => {
-//     requestAnimationFrame(() => {
-//         const ctx = imgCanvas.getContext('2d')
-//         ctx.font = "15px Arial"
-//         let coordinates = currCoordinates.split(' ')
-//         ctx.fillText(txt, coordinates[0], coordinates[1]);
-//     })   
-    
-// }
+
 const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
     return new Promise((resolve) => {
         ctx.textBaseline = "top";
@@ -273,8 +265,8 @@ const drawNewImage = (img, currCoordinates, width, height) => {
 
 imgCanvas.addEventListener('click', (event) => {
     const rect = imgCanvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const x = (event.clientX - rect.left);
+    const y = (event.clientY - rect.top);
     for(let key in bodyPartCoordinates){
 
         let coordinates = bodyPartCoordinates[key]
@@ -282,14 +274,14 @@ imgCanvas.addEventListener('click', (event) => {
         let tagY = parseFloat(coordinates['y']) * scale
         const img = document.createElement('img')
         img.src = question_mark_path  
-        let width = img.width / scale
-        let height = img.height / scale
+        let width = img.width
+        let height = img.height
+        console.log(x, tagX, y, tagY, height, height)
 
-        if (x >= tagX, x <= tagX + width, y >= tagY, y <= tagY + height) {
-            setupTagQuestion(coordinates, key)
-            
-            
-          }
+        if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + height) {
+            console.log(coordinates)
+            setupTagQuestion(coordinates, key)    
+        }
     }
 })
 
