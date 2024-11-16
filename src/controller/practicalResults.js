@@ -229,7 +229,7 @@ const drawTextBackground = async (ctx, txt, x, y, font, padding, isCorrect) => {
     return new Promise(async (resolve) => {
         ctx.textBaseline = "top";
         let fillStyle = "#f7faf8"
-        if(!isCorrect){
+        if(isCorrect){
             fillStyle = '#8dd68d'
         }
         else{
