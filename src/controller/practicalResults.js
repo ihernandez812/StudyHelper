@@ -5,8 +5,9 @@ const bodyTagResponseTxt = document.querySelector("#body_tag_response")
 const bodyTagAnswerTxt = document.querySelector("#body_tag_answer")
 const bodyTagModalElement = document.querySelector("#body_tag_modal")
 const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
-let answerCount = 0
 let stationBodyPartToTags = {}
+let bodyPartToImageSettings = {}
+
 window.onload = async () => {
     let practicals = await window.api.getPracticals()
     for(let id in practicals){
@@ -15,6 +16,9 @@ window.onload = async () => {
             
             let accordionItem = createPracticalAccordion(id, practical)
             practicalAccordion.appendChild(accordionItem)
+        }
+        else{
+            delete practicals[id]
         }
     }
 }
@@ -151,40 +155,25 @@ const addStationEventListeners = () => {
     for(let id in stationBodyPartToTags){
         let bodyTags = stationBodyPartToTags[id]
         let canvas = document.querySelector(`#${id}`)
+        let imageSettings = bodyPartToImageSettings[id]
+
         canvas.addEventListener('click', (event) => {
-            checkTagClicked(event, canvas, id, bodyTags)
+            let scale = imageSettings['scale']     
+            let coordinates = getClickCoordinates(event, scale) 
+            let x = coordinates['x']
+            let y = coordinates['y'] 
+            let key = null
+            
+            key = checkCoordinatesExistList(canvas, x, y, bodyTags, scale, true, true)  
+            if(key != null){
+                clickedStationId = id
+                bodyTagPos = key
+                setupTagModal(bodyTags[key])
+            }
         })
     }
 }
 
-const checkTagClicked = (event, canvas, id, bodyTags) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    for(let i=0; i<bodyTags.length; i++){
-        let bodyTag = bodyTags[i]
-        let tagX = parseFloat(bodyTag['x'])
-        let tagY = parseFloat(bodyTag['y'])
-        let width = 17
-        let height = 5
-        let yDiff = 0
-        let answer = bodyTag['answer'] || 'No Answer'
-        let ctx = canvas.getContext('2d')
-        let metrics = ctx.measureText(answer);
-        width = metrics.width;
-        height = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
-        tagX = parseFloat(bodyTag['x'])
-        tagY = parseFloat(bodyTag['y'])
-        yDiff = 0
-        
-        //x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + fontHeight
-        if (x >= tagX && x <= tagX + width && y >= tagY - yDiff && y <= tagY + height) {
-            clickedStationId = id
-            bodyTagPos = i
-            setupTagModal(bodyTag)
-        }
-    }
-}
 
 const setupTagModal = (bodyTag) => {
     let response = bodyTag['answer'] || 'No Answer'
@@ -204,7 +193,10 @@ const displayStations = async (stations) => {
 const displayStation = async (station, shouldAddEventListeners=true) => {
     for(let bodyTag of station){
         let bodyPartId = bodyTag['bodyPart']
-        let bodyPartCanvas = document.querySelector(`#${bodyPartId}`)
+        let bodyPartCanvas = document.getElementById(`${bodyPartId}`)
+        let scale = 1
+        let font = 16
+        let answer = bodyTag['answer'] || 'No Answer'
         if(!bodyPartCanvas){
             let bodyPartRow = createBodyPartCanvas(bodyPartId)
             canvasesContainer.appendChild(bodyPartRow)
@@ -213,9 +205,16 @@ const displayStation = async (station, shouldAddEventListeners=true) => {
             let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
             let img = bodyPartCanvas.querySelector('img')
             img.src = bodyPart['img']
-            await setBaseImage(img, bodyPartCanvas, 0, 0)
+            scale = bodyPart['scale'] || 1
+            font = bodyPart['fontSize'] || 16
+            await drawNewImage(bodyPartCanvas, img, 0, 0, scale)
+            bodyPartToImageSettings[bodyPartId] = {
+                scale: scale,
+                font: font 
+            }
         }
-        await drawNewText(bodyPartCanvas, bodyTag)
+        let fillColor = getFillColorForCoordinates(bodyTag)
+        await drawNewText(bodyPartCanvas, answer, bodyTag, font, fillColor)
         let bodyTagList = stationBodyPartToTags[bodyPartId] || []
         bodyTagList.push(bodyTag)
         stationBodyPartToTags[bodyPartId] = bodyTagList
@@ -225,76 +224,24 @@ const displayStation = async (station, shouldAddEventListeners=true) => {
     }
 }
 
-const drawTextBackground = async (ctx, txt, x, y, font, padding, isCorrect) => {
-    return new Promise(async (resolve) => {
-        ctx.textBaseline = "top";
-        let fillStyle = "#f7faf8"
-        if(isCorrect){
-            fillStyle = '#8dd68d'
-        }
-        else{
-            fillStyle = '#d68f8d'
-        }
-        ctx.fillStyle = fillStyle
-        ctx.font = font
-        var width = ctx.measureText(txt).width;
+const getFillColorForCoordinates = (bodyTag) => {
+    let isCorrect = getIsBodyTagCorrect(bodyTag)
+    let fillStyle = ''
+    if(isCorrect){
+        fillStyle = '#8dd68d'
+    }
+    else{
+        fillStyle = '#d68f8d'
+    }
 
-        await ctx.fillRect(x, y, width + padding, parseInt(font, 10) + padding);
-        await ctx.fillRect(x, y, width + padding, parseInt(font, 10) + padding);
+    return fillStyle
 
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = fillStyle;
-        await ctx.strokeRect(x, y, width + padding, parseInt(font, 10) + padding);
-        requestAnimationFrame(() => {
-          resolve();
-        });
-    })
 }
 
 const getIsBodyTagCorrect = (bodyTag) => {
     let enteredAnswer = bodyTag['answer'] || ''
     let answer = bodyTag['name']
     return enteredAnswer.toLowerCase() == answer.toLowerCase()
-}
-
-const drawNewText = async (canvas, currCoordinates) => {
-    let txt = currCoordinates['answer'] || `No Answer ${answerCount++}` 
-    let isCorrect = getIsBodyTagCorrect(currCoordinates)
-    const ctx = canvas.getContext('2d')
-    let font = "16px Arial"
-    let padding = 1
-    ctx.font = font;
-    let x = currCoordinates['x']
-    let y = currCoordinates['y']
-    await drawTextBackground(ctx, txt, x, y, font, padding, isCorrect)
-    await drawTextBackground(ctx, txt, x, y, font, padding, isCorrect)
-    ctx.fillStyle = "#070808";
-    ctx.font = font;
-    await ctx.fillText(txt, x , y + padding )
-    ctx.restore();
-    
-
-}
-
-const drawNewImage = (img, canvas, currCoordinates) => {
-    const ctx = canvas.getContext("2d");
-    let x = currCoordinates['x']
-    let y = currCoordinates['y']
-    ctx.drawImage(img, x, y - 15);
-}
-
-const setBaseImage = async (img, bodyPartCanvas, x, y) => {
-    return new Promise((resolve) => {
-        const ctx = bodyPartCanvas.getContext("2d");  
-        img.onload = () => {
-            ctx.canvas.width = img.width;
-            ctx.canvas.height = img.height;
-            ctx.drawImage(img, x, y);
-        }
-        requestAnimationFrame(() => {
-            resolve();
-          });
-    })
 }
 
 const createBodyPartCanvas = (id) =>{

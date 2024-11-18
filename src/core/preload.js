@@ -122,23 +122,5 @@ contextBridge.exposeInMainWorld(
         }, 
         search: (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
             return ipcRenderer.invoke('search', isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)
-        },
-        drawNewImage: async (canvas, imgElement, img, x, y, scale) => {
-            await ipcRenderer.invoke('drawNewImage',canvas, imgElement, img, x, y, scale)
-        },
-        drawNewText: (canvas, txt, currCoordinates, fontSize) => {
-            ipcRenderer.invoke('drawNewText', canvas, txt, currCoordinates, fontSize)
-        },
-        checkCoordinatesExist: (canvas, x, y, coordinatesMap) => {
-            ipcRenderer.invoke('checkCoordinatesExist', canvas, x, y, coordinatesMap)
-        },
-        getClickCoordinates: (windowEvent) => {
-            ipcRenderer.invoke('getClickCoordinates', windowEvent)
-        },
-        redrawEverything: (canvas, imgElement, coordinatesMap) => {
-            ipcRenderer.invoke('redrawEverything', canvas, imgElement, coordinatesMap)
-        },
-        drawBodyPartWithTags: (canvas, imgElement, coordinatesMap) => {
-            ipcRenderer.invoke('drawBodyPartWithTags', canvas, imgElement, coordinatesMap)
         }
 })

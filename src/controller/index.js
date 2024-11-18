@@ -17,7 +17,7 @@ const wordbank = document.querySelector("#wordbank")
 const nextBodyPartBtn = document.querySelector("#next_body_part")
 const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
 const settingsModal = new bootstrap.Modal(settingsModalElement)
-let question_mark_path = '../images/question-mark.png'
+
 let bodyPartCoordinates = {}
 let correctTags = {}
 let answerTag = {}
@@ -30,9 +30,6 @@ let usedIds = []
 let scale = 1
 let fontSize = 16
 
-//by #
-//by class . document.querySelectorAll('.className')
-//by class . document.querySelector('.className')
 
 window.addEventListener('load', (e) => {
     bodyPartIdList = window.api.getCurrBodyPart()
@@ -40,7 +37,10 @@ window.addEventListener('load', (e) => {
     if(bodyPartIdList.length > 1){
         nextBodyPartBtn.classList.remove('hide')
     }
+    window.api.clearCurrBodyPart()
+    window.api.clearCurrChecklist()
     startBodyPartTest()
+    
 })
 
 nextBodyPartBtn.addEventListener('click', () => {
@@ -48,12 +48,80 @@ nextBodyPartBtn.addEventListener('click', () => {
     startBodyPartTest()
 })
 
+hintTagBtn.addEventListener('click', () => {
+    //answer tag is an obj with only an id and the value(answer)
+    //so we just get the first value
+    let answer = Object.values(answerTag)[0]
+    hintTag = answer.substring(0, hintTag.length+1)
+    numHints--
+    enableDisableHints()
+    alert(`Word Starts With : ${hintTag}`)
+})
+
+settingsBtn.addEventListener('click', () => {
+    let useWordbank = levelSelect.value < 3
+    let useHints = levelSelect.value < 4
+    if(useWordbank){
+        setupWordBank()
+    } else{
+        wordbank.classList.add('empty-wordbank')
+    }
+
+    if(useHints){
+        numHints = hintSelect.value
+    }
+    enableDisableHints() 
+
+    settingsModal.hide()
+})
+
+levelSelect.addEventListener('change', () => {
+    let level = levelSelect.value
+    if(level == 4){
+        hintSelect.disabled = true
+    } else{
+        hintSelect.disabled = false
+    }
+})
+
+imgCanvas.addEventListener('click', (event) => {
+    let coordinates = getClickCoordinates(event, scale)
+    let x = coordinates['x']
+    let y = coordinates['y']
+    let key = checkCoordinatesExist(imgCanvas, x, y, bodyPartCoordinates, scale, false)
+
+    if(key){
+        setupTagQuestion(key)
+    }
+})
+
+bodyTagBtn.addEventListener('click', () => {
+    let txt = bodyTagTxt.value
+
+    if(txt){
+        let id = Object.keys(answerTag)[0]
+        let answer = answerTag[id]
+        if(txt.toLowerCase() == answer.toLowerCase()){
+            bodyTagModal.hide()
+            correctTags[id] = answer
+            updateBodyPartTest()
+            hintTag = ''
+            alert("Correct!!")
+        }else{
+            alert("Wrong!!")
+        }
+    }
+    else{
+        alert("You gotta type somethign big dog")
+    }
+})
+
 const startBodyPartTest = () => {
     setBodyPartIdFromList()
     if(usedIds.length == bodyPartIdList.length){
         nextBodyPartBtn.classList.add('hide')
     }
-    setupbodyPartTest()
+    drawBodyPartTest()
     configureSettings()
 }
 
@@ -106,52 +174,13 @@ const configureSettings = () => {
     settingsModal.show()
 }
 
-hintTagBtn.addEventListener('click', () => {
-    //answer tag is an obj with only an id and the value(answer)
-    //so we just get the first value
-    let answer = Object.values(answerTag)[0]
-    hintTag = answer.substring(0, hintTag.length+1)
-    numHints--
-    enableDisableHints()
-    alert(`Word Starts With : ${hintTag}`)
-})
-
-settingsBtn.addEventListener('click', () => {
-    let useWordbank = levelSelect.value < 3
-    let useHints = levelSelect.value < 4
-    if(useWordbank){
-        setupWordBank()
-    } else{
-        wordbank.classList.add('empty-wordbank')
-    }
-
-    if(useHints){
-        numHints = hintSelect.value
-    }
-    enableDisableHints() 
-
-    settingsModal.hide()
-})
-
-levelSelect.addEventListener('change', () => {
-    let level = levelSelect.value
-    if(level == 4){
-        hintSelect.disabled = true
-    } else{
-        hintSelect.disabled = false
-    }
-})
-
 const updateBodyPartTest = () => {
-    const ctx = imgCanvas.getContext("2d");
-    ctx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
-    setupbodyPartTest()
+    clearCanvas(imgCanvas)
+    drawBodyPartTest()
     updateWordBank()
 }
 
-const setupbodyPartTest = async () =>{
-    window.api.clearCurrBodyPart()
-    window.api.clearCurrChecklist()
+const drawBodyPartTest = async () =>{
     let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
     let title = bodyPart['name']
     scale = bodyPart['scale'] || 1
@@ -159,35 +188,24 @@ const setupbodyPartTest = async () =>{
     checklistTitleTxt.value = title
     let image = bodyPart['img']
     myImage.src = image
-    await setBaseImage(myImage, 0, 0)
+    await drawNewImage(imgCanvas, myImage, 0, 0, scale)
     bodyPartCoordinates = bodyPart['coordinates']
-    await drawQuestionMarks(bodyPartCoordinates)
+    await drawBodyPartTags(bodyPartCoordinates)
     
 }
 
-const scaleImage = () => {
-    let ctx = imgCanvas.getContext('2d')
-    ctx.scale(scale, scale)
-}
 
-const drawQuestionMarks = async (coordinatesMap) => {
+const drawBodyPartTags = async (coordinatesMap) => {
     for(let key in coordinatesMap){
         let coordinates = coordinatesMap[key]
         let tagName = coordinates['name']
         let possibleAnswer = correctTags[key]
         let isAnswered = possibleAnswer == tagName
         if(!isAnswered){
-            const img = document.createElement('img')
-            img.src = question_mark_path
-            img.onload = () => {
-                let width = img.width / scale
-                let height = img.height / scale
-                drawNewImage(img, coordinates, width, height)
-                imgCanvas.appendChild(img)
-            }
+            drawNewQuestionMark(imgCanvas, coordinates, scale)
         }
         else{
-            drawNewText(tagName, coordinates)
+            drawNewText(imgCanvas, tagName, coordinates, fontSize)
         }
         
     }
@@ -202,92 +220,12 @@ const setBodyPartIdFromList = () => {
     usedIds.push(bodyPartId)
 }
 
-
-const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
-    return new Promise((resolve) => {
-        ctx.textBaseline = "top";
-        ctx.fillStyle = "#f7faf8";
-        ctx.font = font
-        var width = ctx.measureText(txt).width;
-        ctx.fillRect(x, y, width + padding, parseInt(font, 10) + padding);
-
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#f7faf8";
-        ctx.strokeRect(x, y, width + padding, parseInt(font, 10) + padding);
-        requestAnimationFrame(() => {
-          resolve();
-        });
-    })
-}
-
-const drawNewText = async (txt, currCoordinates) => {
-    const ctx = imgCanvas.getContext('2d')
-    let font = `${fontSize}px Arial`
-    let padding = 1
-    ctx.font = font;
-    let x = currCoordinates['x']
-    let y = currCoordinates['y']
-    await drawTextBackground(ctx, txt, x, y, font, padding)
-    await drawTextBackground(ctx, txt, x, y, font, padding)
-    ctx.fillStyle = "#070808";
-    ctx.font = font;
-    ctx.fillText(txt, x , y + padding )
-   // ctx.restore();
-    
-
-}
-
-const setBaseImage = async (img, x, y) => {
-    return new Promise((resolve) => {
-        const ctx = imgCanvas.getContext("2d");  
-        img.onload = () => {
-            let width = img.width;
-            let height = img.height;
-            let scaledWidth = width * scale
-            let scaledHeight = height * scale
-            ctx.canvas.width = scaledWidth
-            ctx.canvas.height = scaledHeight
-            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-            scaleImage()
-        }
-        requestAnimationFrame(() => {
-            resolve();
-          });
-    })
-}
-
-const drawNewImage = (img, currCoordinates, width, height) => {
-    const ctx = imgCanvas.getContext("2d");
-    let x = currCoordinates['x']
-    let y = currCoordinates['y']
-    ctx.drawImage(img, x, y - 15, width, height);
-}
-
-imgCanvas.addEventListener('click', (event) => {
-    const rect = imgCanvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left);
-    const y = (event.clientY - rect.top);
-    for(let key in bodyPartCoordinates){
-
-        let coordinates = bodyPartCoordinates[key]
-        let tagX = parseFloat(coordinates['x']) * scale
-        let tagY = parseFloat(coordinates['y']) * scale
-        const img = document.createElement('img')
-        img.src = question_mark_path  
-        let width = img.width / scale
-        let height = img.height / scale
-
-        if (x >= tagX && x <= tagX + width && y >= tagY - 15 && y <= tagY + height - 15) {
-            setupTagQuestion(coordinates, key)    
-        }
-    }
-})
-
-const setupTagQuestion = async (coordinates, key) => {
+const setupTagQuestion = async (key) => {
+    let coordinates = bodyPartCoordinates[key]
     let tagName = coordinates['name']
     let categoryId = coordinates['category']
     let prompt = 'Enter Tag'
-    if(categoryId){
+    if(categoryId && categoryId != 'null'){
         let category = await window.api.getCategoryById(categoryId)
         prompt = `What is this ${category}?`
     }
@@ -300,23 +238,3 @@ const setupTagQuestion = async (coordinates, key) => {
     bodyTagModal.show()
 }
 
-bodyTagBtn.addEventListener('click', () => {
-    let txt = bodyTagTxt.value
-
-    if(txt){
-        let id = Object.keys(answerTag)[0]
-        let answer = answerTag[id]
-        if(txt.toLowerCase() == answer.toLowerCase()){
-            bodyTagModal.hide()
-            correctTags[id] = answer
-            updateBodyPartTest()
-            hintTag = ''
-            alert("Correct!!")
-        }else{
-            alert("Wrong!!")
-        }
-    }
-    else{
-        alert("You gotta type somethign big dog")
-    }
-})

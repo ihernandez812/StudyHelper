@@ -17,11 +17,6 @@ const filterModal = new bootstrap.Modal(filterModalElement)
 const checklistModal = new bootstrap.Modal(checklistModalElement)
 let editChecklistId = null
 let editChecklistTitleElement = null
-//fa icons
-//<i class="fa-regular fa-trash"></i>
-//<i class="fa-solid fa-plus"></i>
-//<i class="fa-regular fa-pen-to-square"></i>
-
 
 window.addEventListener('load', async (e) => {
     await window.api.addIdsToChecklists()
@@ -60,95 +55,6 @@ searchInput.addEventListener('keyup', () => {
     search()
 })
 
-const search = async () => {
-    let isChecklistFilterChecked = checklistFilter.checked
-    let isBodyPartFilterChecked = bodyPartFilter.checked
-    let isBodyTagFilterChecked = bodyTagFilter.checked
-    let searchValue = searchInput.value
-    let searchResults = await window.api.search(isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchValue)
-    let checklists = searchResults['checklists']
-    let bodyParts = searchResults['bodyParts']
-    let bodyTags = searchResults['bodyTags']
-    searchDropdown.innerHTML = ''
-    for(let key in checklists){
-        let checklist = checklists[key]
-        let listItem = createSearchDropdownItem(key, checklist, false)
-        if(listItem){
-            searchDropdown.appendChild(listItem)
-        }
-    }
-    for(let key in bodyParts){
-        let bodyPart = bodyParts[key]
-        let listItem = createSearchDropdownItem(key, bodyPart)
-        if(listItem){
-            searchDropdown.appendChild(listItem)
-        }
-    }
-    for(let key in bodyTags){
-        let bodyTag = bodyTags[key]
-        let listItem = createSearchDropdownItem(key, bodyTag)
-        if(listItem){
-            searchDropdown.appendChild(listItem)
-        }
-    }
-}
-
-
-const createSearchDropdownItem = (key, txt, canEdit=true) => {
-    let link = document.createElement('a')
-    link.classList.add('dropdown-item')
-
-    let linkSpan = document.createElement('span')
-    linkSpan.classList.add('dropdown-title')
-    linkSpan.innerHTML = txt
-    
-    let span = document.createElement('span')
-    span.classList.add('fa-icons')
-
-    let editIcon = document.createElement('i')
-    editIcon.classList.add('fa')
-    editIcon.classList.add('fa-pencil-square-o')
-    if(canEdit){
-        span.appendChild(editIcon)
-    }
-    link.appendChild(linkSpan)
-    link.appendChild(span)
-
-
-    let listItem = document.createElement('li')
-    listItem.appendChild(link)
-    listItem.setAttribute('data-bs-toggle', 'tooltip')
-    listItem.setAttribute('data-bs-placement', 'top')
-    listItem.setAttribute('title', txt)
-    //listItem.appendChild(span)
-    
-    let idList = key.split('_')
-    let checklistId = idList[0]
-    let bodyPartId = ''
-    //If the search is on a checklist then there will only be one id
-    //if it is on a body part or body tag it will have 2 ids
-    if(idList.length > 1){
-        bodyPartId = idList[1]
-    }
-
-    //we only want these event listeners is a body part
-    //or body tag. 
-    if(checklistId && bodyPartId) {
-        listItem.addEventListener('click', () => {
-            window.api.setCurrChecklist(checklistId)
-            window.api.setCurrBodyPart(bodyPartId)
-            window.api.loadChecklistTest()
-        })
-        editIcon.addEventListener('click', (event) => {
-            event.stopImmediatePropagation()
-            window.api.setCurrBodyPart(bodyPartId)
-            window.api.setCurrChecklist(checklistId)
-            window.api.loadConfigBodyPart()
-        })
-    }
-    
-    return listItem
-}
 
 saveFilterBtn.addEventListener('click', () => {
     //reload search 
@@ -211,7 +117,6 @@ const createDropdowns = async () => {
     }
 
 }
-
 
 const createDropdown = (checklist, key) => {
     let list = document.createElement('li')
@@ -425,4 +330,94 @@ const createDropdownItemForAddBodyPart = (checklistKey) => {
     })
     
     return listItem
+}
+
+
+const createSearchDropdownItem = (key, txt, canEdit=true) => {
+    let link = document.createElement('a')
+    link.classList.add('dropdown-item')
+
+    let linkSpan = document.createElement('span')
+    linkSpan.classList.add('dropdown-title')
+    linkSpan.innerHTML = txt
+    
+    let span = document.createElement('span')
+    span.classList.add('fa-icons')
+
+    let editIcon = document.createElement('i')
+    editIcon.classList.add('fa')
+    editIcon.classList.add('fa-pencil-square-o')
+    if(canEdit){
+        span.appendChild(editIcon)
+    }
+    link.appendChild(linkSpan)
+    link.appendChild(span)
+
+
+    let listItem = document.createElement('li')
+    listItem.appendChild(link)
+    listItem.setAttribute('data-bs-toggle', 'tooltip')
+    listItem.setAttribute('data-bs-placement', 'top')
+    listItem.setAttribute('title', txt)
+    //listItem.appendChild(span)
+    
+    let idList = key.split('_')
+    let checklistId = idList[0]
+    let bodyPartId = ''
+    //If the search is on a checklist then there will only be one id
+    //if it is on a body part or body tag it will have 2 ids
+    if(idList.length > 1){
+        bodyPartId = idList[1]
+    }
+
+    //we only want these event listeners is a body part
+    //or body tag. 
+    if(checklistId && bodyPartId) {
+        listItem.addEventListener('click', () => {
+            window.api.setCurrChecklist(checklistId)
+            window.api.setCurrBodyPart([bodyPartId])
+            window.api.loadChecklistTest()
+        })
+        editIcon.addEventListener('click', (event) => {
+            event.stopImmediatePropagation()
+            window.api.setCurrBodyPart(bodyPartId)
+            window.api.setCurrChecklist(checklistId)
+            window.api.loadConfigBodyPart()
+        })
+    }
+    
+    return listItem
+}
+
+const search = async () => {
+    let isChecklistFilterChecked = checklistFilter.checked
+    let isBodyPartFilterChecked = bodyPartFilter.checked
+    let isBodyTagFilterChecked = bodyTagFilter.checked
+    let searchValue = searchInput.value
+    let searchResults = await window.api.search(isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchValue)
+    let checklists = searchResults['checklists']
+    let bodyParts = searchResults['bodyParts']
+    let bodyTags = searchResults['bodyTags']
+    searchDropdown.innerHTML = ''
+    for(let key in checklists){
+        let checklist = checklists[key]
+        let listItem = createSearchDropdownItem(key, checklist, false)
+        if(listItem){
+            searchDropdown.appendChild(listItem)
+        }
+    }
+    for(let key in bodyParts){
+        let bodyPart = bodyParts[key]
+        let listItem = createSearchDropdownItem(key, bodyPart)
+        if(listItem){
+            searchDropdown.appendChild(listItem)
+        }
+    }
+    for(let key in bodyTags){
+        let bodyTag = bodyTags[key]
+        let listItem = createSearchDropdownItem(key, bodyTag)
+        if(listItem){
+            searchDropdown.appendChild(listItem)
+        }
+    }
 }
