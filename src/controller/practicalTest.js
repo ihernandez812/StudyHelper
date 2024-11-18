@@ -94,7 +94,7 @@ const getPracticalGrade = () => {
             //in case they didn't answer it
             let enteredAnswer = bodyTag['answer'] || ''
             let answer = bodyTag['name']
-            if(enteredAnswer.toLowerCase() == answer.toLowerCase()){
+            if(enteredAnswer.toLowerCase().trim() == answer.toLowerCase().trim()){
                 correct++
             }
         }

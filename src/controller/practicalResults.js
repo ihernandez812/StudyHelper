@@ -241,7 +241,7 @@ const getFillColorForCoordinates = (bodyTag) => {
 const getIsBodyTagCorrect = (bodyTag) => {
     let enteredAnswer = bodyTag['answer'] || ''
     let answer = bodyTag['name']
-    return enteredAnswer.toLowerCase() == answer.toLowerCase()
+    return enteredAnswer.toLowerCase().trim() == answer.toLowerCase().trim()
 }
 
 const createBodyPartCanvas = (id) =>{
