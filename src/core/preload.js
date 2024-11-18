@@ -22,8 +22,6 @@ contextBridge.exposeInMainWorld(
             if(categories){
                 ipcRenderer.invoke('setCategories', categories)
             }
-            //localStorage.removeItem('checklists')
-            //localStorage.removeItem('categories')
         },
         addOrEditChecklistById:  (id, checklist) => {
             ipcRenderer.invoke('addOrEditChecklistById', id, checklist)
@@ -125,6 +123,4 @@ contextBridge.exposeInMainWorld(
         search: (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
             return ipcRenderer.invoke('search', isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)
         }
-        
-}
-)
+})

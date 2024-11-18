@@ -5,6 +5,7 @@ const windowStateKeeper = require('electron-window-state')
 const { generateID } = require('id-generator.js');
 const updater = require('./updater')
 const localStorage = require('../storage/storageUtils')
+
 let file_paths = {
     home : '../views/home.html',
     index : '../views/index.html',
@@ -346,6 +347,7 @@ ipcMain.handle('getPracticals', (event) => {
 ipcMain.handle('getPracticalById', (event, practicalId) => {
     return localStorage.getPracticalById(practicalId)
 })
+
 
 ipcMain.handle('closePracticalTest', (event) => {
     if(practicalTestWindow){

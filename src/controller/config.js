@@ -25,7 +25,7 @@ let resizeScale = 1
 let fontSize = '16'
 
 window.addEventListener('load', async (e) => {
-    setNoImage()
+    
     bodyPartId = window.api.getCurrBodyPart()
     checklistId = window.api.getCurrChecklist()
     fontSize = getCurrFontSize()
@@ -38,12 +38,30 @@ window.addEventListener('load', async (e) => {
             setupAddBodyPart(checklistId)
         }
         window.api.clearCurrChecklist()
+    } else{
+        setNoImage()
     }
 })
 
+imgCanvas.addEventListener('contextmenu', async (event) => {
+    let currCoordinates = getClickCoordinates(event, resizeScale)
+    let x = currCoordinates['x']
+    let y = currCoordinates['y']
+    let bodyTagKey = checkCoordinatesExist(imgCanvas, x, y, coordinatesMap, resizeScale, true, false)
+    setBodyTagCategories()
+    if(bodyTagKey){
+        setupEditBodyTag(bodyTagKey)
+    }
+    else{
+        setupAddBodyTag()
+    }
+    bodyTagModal.show()
+
+});
+
 fontSizeSelect.addEventListener('change', () => {
     fontSize = getCurrFontSize()
-    redrawEverything()
+    redrawEverything(imgCanvas, myImage, coordinatesMap, fontSize)
 })
 
 // Prevent default behavior (Prevent file from being opened)
@@ -60,9 +78,9 @@ dropArea.addEventListener('drop', (event) => {
             const reader = new FileReader();
 
             reader.onload = async (event) => {
-
                 myImage.src = event.target.result;
-                await drawNewImage(myImage, 0, 0)
+                await drawNewImage(imgCanvas, myImage, 0, 0, resizeScale)
+                
             };
 
             reader.readAsDataURL(file);
@@ -74,7 +92,7 @@ scaleUpBtn.addEventListener('click', () => {
     if(resizeScale < 2.0){
         resizeScale+=.05
         resizeScale = Math.round(resizeScale * 100) / 100
-        redrawEverything()
+        redrawEverything(imgCanvas, myImage, coordinatesMap, fontSize)
     }
 })
 
@@ -82,7 +100,7 @@ scaleDownBtn.addEventListener('click', () => {
     if(resizeScale >.1){
         resizeScale-=.05
         resizeScale = Math.round(resizeScale * 100) / 100
-        redrawEverything()
+        redrawEverything(imgCanvas, myImage, coordinatesMap, fontSize)
     }
 })
 
@@ -99,7 +117,7 @@ deleteTagBtn.addEventListener('click', async (event) => {
             }
             bodyTagModal.hide()
             if(wasEdited){
-                redrawEverything()
+                redrawEverything(imgCanvas, myImage, coordinatesMap, fontSize)
             }
             currCoordinates = null
             bodyTagTxt.value = null
@@ -127,9 +145,9 @@ bodyTagBtn.addEventListener('click', async (event) => {
         coordinatesMap[bodyTagId] = currCoordinates
         bodyTagModal.hide()
         if(wasEdited){
-            redrawEverything()
+            redrawEverything(imgCanvas, myImage, coordinatesMap, fontSize)
         } else{
-            drawNewText(txt, currCoordinates)
+            await drawNewText(imgCanvas, txt, currCoordinates, fontSize)
         }
         currCoordinates = null
         bodyTagTxt.value = null
@@ -164,106 +182,11 @@ saveBodyPartBtn.addEventListener('click', async () => {
     }
 })
 
-
-
-
 const setNoImage = async () => {
     myImage.src = noImgPath
-    await drawNewImage(myImage, 0, 0)
+    drawNewImage(imgCanvas, myImage, 0, 0, resizeScale)
 }
 
-const drawNewImage = async (img, x, y) => {
-    return new Promise((resolve) => {
-        const ctx = imgCanvas.getContext("2d");
-        myImage.onload = async () => {
-            let width = myImage.width;
-            let height = myImage.height;
-            ctx.canvas.width = width * resizeScale;
-            ctx.canvas.height = height * resizeScale;   
-            //ctx.scale(scale, scale);
-            ctx.drawImage(img, x, y, width * resizeScale, height * resizeScale);
-            ctx.scale(resizeScale, resizeScale)
-            //ctx.drawImage(img, x, y);
-            
-            //ctx.restore()
-            
-        }
-        
-        requestAnimationFrame(() => {
-          resolve();
-        });
-    })
-    
-}
-
-const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
-    return new Promise((resolve) => {
-        ctx.textBaseline = "top";
-        ctx.fillStyle = "#f7faf8";
-        var width = ctx.measureText(txt).width;
-        ctx.fillRect(x, y, width + padding, parseInt(font, 10) + padding);
-
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#f7faf8";
-        ctx.strokeRect(x, y, width + padding, parseInt(font, 10) + padding);
-        requestAnimationFrame(() => {
-          resolve();
-        });
-    })
-}
-
-const drawNewText = async (txt, currCoordinates) => {
-    const ctx = imgCanvas.getContext('2d')
-    let font = `${fontSize}px Arial`
-    let padding = 1
-    ctx.font = font;
-    let x = currCoordinates['x']
-    let y = currCoordinates['y'] 
-    
-    await drawTextBackground(ctx, txt, x, y, font, padding)
-    ctx.fillStyle = "#070808";
-    ctx.fillText(txt, x , y + padding )
-    //ctx.restore();
-    
-
-}
-
-const getClickCoordinates = (event) => {
-    const image = event.target;
-    const rect = image.getBoundingClientRect();
-    const x = (event.clientX - rect.left);
-    const y = (event.clientY - rect.top);
-    
-    let deltaX = x / resizeScale
-    let deltaY = y / resizeScale
-
-    const ctx = imgCanvas.getContext("2d");
-    //ctx.transform(resizeScale, 0, 0, resizeScale, x, y)
-    currCoordinates = {
-        x: deltaX,
-        y: deltaY
-    }
-    //Just incase they changed body tag categories 
-    //at any point
-    setBodyTagCategories()
-    setupAddBodyTag()
-    for(let key in coordinatesMap){
-        let coordinates = coordinatesMap[key]
-        let tagName = coordinates['name']
-        let category = coordinates['category']
-        let metrics = ctx.measureText(tagName);
-        let width = metrics.width;
-        let fontHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
-        let tagX = parseFloat(coordinates['x'])
-        let tagY = parseFloat(coordinates['y'])
-        if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + fontHeight) {
-            setupEditBodyTag(key, tagName, category)
-          }
-    }
-
-    
-    bodyTagModal.show()
-}
 
 const setBodyTagCategories = async () => {
     let categories = await window.api.getCategories()
@@ -290,8 +213,11 @@ const createSelectOption = (value, txt) => {
     return option
 }
 
-const setupEditBodyTag = (key, tagName, categoryId) => {
+const setupEditBodyTag = (key) => {
     bodyTagId = key
+    let bodyTag = coordinatesMap[key]
+    let tagName = bodyTag['name']
+    let categoryId = bodyTag['category']
     bodyTagTitle.innerHTML = 'Edit Tag'
     bodyTagTxt.value = tagName
     deleteTagBtn.classList.remove('hide')
@@ -309,23 +235,6 @@ const setupAddBodyTag = () => {
     deleteTagBtn.classList.add('hide')
 }
 
-const redrawEverything = async () => {
-    let image = myImage.src
-    const ctx = imgCanvas.getContext("2d");
-    ctx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
-    ctx.save()
-    myImage.src = image
-    await drawNewImage(myImage, 0, 0)
-    requestAnimationFrame(() => {
-        for(let key in coordinatesMap){
-            let coordinates = coordinatesMap[key]
-            let tagName = coordinates['name']
-            drawNewText(tagName, coordinates)
-        }
-    })
-}
-
-
 const setupEditBodyPart = async (bodyPartId, checklistId) => {
     let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
     let checklist = await window.api.getChecklistById(checklistId)
@@ -337,15 +246,7 @@ const setupEditBodyPart = async (bodyPartId, checklistId) => {
     bodyPartTitleTxt.value = bodyPart['name']
     myImage.src = image
     title.innerHTML = `Edit to ${checklist['name']} Checklist`
-    await drawNewImage(myImage, 0, 0)
-    requestAnimationFrame(() => {
-        let bodyPartCoordinates = bodyPart['coordinates']
-        for(let key in bodyPartCoordinates){
-            let coordinates = bodyPartCoordinates[key]
-            let tagName = coordinates['name']
-            drawNewText(tagName, coordinates)
-        }
-    })
+    drawBodyPartWithTags(imgCanvas, myImage, coordinatesMap, fontSize)
 }
 
 const setupAddBodyPart = async (checklistId) => {
@@ -365,4 +266,4 @@ const setSelectedFontSize = (fontSize) => {
     }
 }
 
-imgCanvas.addEventListener('contextmenu', getClickCoordinates);
+

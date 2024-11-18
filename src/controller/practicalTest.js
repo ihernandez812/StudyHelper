@@ -15,7 +15,6 @@ const praticalChecklistModalElement = document.querySelector('#practical_text_ch
 const practicalModal = new bootstrap.Modal(practicalModalElement)
 const bodyTagModal = new bootstrap.Modal(bodyTagModalElement)
 const praticalChecklistModal = new bootstrap.Modal(praticalChecklistModalElement)
-let question_mark_path = '../images/question-mark.png'
 let timerInterval
 let practicalDate = null
 let checklists = {}
@@ -54,7 +53,6 @@ createPracticalBtn.addEventListener('click', async () => {
 })
 
 nextStationBtn.addEventListener('click', () => {
-    //saveStationChoices()
     nextStation()
 })
 
@@ -77,6 +75,16 @@ savePracticalBtn.addEventListener('click', async () => {
     else{
         window.api.popup('You Gotta Type Something Big Dog')
     }
+})
+
+bodyTagBtn.addEventListener('click', async () => {
+    let bodyTagsList = stationBodyPartToTags[clickedStationId]
+    let coordinates = bodyTagsList[bodyTagPos]
+    coordinates['answer'] = bodyTagTxt.value
+    bodyTagsList[bodyTagPos] = coordinates
+    stationBodyPartToTags[clickedStationId] = bodyTagsList
+    await redrawBodyPart(clickedStationId)
+    bodyTagModal.hide()
 })
 
 const getPracticalGrade = () => {
@@ -102,10 +110,6 @@ const initStation = () => {
     stationBodyPartToTags = {}
     bodyPartToImageSettings = {}
 }
-
-const saveStationChoices = () => {
- 
-} 
 
 const startPracticalTest = () => {
     setPracticalDate()
@@ -146,54 +150,31 @@ const endPracticalTest = () => {
     practicalModal.show()
 }
 
-const checkTagClicked = (event, canvas, id, bodyTags, imgaeSettings) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        let scale = imgaeSettings['scale']
-        for(let i=0; i<bodyTags.length; i++){
-            let bodyTag = bodyTags[i]
-            let tagX = parseFloat(bodyTag['x']) * scale
-            let tagY = parseFloat(bodyTag['y']) * scale
-            const img = document.createElement('img')
-            img.src = question_mark_path  
-            let width = img.width
-            let height = img.height
-            let answer = bodyTag['answer']
-            if(answer){
-                let ctx = canvas.getContext('2d')
-                let metrics = ctx.measureText(answer);
-                width = metrics.width;
-                height = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
-                yDiff = 0
-            }
-            console.log(x, tagX, y, tagY)
-            //x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + fontHeight
-            if (x >= tagX && x <= tagX + width && y >= tagY - 15 && y <= tagY + height - 15) {
-                clickedStationId = id
-                bodyTagPos = i
-                setupTagQuestion(bodyTag)
-            }
-        }
-}
-
-bodyTagBtn.addEventListener('click', async () => {
-    let bodyTagsList = stationBodyPartToTags[clickedStationId]
-    let coordinates = bodyTagsList[bodyTagPos]
-    coordinates['answer'] = bodyTagTxt.value
-    bodyTagsList[bodyTagPos] = coordinates
-    stationBodyPartToTags[clickedStationId] = bodyTagsList
-    await redrawBodyPart(clickedStationId)
-    bodyTagModal.hide()
-})
-
 const addStationEventListeners = () => {
     for(let id in stationBodyPartToTags){
         let bodyTags = stationBodyPartToTags[id]
-        let canvas = document.querySelector(`#${id}`)
-        let imgaeSettings = bodyPartToImageSettings[id]
-        canvas.addEventListener('click', (event) => {            
-            checkTagClicked(event, canvas, id, bodyTags, imgaeSettings)
+        let canvas = document.getElementById(`${id}`)
+        let imageSettings = bodyPartToImageSettings[id]
+
+        canvas.addEventListener('click', (event) => {  
+            let scale = imageSettings['scale']     
+            let coordinates = getClickCoordinates(event, scale) 
+            let x = coordinates['x']
+            let y = coordinates['y'] 
+            let answer = coordinates['answer']
+            let key = null
+            
+            if(answer){
+                key = checkCoordinatesExistList(canvas, x, y, bodyTags, scale, true, true)
+            }
+            else{
+                key = checkCoordinatesExistList(canvas, x, y, bodyTags, scale, false)
+            }   
+            if(key != null){
+                clickedStationId = id
+                bodyTagPos = key
+                setupTagQuestion(bodyTags[key])
+            }
         })
     }
 }
@@ -222,60 +203,23 @@ const redrawBodyPart = async (stationId) => {
     let canvas = document.querySelector(`#${stationId}`)
     let baseImage = canvas.querySelector('.img-fluid')
     let imgSrc = baseImage.src
-    console.log(stationBodyPart, bodyPartToImageSettings)
     let scale = bodyPartImageSettings['scale']
     let font = bodyPartImageSettings['font']
 
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    clearCanvas(canvas)
+
     let img = document.createElement('img')
     img.src = imgSrc
-    setBaseImage(img, canvas, 0, 0, scale)
+    await drawNewImage(canvas, img, 0, 0, scale)
     for(let coordinates of stationBodyPart){
         let answer = coordinates['answer']
         if(answer){
-            await drawNewText(answer, canvas, coordinates, font)
+            await drawNewText(canvas, answer, coordinates, font)
         }
         else{
-            drawNewQuestion(canvas, coordinates, scale)
+            drawNewQuestionMark(canvas, coordinates, scale)
         }
     }
-    //addStationEventListeners()
-}
-
-const drawTextBackground = async (ctx, txt, x, y, font, padding) => {
-    return new Promise((resolve) => {
-        ctx.textBaseline = "top";
-        ctx.fillStyle = "#f7faf8";
-        ctx.font = font
-        var width = ctx.measureText(txt).width;
-        ctx.fillRect(x, y, width + padding, parseInt(font, 10) + padding);
-
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#f7faf8";
-        ctx.strokeRect(x, y, width + padding, parseInt(font, 10) + padding);
-        requestAnimationFrame(() => {
-          resolve();
-        });
-    })
-}
-
-const drawNewText = async (txt, canvas, currCoordinates, fontSize) => {
-    const ctx = canvas.getContext('2d')
-    let font = `${fontSize}px Arial`
-    let padding = 1
-    ctx.font = font;
-    let x = currCoordinates['x']
-    let y = currCoordinates['y']
-    await drawTextBackground(ctx, txt, x, y, font, padding)
-    await drawTextBackground(ctx, txt, x, y, font, padding)
-    await drawTextBackground(ctx, txt, x, y, font, padding)
-    ctx.fillStyle = "#070808";
-    ctx.font = font;
-    ctx.fillText(txt, x , y + padding )
-   // ctx.restore();
-    
-
 }
 
 const displayStation = async (station) => {
@@ -284,10 +228,9 @@ const displayStation = async (station) => {
         let bodyPartId = bodyTag['bodyPart']
         let scale = 1
         let font = 16
-        let bodyPartCanvas = document.querySelector(`#${bodyPartId}`)
+        let bodyPartCanvas = document.getElementById(`${bodyPartId}`)
         if(!bodyPartCanvas){
             let bodyPartRow = createBodyPartCanvas(bodyPartId)
-            canvasesContainer.appendChild(bodyPartRow)
             bodyPartCanvas = bodyPartRow.querySelector('canvas')
             let checklistId = bodyTag['checklist']
             let bodyPart = await window.api.getBodyPartById(bodyPartId, checklistId)
@@ -295,62 +238,17 @@ const displayStation = async (station) => {
             img.src = bodyPart['img']
             scale = bodyPart['scale'] || 1
             font = bodyPart['fontSize'] || 16
-            await setBaseImage(img, bodyPartCanvas, 0, 0, scale)
+            await drawNewImage(bodyPartCanvas, img, 0, 0, scale)
             bodyPartToImageSettings[bodyPartId] = {
                 scale: scale,
                 font: font 
             }
         }
-        drawNewQuestion(bodyPartCanvas, bodyTag, scale)
+        await drawNewQuestionMark(bodyPartCanvas, bodyTag, scale)
         let bodyTagList = stationBodyPartToTags[bodyPartId] || []
         bodyTagList.push(bodyTag)
         stationBodyPartToTags[bodyPartId] = bodyTagList
     }
-}
-
-const drawNewQuestion = (canvas, coordinates, scale) => {
-        let isAnswered = false
-        let id = `${coordinates['x']}_${coordinates['y']}`
-        if(!isAnswered){
-            const img = document.createElement('img')
-            img.src = question_mark_path
-            img.setAttribute('id', id)
-            img.onload = () => {
-                drawNewImage(img, canvas, coordinates, scale)
-                canvas.appendChild(img)
-            }
-        }
-        // else{
-        //     drawNewText(tagName, coordinates)
-        // }
-}
-
-const drawNewImage = (img, canvas, currCoordinates, scale) => {
-    const ctx = canvas.getContext("2d");
-    let x = currCoordinates['x']
-    let y = currCoordinates['y']
-    let width = img.width / scale
-    let height = img.height / scale
-    ctx.drawImage(img, x, y - 15, width, height);
-}
-
-const setBaseImage = async (img, bodyPartCanvas, x, y, scale) => {
-    return new Promise((resolve) => {
-        const ctx = bodyPartCanvas.getContext("2d");  
-        img.onload = () => {
-            let width = img.width;
-            let height = img.height;
-            let scaledWidth = width * scale
-            let scaledHeight = height * scale
-            ctx.canvas.width = scaledWidth;
-            ctx.canvas.height = scaledHeight;
-            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-            ctx.scale(scale, scale)
-        }
-        requestAnimationFrame(() => {
-            resolve();
-          });
-    })
 }
 
 
@@ -369,6 +267,7 @@ const createBodyPartCanvas = (id) =>{
     canvas.appendChild(img)
     col.appendChild(canvas)
     row.appendChild(col)
+    canvasesContainer.appendChild(row)
     return row
 }
 
@@ -487,7 +386,6 @@ const startTimer = () => {
         timeLeft--;
         if (timeLeft < 0) {
             clearInterval(timerInterval);
-            saveStationChoices()
             window.api.popup("Times Up!").then(nextStation)
         }
     }, 1000); // 1000 milliseconds = 1 second
