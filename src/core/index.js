@@ -5,7 +5,6 @@ const windowStateKeeper = require('electron-window-state')
 const { generateID } = require('id-generator.js');
 const updater = require('./updater')
 const localStorage = require('../storage/storageUtils')
-const canvasUtils = require('../HTMLUtils/canvasUtils')
 
 let file_paths = {
     home : '../views/home.html',
