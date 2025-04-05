@@ -83,6 +83,7 @@ bodyTagBtn.addEventListener('click', async () => {
     coordinates['answer'] = bodyTagTxt.value
     bodyTagsList[bodyTagPos] = coordinates
     stationBodyPartToTags[clickedStationId] = bodyTagsList
+    console.log(coordinates)
     await redrawBodyPart(clickedStationId)
     bodyTagModal.hide()
 })
@@ -163,7 +164,7 @@ const addStationEventListeners = () => {
             let y = coordinates['y'] 
             let answer = coordinates['answer']
             let key = null
-            
+            console.log(answer)
             if(answer){
                 key = checkCoordinatesExistList(canvas, x, y, bodyTags, scale, true, true)
             }
@@ -200,7 +201,7 @@ const setupTagQuestion = async (coordinates) => {
 const redrawBodyPart = async (stationId) => {
     let stationBodyPart = stationBodyPartToTags[stationId]
     let bodyPartImageSettings = bodyPartToImageSettings[stationId]
-    let canvas = document.querySelector(`#${stationId}`)
+    let canvas = document.getElementById(stationId)
     let baseImage = canvas.querySelector('.img-fluid')
     let imgSrc = baseImage.src
     let scale = bodyPartImageSettings['scale']

@@ -154,7 +154,7 @@ const calculatePracticalGrade = (stationGrades) => {
 const addStationEventListeners = () => {
     for(let id in stationBodyPartToTags){
         let bodyTags = stationBodyPartToTags[id]
-        let canvas = document.querySelector(`#${id}`)
+        let canvas = document.getElementById(`${id}`)
         let imageSettings = bodyPartToImageSettings[id]
 
         canvas.addEventListener('click', (event) => {
