@@ -41,9 +41,10 @@ const drawTextBackground = async (ctx, txt, x, y, font, padding, fillColor) => {
 const drawNewText = async (canvas, txt, currCoordinates, fontSize, fillColor='#f7faf8') => {
     const ctx = canvas.getContext('2d')
     let font = `${fontSize}px Arial`
+    console.log(font)
     let padding = 1
     ctx.font = font;
-    console.log(font)
+    console.log(ctx.font)
     let x = currCoordinates['x']
     let y = currCoordinates['y']
     
@@ -52,7 +53,7 @@ const drawNewText = async (canvas, txt, currCoordinates, fontSize, fillColor='#f
     await drawTextBackground(ctx, txt, x, y, font, padding, fillColor)
     await drawTextBackground(ctx, txt, x, y, font, padding, fillColor)
     ctx.fillStyle = "#070808";
-    ctx.fillText(txt, x , y + padding )
+    ctx.fillText(txt, x , y + padding)
 
 }
 
@@ -109,7 +110,7 @@ const checkCoordinatesExistList = (canvas, x, y, coordinatesList, scale, isText,
         let imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, isText, checkAnswer)
         let width = imgBounds['width']
         let height = imgBounds['height']
-        console.log(x, tagX, y, tagY)
+        console.log(x >= tagX, x <= tagX + width, y >= tagY + offset, y <= tagY + height + offset)
         if (x >= tagX && x <= tagX + width && y >= tagY + offset && y <= tagY + height + offset) {
             foundKey = i
             break
@@ -151,6 +152,7 @@ const getWidthAndHeightOfText = (canvas, coordinates, checkAnswer) => {
     }
     let ctx = canvas.getContext('2d')
     let metrics = ctx.measureText(tagName);
+    console.log(ctx.font)
     let width = metrics.width;
     let fontHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
 

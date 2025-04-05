@@ -154,7 +154,7 @@ const calculatePracticalGrade = (stationGrades) => {
 const addStationEventListeners = () => {
     for(let id in stationBodyPartToTags){
         let bodyTags = stationBodyPartToTags[id]
-        let canvas = document.querySelector(`#${id}`)
+        let canvas = document.getElementById(`${id}`)
         let imageSettings = bodyPartToImageSettings[id]
 
         canvas.addEventListener('click', (event) => {
@@ -241,7 +241,7 @@ const getFillColorForCoordinates = (bodyTag) => {
 const getIsBodyTagCorrect = (bodyTag) => {
     let enteredAnswer = bodyTag['answer'] || ''
     let answer = bodyTag['name']
-    return enteredAnswer.toLowerCase() == answer.toLowerCase()
+    return enteredAnswer.toLowerCase().trim() == answer.toLowerCase().trim()
 }
 
 const createBodyPartCanvas = (id) =>{

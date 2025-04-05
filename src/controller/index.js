@@ -101,7 +101,7 @@ bodyTagBtn.addEventListener('click', () => {
     if(txt){
         let id = Object.keys(answerTag)[0]
         let answer = answerTag[id]
-        if(txt.toLowerCase() == answer.toLowerCase()){
+        if(txt.toLowerCase().trim() == answer.toLowerCase().trim()){
             bodyTagModal.hide()
             correctTags[id] = answer
             updateBodyPartTest()
