@@ -10,21 +10,11 @@ contextBridge.exposeInMainWorld(
             return ipcRenderer.invoke('dialogQuestion', message)
             
         },
-        addChecklistAndCategoriesToDB: () => {
-            let unparsedChecklists = localStorage.getItem('checklists')
-            let unparsedCategories = localStorage.getItem('categories')
-            
-            let checklists = JSON.parse(unparsedChecklists) || {}
-            let categories = JSON.parse(unparsedCategories) || {}
-            if(checklists){
-                ipcRenderer.invoke('setChecklists', checklists)
-            }
-            if(categories){
-                ipcRenderer.invoke('setCategories', categories)
-            }
-        },
-        addOrEditChecklistById:  (id, checklist) => {
+        addOrEditChecklistById:  (id=null, checklist) => {
             ipcRenderer.invoke('addOrEditChecklistById', id, checklist)
+        },
+        deleteChecklistById:  (id) => {
+          ipcRenderer.invoke('deleteChecklistById', id)
         },
         getBodyPartById: (bodyPartId, checklistId) => {
             return ipcRenderer.invoke('getBodyPartById', bodyPartId, checklistId)
@@ -60,7 +50,7 @@ contextBridge.exposeInMainWorld(
         getPracticals: () => {
             return ipcRenderer.invoke('getPracticals')
         },
-        getPractialById: (id) => {
+        getPracticalById: (id) => {
             return ipcRenderer.invoke('getPracticalById', id)
         },
         loadChecklistTest: () => {
@@ -68,48 +58,6 @@ contextBridge.exposeInMainWorld(
         }, 
         reloadHome: () => {
             ipcRenderer.invoke('reloadHome')
-        },
-        generateId: async () => {
-            let id = await ipcRenderer.invoke('generateId')
-            return id
-        },
-        //Essentially these are upgrade tasks. Could be compressed into one, but there were
-        //part of two different items so they are not
-        addIdsToChecklists: async () => {
-            let checklists = JSON.parse(localStorage.getItem('checklists'))
-            if(checklists){
-                let sanatizedChecklists = await ipcRenderer.invoke('addIdsToChecklists', checklists)
-                if(sanatizedChecklists){
-                    localStorage.setItem('checklists', JSON.stringify(sanatizedChecklists))
-                }
-            }
-        },
-        addIdsToTags: async () => {
-            let checklists = JSON.parse(localStorage.getItem('checklists'))
-            if(checklists){
-                let sanatizedChecklists = await ipcRenderer.invoke('addIdsToTags', checklists)
-                if(sanatizedChecklists){
-                    localStorage.setItem('checklists', JSON.stringify(sanatizedChecklists))
-                }
-            }
-        },
-        setCurrChecklist: (id) => {
-            localStorage.setItem('currChecklist', id)
-        },
-        getCurrChecklist: () => {
-            return localStorage.getItem('currChecklist')
-        },
-        clearCurrChecklist: () => {
-            localStorage.removeItem('currChecklist')
-        },
-        setCurrBodyPart: (bodyPart) => {
-            localStorage.setItem('currBodyPart', JSON.stringify(bodyPart))
-        },
-        getCurrBodyPart: () => {
-            return JSON.parse(localStorage.getItem('currBodyPart'))
-        },
-        clearCurrBodyPart: () => {
-            localStorage.removeItem('currBodyPart')
         },
         loadConfigBodyPart: () => {
             ipcRenderer.invoke('loadConfigBodyPart')
@@ -122,5 +70,11 @@ contextBridge.exposeInMainWorld(
         }, 
         search: (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
             return ipcRenderer.invoke('search', isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)
+        },
+        getDarkMode: () => {
+            return ipcRenderer.invoke('getDarkMode')
+        },
+        onDarkModeChanged: (callback) => {
+            ipcRenderer.on('dark-mode-changed', (_event, isDark) => callback(isDark))
         }
 })

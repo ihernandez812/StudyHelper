@@ -4,7 +4,7 @@
 ## Installation
 
 Study helper is not code signed as it was written to help my girlfriend pass Anatomy.
-To install download the latest release from github and run the installer. Currently only supported on mac.
+To install download the latest release from gitHub and run the installer. Currently only supported on Mac.
 
 When running for the first time you will have to allow the app to be opened from your System Settings.
 
@@ -14,7 +14,7 @@ When running for the first time you will have to allow the app to be opened from
         - Tags
             - Categories
 ## How to Use
-##### Checkist
+##### Checklist
 
     Once in the app you can create a checklist by clicking the plus button on the 
     home screen. Once added it will display in the nav bar. Where you can add a

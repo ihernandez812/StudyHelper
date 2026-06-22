@@ -1,18 +1,18 @@
-const { Menu, shell } = require('electron')
-
+const { Menu, shell , nativeTheme} = require('electron')
+const localStorage = require("../storage/storageUtils");
 
 const toggleDarkMode = () => {
-    useDarkMode = store.get().darkMode
+    const isDark = nativeTheme.shouldUseDarkColors
+    nativeTheme.themeSource = isDark ? 'light' : 'dark'
+    localStorage.setIsDarkMode(!isDark)
 
-    if (useDarkMode) {
-        store.set({ 'darkMode': false })
-        nativeTheme.themeSource = 'light'
-    }
-    else {
-        store.set({ 'darkMode': true })
-        nativeTheme.themeSource = 'dark'
-    }
+    // Tell all renderer windows to update Bootstrap's data-bs-theme
+    const { BrowserWindow } = require('electron')
+    BrowserWindow.getAllWindows().forEach(win => {
+        win.webContents.send('dark-mode-changed', !isDark)
+    })
 }
+
 const getBaseMenu = () => {
     const isMac = process.platform === 'darwin'
     return [
@@ -94,21 +94,21 @@ const getHelpMenu = () => {
                 label: 'Documentation',
                 click() {
                     shell.openExternal('https://github.com/ihernandez812/StudyHelper')
+                        .catch(error => console.error(error))
                 }
             }
         ]
     }
 }
 
-const menuBuilder = (customMeunItems) => {
+const menuBuilder = () => {
     let baseMenu = getBaseMenu()
     let helpMenu = getHelpMenu()
-    customMeunItems.push(helpMenu)
-    baseMenu.push(...customMeunItems)
     return Menu.buildFromTemplate(baseMenu)
-
 }
 
 
 
-module.exports = menuBuilder
+module.exports = {
+    menuBuilder
+}

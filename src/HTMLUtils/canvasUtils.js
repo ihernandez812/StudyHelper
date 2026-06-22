@@ -26,7 +26,7 @@ const drawTextBackground = async (ctx, txt, x, y, font, padding, fillColor) => {
         ctx.textBaseline = "top";
         ctx.fillStyle = fillColor
 
-        var width = ctx.measureText(txt).width;
+        let width = ctx.measureText(txt).width;
         ctx.fillRect(x, y, width + padding, parseInt(font, 10) + padding);
 
         ctx.lineWidth = 2;
@@ -172,7 +172,7 @@ const getClickCoordinates = (event, scale) => {
     let deltaX = x / scale
     let deltaY = y / scale
 
-    currCoordinates = {
+    let currCoordinates = {
         x: deltaX,
         y: deltaY
     }
@@ -187,17 +187,17 @@ const clearCanvas = (canvas) => {
     ctx.save()
 }
 
-const redrawEverything = async (canvas, imgElement, coordinatesMap, fontSize) => {
+const redrawEverything = async (canvas, imgElement, coordinatesMap, fontSize, scale = 1) => {
     let image = imgElement.src
     clearCanvas(canvas)
     imgElement.src = image
-    drawBodyPartWithTags(canvas, imgElement, coordinatesMap, fontSize)
+    await drawBodyPartWithTags(canvas, imgElement, coordinatesMap, fontSize, scale)
 }
 
-const drawBodyPartWithTags = async(canvas, imgElement, coordinatesMap, fontSize) => {
-    await drawNewImage(canvas, imgElement, 0, 0, resizeScale)
+const drawBodyPartWithTags = async (canvas, imgElement, coordinatesMap, fontSize, scale = 1) => {
+    await drawNewImage(canvas, imgElement, 0, 0, scale)
     requestAnimationFrame(() => {
-        for(let key in coordinatesMap){
+        for (let key in coordinatesMap) {
             let coordinates = coordinatesMap[key]
             let tagName = coordinates['name']
             drawNewText(canvas, tagName, coordinates, fontSize)
@@ -205,14 +205,12 @@ const drawBodyPartWithTags = async(canvas, imgElement, coordinatesMap, fontSize)
     })
 }
 
-
-const drawBodyPartWithQuestionMark = async(canvas, imgElement, coordinatesMap, fontSize) => {
-    await drawNewImage(canvas, imgElement, 0, 0, resizeScale)
+const drawBodyPartWithQuestionMark = async (canvas, imgElement, coordinatesMap, fontSize, scale = 1) => {
+    await drawNewImage(canvas, imgElement, 0, 0, scale)
     requestAnimationFrame(() => {
-        for(let key in coordinatesMap){
+        for (let key in coordinatesMap) {
             let coordinates = coordinatesMap[key]
-            let tagName = coordinates['name']
-            drawNewText(canvas, tagName, coordinates, fontSize)
+            drawNewQuestionMark(canvas, coordinates, scale)
         }
     })
 }

@@ -29,7 +29,9 @@
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
-    "electron-light-storage": "^1.2.0",
+    "@fortawesome/fontawesome-free": "^7.2.0",
+    "bootstrap": "^5.3.8",
+    "electron-store": "^8.2.0",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3",
     "id-generator.js": "^1.0.1"
