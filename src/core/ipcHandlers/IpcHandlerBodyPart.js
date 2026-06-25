@@ -11,9 +11,10 @@ ipcMain.handle('getBodyPartById', async (event, bodyPartId, checklistId) => {
 
 ipcMain.handle('addOrEditBodyPartById', async (event, bodyPartId, checklistId, bodyPart) => {
     let image = bodyPart.image
-    bodyPart.image = await FileHelper.saveBodyPartImage(bodyPartId, checklistId, image)
-    localStorage.addOrEditBodyPartById(bodyPartId, checklistId, bodyPart)
+    bodyPart.image = await FileHelper.saveBodyPartImage(checklistId, bodyPartId, image)
+    let id = localStorage.addOrEditBodyPartById(bodyPartId, checklistId, bodyPart)
 })
+
 ipcMain.handle('removeBodyPart', (event, bodyPartId, checklistId) => {
     FileHelper.deleteBodyPartImage(bodyPartId, checklistId)
     localStorage.removeBodyPart(bodyPartId, checklistId)

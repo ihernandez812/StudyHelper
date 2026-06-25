@@ -244,7 +244,8 @@ document.getElementById('study-hint-btn').addEventListener('click', () => {
 document.getElementById('study-canvas').addEventListener('click', (e) => {
     const canvas  = document.getElementById('study-canvas')
     const coords  = getClickCoordinates(e, studyState.scale)
-    const key     = checkCoordinatesExist(canvas, coords.x, coords.y, studyState.coordinates, studyState.scale, false)
+    console.log(studyState.fontSize)
+    const key     = checkCoordinatesExist(canvas, coords.x, coords.y, studyState.coordinates, studyState.scale, studyState.fontSize,false)
 
     if (key && !studyState.correctTags[key]) {
         openStudyAnswerModal(key)

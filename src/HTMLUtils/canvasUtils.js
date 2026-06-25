@@ -2,59 +2,50 @@ const question_mark_path = '../images/question-mark.png'
 
 const drawNewImage = async (canvas, imgElement, x, y, scale) => {
     return new Promise((resolve) => {
-        
         const ctx = canvas.getContext("2d");
-        imgElement.onload = async () => {
-            let width = imgElement.width;
-            let height = imgElement.height;
-            ctx.canvas.width = width * scale;
+
+        const draw = () => {
+            const width  = imgElement.naturalWidth;
+            const height = imgElement.naturalHeight;
+            ctx.canvas.width  = width  * scale;
             ctx.canvas.height = height * scale;
             ctx.drawImage(imgElement, x, y, width * scale, height * scale);
-            ctx.scale(scale, scale)
+            resolve();
         }
-        
-        requestAnimationFrame(() => {
-          resolve();
-        });
+
+        if (imgElement.complete && imgElement.naturalWidth > 0) {
+            draw()  // already loaded — draw immediately
+        } else {
+            imgElement.onload = draw  // not yet loaded — wait
+        }
     })
     
 }
 
+const drawNewText = (canvas, txt, currCoordinates, fontSize) => {
+    const ctx  = canvas.getContext('2d')
+    const size = parseInt(fontSize)   // ← parse here
+    const x    = currCoordinates['x']
+    const y    = currCoordinates['y']
 
-const drawTextBackground = async (ctx, txt, x, y, font, padding, fillColor) => {
-    return new Promise((resolve) => {
-        ctx.textBaseline = "top";
-        ctx.fillStyle = fillColor
+    const paddingX = 8
+    const paddingY = 4
+    const radius   = 6
 
-        let width = ctx.measureText(txt).width;
-        ctx.fillRect(x, y, width + padding, parseInt(font, 10) + padding);
+    ctx.font         = `500 ${size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
+    ctx.textBaseline = 'top'
 
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = fillColor
-        ctx.strokeRect(x, y, width + padding, parseInt(font, 10) + padding);
-        requestAnimationFrame(() => {
-          resolve();
-        });
-    })
-}
+    const textWidth = ctx.measureText(txt).width
+    const boxW      = textWidth + paddingX * 2
+    const boxH      = size + paddingY * 2        // ← use size, not fontSize
 
-const drawNewText = async (canvas, txt, currCoordinates, fontSize, fillColor='#f7faf8') => {
-    const ctx = canvas.getContext('2d')
-    let font = `${fontSize}px Arial`
-    console.log(font)
-    let padding = 1
-    ctx.font = font;
-    console.log(ctx.font)
-    let x = currCoordinates['x']
-    let y = currCoordinates['y']
-    
-    await drawTextBackground(ctx, txt, x, y, font, padding, fillColor)
-    await drawTextBackground(ctx, txt, x, y, font, padding, fillColor)
-    await drawTextBackground(ctx, txt, x, y, font, padding, fillColor)
-    await drawTextBackground(ctx, txt, x, y, font, padding, fillColor)
-    ctx.fillStyle = "#070808";
-    ctx.fillText(txt, x , y + padding)
+    ctx.fillStyle = 'rgba(199, 91, 122, 0.88)'
+    ctx.beginPath()
+    ctx.roundRect(x, y, boxW, boxH, radius)
+    ctx.fill()
 
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(txt, x + paddingX, y + paddingY)
 }
 
 const drawNewQuestionMark = (canvas, coordinates, scale) => {
@@ -76,16 +67,17 @@ const drawNewQuestionMark = (canvas, coordinates, scale) => {
     })
 }
 
-const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, isText, hasOffest=false) => {
+const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, isText, hasOffest=false) => {
     let foundKey = null
     let offset = 0
     if(hasOffest){
         //offset = -15
     }
-    for(let key in coordinatesMap){
-        
+
+    for(let key in coordinatesMap) {
         let coordinates = coordinatesMap[key]
-        let imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, isText)
+        let imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, fontSize, isText)
+        console.log(imgBounds)
         let width = imgBounds['width']
         let height = imgBounds['height']
         let tagX = parseFloat(coordinates['x'])
@@ -98,7 +90,7 @@ const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, isText, hasO
     return foundKey
 } 
 
-const checkCoordinatesExistList = (canvas, x, y, coordinatesList, scale, isText, checkAnswer=false) => {
+const checkCoordinatesExistList = (canvas, x, y, coordinatesList, scale, fontSize, isText, checkAnswer=false) => {
     let foundKey = null
     let offset = 0
 
@@ -107,7 +99,7 @@ const checkCoordinatesExistList = (canvas, x, y, coordinatesList, scale, isText,
         let tagX = parseFloat(coordinates['x'])
         let tagY = parseFloat(coordinates['y'])
 
-        let imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, isText, checkAnswer)
+        let imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, fontSize, isText, checkAnswer)
         let width = imgBounds['width']
         let height = imgBounds['height']
         console.log(x >= tagX, x <= tagX + width, y >= tagY + offset, y <= tagY + height + offset)
@@ -119,12 +111,12 @@ const checkCoordinatesExistList = (canvas, x, y, coordinatesList, scale, isText,
     return foundKey
 }
 
-const getWidthAndHeightOfCoordinate = (canvas, coordinates, scale, isText, checkAnswer=false) => {
+const getWidthAndHeightOfCoordinate = (canvas, coordinates, scale, fontSize, isText, checkAnswer=false) => {
     let imgBounds = {}
+
     if(isText){
-        imgBounds = getWidthAndHeightOfText(canvas, coordinates, checkAnswer)
-    }  
-    else{
+        imgBounds = getWidthAndHeightOfText(canvas, coordinates, checkAnswer, fontSize)
+    } else{
         imgBounds = getWidthAndHeightOfQuestionMark(scale)
     }
 
@@ -142,23 +134,23 @@ const getWidthAndHeightOfQuestionMark = (scale) => {
     }
 }
 
-const getWidthAndHeightOfText = (canvas, coordinates, checkAnswer) => {
-    let tagName = ''
-    if(checkAnswer){
-        tagName = coordinates['answer'] || 'No Answer'
-    }
-    else{
-        tagName = coordinates['name']
-    }
-    let ctx = canvas.getContext('2d')
-    let metrics = ctx.measureText(tagName);
-    console.log(ctx.font)
-    let width = metrics.width;
-    let fontHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+const getWidthAndHeightOfText = (canvas, coordinates, checkAnswer, fontSize) => {
+    const tagName = checkAnswer
+        ? (coordinates['answer'] || 'No Answer')
+        : coordinates['name']
+
+    const paddingX = 8
+    const paddingY = 4
+    const size     = parseInt(fontSize)
+
+    const ctx = canvas.getContext('2d')
+    ctx.font  = `500 ${size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
+
+    const textWidth = ctx.measureText(tagName).width
 
     return {
-        width: width,
-        height: fontHeight
+        width:  textWidth + paddingX * 2,
+        height: size      + paddingY * 2
     }
 }
 

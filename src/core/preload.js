@@ -10,8 +10,8 @@ contextBridge.exposeInMainWorld(
             return ipcRenderer.invoke('dialogQuestion', message)
             
         },
-        addOrEditChecklistById:  (id=null, checklist) => {
-            ipcRenderer.invoke('addOrEditChecklistById', id, checklist)
+        addOrEditChecklistById: async (id=null, checklist) => {
+            return await ipcRenderer.invoke('addOrEditChecklistById', id, checklist)
         },
         deleteChecklistById:  (id) => {
           ipcRenderer.invoke('deleteChecklistById', id)
@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld(
             return ipcRenderer.invoke('getBodyPartById', bodyPartId, checklistId)
         },
         addOrEditBodyPartById: (bodyPartId, checklistId, bodyPart) => {
-            ipcRenderer.invoke('addOrEditBodyPartById', bodyPartId, checklistId, bodyPart)
+            return ipcRenderer.invoke('addOrEditBodyPartById', bodyPartId, checklistId, bodyPart)
         },
         getChecklists: () => {
             return ipcRenderer.invoke('getChecklists')
@@ -41,7 +41,8 @@ contextBridge.exposeInMainWorld(
         removeCategory: (id) => {
             ipcRenderer.invoke('removeCategory', id)
         },
-        addOrEditCategoryById: (id, category) => {
+        addOrEditCategoryById: (id=null, category) => {
+            console.log(category)
             return ipcRenderer.invoke('addOrEditCategoryById', id, category)
         },
         addPractical: (id, practical) => {

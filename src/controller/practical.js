@@ -195,7 +195,7 @@ const drawPracticalQuestionMarks = () => {
 document.getElementById('practical-canvas').addEventListener('click', (e) => {
     const canvas = document.getElementById('practical-canvas')
     const coords = getClickCoordinates(e, practicalState.scale)
-    const key    = checkCoordinatesExist(canvas, coords.x, coords.y, practicalState.currentCoordinates, practicalState.scale, false)
+    const key    = checkCoordinatesExist(canvas, coords.x, coords.y, practicalState.currentCoordinates, practicalState.scale, practicalState.fontSize, false)
 
     if (key) {
         openPracticalTagModal(key)

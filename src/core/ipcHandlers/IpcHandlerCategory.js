@@ -11,7 +11,7 @@ ipcMain.handle('getCategoryById', (event, categoryId) => {
     return localStorage.getCategoryById(categoryId)
 })
 ipcMain.handle('addOrEditCategoryById', (event, categoryId, category) => {
-    localStorage.addOrEditCategoryById(categoryId, category)
+    return localStorage.addOrEditCategoryById(categoryId, category)
 })
 ipcMain.handle('removeCategory', (event, categoryId) => {
     localStorage.removeCategory(categoryId)

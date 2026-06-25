@@ -223,7 +223,6 @@ const initBodyPartEditor = async () => {
         const fontSelect = document.getElementById('editor-font-size')
         fontSelect.value = editorState.fontSize
 
-        image.src = bp['img']
         image.style.display = 'none'
         dropHint.style.display = 'none'
         canvas.style.display = 'block'
@@ -231,8 +230,9 @@ const initBodyPartEditor = async () => {
         image.onload = () => {
             drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
         }
+        image.src = bp['img']
 
-        if (image.complete) {
+        if (image.complete && image.naturalWidth > 0) {
             image.onload()
         }
 
@@ -266,13 +266,16 @@ dropZone.addEventListener('drop', e => {
         const image   = document.getElementById('editor-image')
         const canvas  = document.getElementById('editor-canvas')
         const dropHint = document.getElementById('editor-drop-hint')
-        image.src = evt.target.result
         image.style.display = 'none'
         dropHint.style.display = 'none'
         canvas.style.display = 'block'
+
         image.onload = () => {
             drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
         }
+
+        image.src = evt.target.result
+
     }
 
     reader.readAsDataURL(file)
@@ -282,12 +285,10 @@ dropZone.addEventListener('drop', e => {
 document.getElementById('editor-canvas').addEventListener('contextmenu', async (e) => {
     const canvas = document.getElementById('editor-canvas')
     const coords = getClickCoordinates(e, editorState.resizeScale)
-    const existingKey = checkCoordinatesExist(canvas, coords.x, coords.y, editorState.coordinatesMap, editorState.resizeScale, true, false)
+    const existingKey = checkCoordinatesExist(canvas, coords.x, coords.y, editorState.coordinatesMap, editorState.resizeScale, editorState.fontSize, true, false)
     await populateCategorySelect('editor-tag-category')
 
-    if (existingKey) {
-        openEditTagModal(existingKey)
-    } else {
+    if (!existingKey) {
         openNewTagModal(coords)
     }
 })
@@ -344,7 +345,6 @@ const openEditTagModal = (tagId) => {
     const tag = editorState.coordinatesMap[tagId]
     document.getElementById('editor-tag-modal-label').textContent = 'Edit tag'
     document.getElementById('editor-tag-name').value = tag['name']
-    document.getElementById('editor-tag-delete-btn').classList.remove('hide')
     const catSelect = document.getElementById('editor-tag-category')
     catSelect.value = tag['category'] || 'null'
     editorTagModal.show()
@@ -358,7 +358,7 @@ document.getElementById('editor-tag-save-btn').addEventListener('click', async (
         return
     }
 
-    const tagId = editorState.currentTagId || await window.api.generateId()
+    const tagId = editorState.currentTagId || crypto.randomUUID()
     const coords = editorState.currentTagId
         ? editorState.coordinatesMap[editorState.currentTagId]
         : _pendingTagCoords
@@ -386,7 +386,7 @@ const renderTagList = () => {
     const tags  = editorState.coordinatesMap
     list.innerHTML = ''
     const keys = Object.keys(tags)
-    count.textContent = keys.length
+    count.textContent = keys.length.toString()
 
     if (keys.length === 0) {
         list.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">No tags yet. Right-click the image to add one.</li>'
@@ -396,7 +396,31 @@ const renderTagList = () => {
     keys.forEach(id => {
         const li = document.createElement('li')
         li.classList.add('tag-list-item')
-        li.textContent = tags[id]['name']
+        li.innerHTML = `
+        <div class="tag-row">
+            <span class="tag-name">${tags[id]['name']}</span>
+            <div class="tag-actions">
+                <button class="btn btn-ghost btn-icon edit-tag-btn"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-ghost btn-icon delete-tag-btn"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        `
+        li.querySelector('.delete-tag-btn').addEventListener('click', async () => {
+            const result = await window.api.dialogQuestion(`Delete tag "${name}"?`)
+
+            if (result.response === 0) {
+                if (id != null) {
+                    delete editorState.coordinatesMap[id]
+                    redrawEditor()
+                    renderTagList()
+                }
+            }
+        })
+
+        li.querySelector('.edit-tag-btn').addEventListener('click', async () => {
+            openEditTagModal(id)
+        })
+
         list.appendChild(li)
     })
 }
@@ -425,7 +449,7 @@ document.getElementById('editor-save-btn').addEventListener('click', async () =>
         fontSize:    editorState.fontSize,
     }
 
-    let bpId = window.AppState.currentBodyPartId || await window.api.generateId()
+    let bpId = window.AppState.currentBodyPartId || crypto.randomUUID()
     await window.api.addOrEditBodyPartById(bpId, window.AppState.currentChecklistId, bodyPart)
     navigate('checklist-detail')
 })
@@ -444,7 +468,8 @@ const renderCategoryList = async () => {
     list.innerHTML   = ''
 
     for (const id in categories) {
-        list.appendChild(createCategoryItem(id, categories[id]))
+        let category = categories[id]
+        list.appendChild(createCategoryItem(id, category.name))
     }
 }
 
@@ -476,9 +501,12 @@ document.getElementById('add-category-btn').addEventListener('click', async () =
         return
     }
 
-    window.api.addOrEditCategoryById(null, name).then(res => {
+    const category = {
+        name: name,
+    }
+
+    window.api.addOrEditCategoryById(null, category).then(res => {
         input.value = ''
-        console.log(res)
         document.getElementById('category-list').appendChild(createCategoryItem(res, name))
     })
 
@@ -496,7 +524,8 @@ const populateCategorySelect = async (selectId) => {
     for (const id in categories) {
         const option   = document.createElement('option')
         option.value   = id
-        option.textContent = categories[id]
+        let category = categories[id]
+        option.textContent = category.name
         select.appendChild(option)
     }
 }

@@ -1,18 +1,19 @@
+const { app } = require('electron');
 const { readFile, writeFile, mkdir, rm } = require('fs/promises');
 const path = require('path');
-const baseDir = path.join(__dirname, 'uploads');
+const userDataPath =  app.getPath('userData')
+const baseDir = path.join(userDataPath, 'images');
 
-const saveBodyPartImage = (checklistId, bodyPartId, img) => {
-    let bodyPartPath = path.join(baseDir, checklistId, bodyPartId);
+const saveBodyPartImage = async (checklistId, bodyPartId, dataUrl) => {
+    const dir      = path.join(baseDir, checklistId, bodyPartId)
+    await mkdir(dir, { recursive: true })
 
-    mkdir(bodyPartPath, {recursive: true}).then(() => {
-        let imagePath = path.join(baseDir, img.name)
-        writeFile(imagePath, img).catch(err => {
-            console.error(err)
-        });
-    })
+    const base64   = dataUrl.replace(/^data:image\/\w+;base64,/, '')
+    const buffer   = Buffer.from(base64, 'base64')
+    const filePath = path.join(dir, 'image.png')
+    await writeFile(filePath, buffer)
 
-    return bodyPartPath;
+    return filePath
 }
 
 const deleteBodyPartImage = (checklistId, bodyPartId) => {
@@ -30,7 +31,8 @@ const deleteChecklistImages = (checklistId) => {
 }
 
 const loadBodyPartImage = async (filePath) => {
-    return await readFile(filePath, 'utf8')
+    const buffer = await readFile(filePath)
+    return `data:image/png;base64,${buffer.toString('base64')}`
 }
 
 module.exports = {

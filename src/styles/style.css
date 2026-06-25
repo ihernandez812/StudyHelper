@@ -614,11 +614,18 @@ canvas {
 }
 
 .tag-list-item {
-    font-size: 12px;
+    font-size: 14px;
     padding: 4px 8px;
     background: var(--bg-muted);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
+}
+
+.tag-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
 }
 
 .tag-count {
