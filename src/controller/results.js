@@ -2,6 +2,7 @@
 
 const loadResultsScreen = async () => {
     const practicals = await window.api.getPracticals() || {}
+    console.log(practicals)
     const list       = document.getElementById('results-list')
     const emptyState = document.getElementById('results-empty')
 
@@ -24,8 +25,7 @@ const loadResultsScreen = async () => {
 }
 
 const createResultRow = (id, practical) => {
-    const date        = new Date(practical['date'])
-    const dateStr     = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    const date        = practical['date']
     const queue       = practical['queue'] || []
     const answers     = practical['answers'] || {}
     const stationCount = queue.length
@@ -59,15 +59,9 @@ const createResultRow = (id, practical) => {
         const result = await window.api.dialogQuestion(`Delete "${practical['name']}"?`)
 
         if (result.response === 0) {
-            const allPracticals = await window.api.getPracticals() || {}
-            delete allPracticals[id]
+            window.api.deletePracticalById(id)
 
-            // Re-save without this key by passing the whole object
-            // (electron-light-storage doesn't expose a delete-key method)
-            for (const k in allPracticals) {
-                await window.api.addPractical(k, allPracticals[k])
-            }
-
+            console.log('deleted practical', id)
             li.remove()
             const remaining = document.querySelectorAll('#results-list .result-row')
 
@@ -79,3 +73,8 @@ const createResultRow = (id, practical) => {
 
     return li
 }
+
+
+document.getElementById('results-start-practical-btn').addEventListener('click', () => {
+    navigate('practical')
+})

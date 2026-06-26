@@ -182,7 +182,7 @@ const deleteBodyPart = async (id, cardElement) => {
 let editorState = {
     coordinatesMap: {},
     resizeScale:    1,
-    fontSize:       '16',
+    fontSize:       16,
     currentTagId:   null,
     isEdit:         false,
 }
@@ -195,7 +195,7 @@ const openBodyPartEditor = (bodyPartId) => {
 
 const initBodyPartEditor = async () => {
     // Reset state
-    editorState = { coordinatesMap: {}, resizeScale: 1, fontSize: '16', currentTagId: null, isEdit: false }
+    editorState = { coordinatesMap: {}, resizeScale: 1, fontSize: 16, currentTagId: null, isEdit: false }
     updateScaleLabel()
     renderTagList()
 
@@ -217,7 +217,7 @@ const initBodyPartEditor = async () => {
         nameInput.value             = bp['name']
         editorState.coordinatesMap  = bp['coordinates'] || {}
         editorState.resizeScale     = bp['scale'] || 1
-        editorState.fontSize        = String(bp['fontSize'] || 16)
+        editorState.fontSize        = bp['fontSize'] || 16
         window.AppState.currentBodyPartName = bp['name']
 
         const fontSelect = document.getElementById('editor-font-size')
@@ -230,7 +230,7 @@ const initBodyPartEditor = async () => {
         image.onload = () => {
             drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
         }
-        image.src = bp['img']
+        image.src = bp['image']
 
         if (image.complete && image.naturalWidth > 0) {
             image.onload()
@@ -464,8 +464,8 @@ const openCategoriesModal = async () => {
 
 const renderCategoryList = async () => {
     const categories = await window.api.getCategories()
-    const list       = document.getElementById('category-list')
-    list.innerHTML   = ''
+    const list= document.getElementById('category-list')
+    list.innerHTML = ''
 
     for (const id in categories) {
         let category = categories[id]

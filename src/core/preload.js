@@ -42,11 +42,10 @@ contextBridge.exposeInMainWorld(
             ipcRenderer.invoke('removeCategory', id)
         },
         addOrEditCategoryById: (id=null, category) => {
-            console.log(category)
             return ipcRenderer.invoke('addOrEditCategoryById', id, category)
         },
-        addPractical: (id, practical) => {
-            ipcRenderer.invoke('addPractical', id, practical)
+        addPractical: (practical) => {
+            return ipcRenderer.invoke('addPractical', practical)
         },
         getPracticals: () => {
             return ipcRenderer.invoke('getPracticals')
@@ -54,21 +53,13 @@ contextBridge.exposeInMainWorld(
         getPracticalById: (id) => {
             return ipcRenderer.invoke('getPracticalById', id)
         },
-        loadChecklistTest: () => {
-            ipcRenderer.invoke('loadChecklistTester')
-        }, 
+        deletePracticalById: (id) => {
+            console.log(id)
+            ipcRenderer.invoke('deletePracticalById', id)
+        },
         reloadHome: () => {
             ipcRenderer.invoke('reloadHome')
         },
-        loadConfigBodyPart: () => {
-            ipcRenderer.invoke('loadConfigBodyPart')
-        },
-        closeConfig: () => {
-            ipcRenderer.invoke('closeConfig')
-        },
-        closePracticalTest: () => {
-            ipcRenderer.invoke('closePracticalTest')
-        }, 
         search: (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
             return ipcRenderer.invoke('search', isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)
         },

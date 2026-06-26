@@ -6,6 +6,7 @@ window.AppState = {
     currentBodyPartId:    null,
     currentBodyPartName:  null,
     currentBodyPartIds:   [],   // used in study mode for multi-body-part sessions
+    currentPage: 'home'
 }
 
 // ── Topbar config per screen ──────────────────────────────────────────────────
@@ -127,6 +128,10 @@ const setTopbar = (leftHtml, rightHtml) => {
     document.getElementById('topbar-left').innerHTML  = leftHtml
     document.getElementById('topbar-right').innerHTML = rightHtml
 }
+
+document.getElementById('home-add-checklist-btn').addEventListener('click', () => {
+    navigate('library')
+})
 
 // ── Home screen ───────────────────────────────────────────────────────────────
 

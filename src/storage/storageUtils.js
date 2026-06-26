@@ -96,6 +96,10 @@ const getPracticalById = (practicalId) => {
     return localStorage.get(`practicals.${practicalId}`, {})
 }
 
+const deletePracticalById = (id) => {
+    localStorage.delete(`practicals.${id}`)
+}
+
 const getIsDarkMode = () => {
     return localStorage.get('isDarkMode', false)
 }
@@ -167,6 +171,7 @@ module.exports = {
     addPractical,
     getPracticals,
     getPracticalById,
+    deletePracticalById,
     getIsDarkMode,
     setIsDarkMode,
 }

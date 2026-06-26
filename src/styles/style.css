@@ -611,6 +611,7 @@ canvas {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    width: 100%;          /* ← add */
 }
 
 .tag-list-item {
@@ -619,6 +620,8 @@ canvas {
     background: var(--bg-muted);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
+    width: 100%;          /* ← add */
+    box-sizing: border-box; /* ← add so padding doesn't overflow */
 }
 
 .tag-row {

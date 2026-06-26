@@ -22,11 +22,11 @@ const drawNewImage = async (canvas, imgElement, x, y, scale) => {
     
 }
 
-const drawNewText = (canvas, txt, currCoordinates, fontSize) => {
+const drawNewText = (canvas, txt, currCoordinates, scale, fontSize) => {
     const ctx  = canvas.getContext('2d')
     const size = parseInt(fontSize)   // ← parse here
-    const x    = currCoordinates['x']
-    const y    = currCoordinates['y']
+    const x    = currCoordinates['x'] * scale
+    const y    = currCoordinates['y'] * scale
 
     const paddingX = 8
     const paddingY = 4
@@ -48,24 +48,32 @@ const drawNewText = (canvas, txt, currCoordinates, fontSize) => {
     ctx.fillText(txt, x + paddingX, y + paddingY)
 }
 
-const drawNewQuestionMark = (canvas, coordinates, scale) => {
-    return new Promise((resolve) => {
-        const img = document.createElement('img')
-        img.src = question_mark_path
-        img.onload = () => {
-            let width = img.width / scale
-            let height = img.height / scale
-            let ctx = canvas.getContext("2d");
-            let x = coordinates['x']
-            let y = coordinates['y']
-            ctx.drawImage(img, x, y, width, height);
-            canvas.appendChild(img)
-        }
-        requestAnimationFrame(() => {
-            resolve();
-        });
-    })
+const drawNewQuestionMark = (canvas, coordinates, scale, fontSize) => {
+    const ctx      = canvas.getContext('2d')
+    const size     = parseInt(fontSize)
+    const x        = coordinates['x'] * scale
+    const y        = coordinates['y'] * scale
+    const paddingX = 8
+    const paddingY = 4
+    const radius   = 6
+
+    ctx.font         = `500 ${size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
+    ctx.textBaseline = 'top'
+
+    const textWidth = ctx.measureText('?').width
+    const boxW      = textWidth + paddingX * 2
+    const boxH      = size      + paddingY * 2
+
+    // Same pill style as tags but muted so it reads as "unanswered"
+    ctx.fillStyle = 'rgba(168, 128, 144, 0.88)'  // --text-muted tone
+    ctx.beginPath()
+    ctx.roundRect(x, y, boxW, boxH, radius)
+    ctx.fill()
+
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText('?', x + paddingX, y + paddingY)
 }
+
 
 const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, isText, hasOffest=false) => {
     let foundKey = null
@@ -82,6 +90,7 @@ const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, is
         let height = imgBounds['height']
         let tagX = parseFloat(coordinates['x'])
         let tagY = parseFloat(coordinates['y'])
+        console.log('tagX', tagX, 'tagY', tagY, 'X', x, 'y', y, 'width', width, 'height', height)
         if (x >= tagX && x <= tagX + width && y >= tagY + offset && y <= tagY + height + offset) {
             foundKey = key
             break
@@ -117,20 +126,28 @@ const getWidthAndHeightOfCoordinate = (canvas, coordinates, scale, fontSize, isT
     if(isText){
         imgBounds = getWidthAndHeightOfText(canvas, coordinates, checkAnswer, fontSize)
     } else{
-        imgBounds = getWidthAndHeightOfQuestionMark(scale)
+        imgBounds = getWidthAndHeightOfQuestionMark(canvas, scale, fontSize)
     }
 
     return imgBounds
 }
 
-const getWidthAndHeightOfQuestionMark = (scale) => {
-    const img = document.createElement('img')
-    img.src = question_mark_path  
-    let width = img.width / scale
-    let height = img.height / scale
+const getWidthAndHeightOfQuestionMark = (canvas, scale, fontSize) => {
+    const ctx      = canvas.getContext('2d')
+    const size     = parseInt(fontSize)
+    const paddingX = 8
+    const paddingY = 4
+
+    ctx.font         = `500 ${size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
+    ctx.textBaseline = 'top'
+
+    const textWidth = ctx.measureText('?').width
+    const boxW      = textWidth + paddingX * 2
+    const boxH      = size      + paddingY * 2
+
     return {
-        width: width,
-        height: height
+        width: boxW,
+        height: boxH
     }
 }
 
@@ -192,7 +209,7 @@ const drawBodyPartWithTags = async (canvas, imgElement, coordinatesMap, fontSize
         for (let key in coordinatesMap) {
             let coordinates = coordinatesMap[key]
             let tagName = coordinates['name']
-            drawNewText(canvas, tagName, coordinates, fontSize)
+            drawNewText(canvas, tagName, coordinates, scale, fontSize)
         }
     })
 }
@@ -202,7 +219,7 @@ const drawBodyPartWithQuestionMark = async (canvas, imgElement, coordinatesMap, 
     requestAnimationFrame(() => {
         for (let key in coordinatesMap) {
             let coordinates = coordinatesMap[key]
-            drawNewQuestionMark(canvas, coordinates, scale)
+            drawNewQuestionMark(canvas, coordinates, scale, fontSize)
         }
     })
 }

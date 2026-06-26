@@ -164,7 +164,7 @@ const loadCurrentStation = async () => {
 
     const image  = document.getElementById('practical-image')
     const canvas = document.getElementById('practical-canvas')
-    image.src    = bp['img']
+    image.src    = bp['image']
 
     image.onload = async () => {
         await drawNewImage(canvas, image, 0, 0, practicalState.scale)
@@ -184,9 +184,9 @@ const drawPracticalQuestionMarks = () => {
         const answer = practicalState.answers[stationKey]
 
         if (answer) {
-            drawNewText(canvas, answer, practicalState.currentCoordinates[id], practicalState.fontSize)
+            drawNewText(canvas, answer, practicalState.currentCoordinates[id], practicalState.scale, practicalState.fontSize)
         } else {
-            drawNewQuestionMark(canvas, practicalState.currentCoordinates[id], practicalState.scale)
+            drawNewQuestionMark(canvas, practicalState.currentCoordinates[id], practicalState.scale, practicalState.fontSize)
         }
     }
 }
@@ -241,7 +241,13 @@ document.getElementById('practical-next-btn').addEventListener('click', () => {
     practicalState.currentStationIdx++
 
     if (practicalState.currentStationIdx >= practicalState.bodyPartQueue.length) {
-        endPractical()
+        window.api.dialogQuestion("End practical? Your results will be saved.").then((res) => {
+            let doEndPractical = res.response === 0
+
+            if (doEndPractical) {
+                endPractical()
+            }
+        })
     } else {
         loadCurrentStation()
     }
@@ -252,34 +258,21 @@ const endPractical = () => {
         clearInterval(practicalState.timerInterval)
         practicalState.timerInterval = null
     }
-    openPracticalSaveModal()
-}
 
-// ── Save practical ────────────────────────────────────────────────────────────
-
-const practicalSaveModal = new bootstrap.Modal(document.getElementById('practical-save-modal'))
-
-const openPracticalSaveModal = () => {
-    document.getElementById('practical-save-name').value = ''
-    practicalSaveModal.show()
-}
-
-document.getElementById('practical-save-btn').addEventListener('click', async () => {
-    const name = document.getElementById('practical-save-name').value.trim()
-
-    if (!name) {
-        return
-    }
-
-    const practicalId = await window.api.generateId()
     const practical   = {
-        name:    name,
-        date:    new Date().toISOString(),
+        date:    new Date().toLocaleDateString('en-US', {
+            month: 'long', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit'
+        }),
+// "June 24, 2026 at 2:34 PM"
         queue:   practicalState.bodyPartQueue,
         answers: practicalState.answers,
     }
 
-    await window.api.addPractical(practicalId, practical)
-    practicalSaveModal.hide()
-    navigate('results')
-})
+    window.api.addPractical(practical).then(() => {
+        navigate('results')
+    })
+
+}
+
+

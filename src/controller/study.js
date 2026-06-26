@@ -15,6 +15,8 @@ let studyState = {
     difficulty:     1,
 }
 
+
+
 // ── Study picker ──────────────────────────────────────────────────────────────
 
 const loadStudyPicker = async () => {
@@ -150,7 +152,7 @@ const loadNextBodyPart = async () => {
         document.getElementById('study-next-btn').classList.add('hide')
     }
 
-    const bp         = await window.api.getBodyPartById(bpId, studyState.checklistId)
+    const bp  = await window.api.getBodyPartById(bpId, studyState.checklistId)
     studyState.scale    = bp['scale'] || 1
     studyState.fontSize = bp['fontSize'] || 16
     studyState.coordinates = bp['coordinates'] || {}
@@ -161,13 +163,17 @@ const loadNextBodyPart = async () => {
 
     const image  = document.getElementById('study-image')
     const canvas = document.getElementById('study-canvas')
-    image.src    = bp['img']
+    image.src    = bp['image']
 
     image.onload = async () => {
         await drawNewImage(canvas, image, 0, 0, studyState.scale)
         drawAllQuestionMarks()
     }
-    if (image.complete) image.onload()
+
+
+    if (image.complete) {
+        image.onload()
+    }
 
     // Word bank
     setupWordBank()
@@ -184,7 +190,7 @@ const drawAllQuestionMarks = () => {
         if (isCorrect) {
             drawNewText(canvas, studyState.coordinates[id]['name'], studyState.coordinates[id], studyState.fontSize)
         } else {
-            drawNewQuestionMark(canvas, studyState.coordinates[id], studyState.scale)
+            drawNewQuestionMark(canvas, studyState.coordinates[id], studyState.scale, studyState.fontSize)
         }
     }
 }
@@ -244,7 +250,6 @@ document.getElementById('study-hint-btn').addEventListener('click', () => {
 document.getElementById('study-canvas').addEventListener('click', (e) => {
     const canvas  = document.getElementById('study-canvas')
     const coords  = getClickCoordinates(e, studyState.scale)
-    console.log(studyState.fontSize)
     const key     = checkCoordinatesExist(canvas, coords.x, coords.y, studyState.coordinates, studyState.scale, studyState.fontSize,false)
 
     if (key && !studyState.correctTags[key]) {
@@ -307,4 +312,9 @@ const updateTagsProgress = () => {
 
 document.getElementById('study-next-btn').addEventListener('click', () => {
     loadNextBodyPart()
+})
+
+//Navigation
+document.getElementById('home-add-checklist-btn').addEventListener('click', () => {
+    navigate('library')
 })
