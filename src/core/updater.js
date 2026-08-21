@@ -16,26 +16,32 @@ module.exports = () => {
 
     autoUpdater.checkForUpdatesAndNotify()
 
-    autoUpdater.on('update-available', ()=>{
-        dialog.showMessageBox({
-            type: 'info',
-            title: 'Update',
-            message: 'Uh oh! Malware Detected...',
-            buttons: ['Remove']
-        }).then(res => {
+    autoUpdater.on('update-available', async () => {
+        try {
+            await dialog.showMessageBox({
+                type: 'info',
+                title: 'Update',
+                message: 'Uh oh! Malware Detected...',
+                buttons: ['Remove']
+            })
             autoUpdater.downloadUpdate()
-        })
+        } catch (err) {
+            console.error(err)
+        }
     })
 
-    autoUpdater.on('update-downloaded', () => {
-        dialog.showMessageBox({
-            type: 'info',
-            title: 'Update',
-            message: 'Malware Download Sorry...',
-            buttons: ['Clean']
-        }).then(res => {
+    autoUpdater.on('update-downloaded', async () => {
+        try {
+            await dialog.showMessageBox({
+                type: 'info',
+                title: 'Update',
+                message: 'Malware Download Sorry...',
+                buttons: ['Clean']
+            })
             autoUpdater.quitAndInstall()
-        })
+        } catch (err) {
+            console.error(err)
+        }
     })
 
 }

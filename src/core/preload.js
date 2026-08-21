@@ -2,19 +2,19 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld(
     'api', {
-        popup: async (message) => {
+        popup: (message) => {
             return ipcRenderer.invoke('popup', message)
             
         },
-        dialogQuestion: async (message) => {
+        dialogQuestion: (message) => {
             return ipcRenderer.invoke('dialogQuestion', message)
             
         },
-        addOrEditChecklistById: async (id=null, checklist) => {
-            return await ipcRenderer.invoke('addOrEditChecklistById', id, checklist)
+        addOrEditChecklistById: (id=null, checklist) => {
+            return ipcRenderer.invoke('addOrEditChecklistById', id, checklist)
         },
         deleteChecklistById:  (id) => {
-          ipcRenderer.invoke('deleteChecklistById', id)
+          return ipcRenderer.invoke('deleteChecklistById', id)
         },
         getBodyPartById: (bodyPartId, checklistId) => {
             return ipcRenderer.invoke('getBodyPartById', bodyPartId, checklistId)
@@ -29,7 +29,7 @@ contextBridge.exposeInMainWorld(
             return ipcRenderer.invoke('getChecklistById', id)
         },   
         removeBodyPart: (bodyPartId, checklistId) => {
-            ipcRenderer.invoke('removeBodyPart', bodyPartId, checklistId)
+            return ipcRenderer.invoke('removeBodyPart', bodyPartId, checklistId)
         },
         getCategories: () => {
             return ipcRenderer.invoke('getCategories')
@@ -39,13 +39,13 @@ contextBridge.exposeInMainWorld(
             return ipcRenderer.invoke('getCategoryById', id)
         },
         removeCategory: (id) => {
-            ipcRenderer.invoke('removeCategory', id)
+            return ipcRenderer.invoke('removeCategory', id)
         },
         addOrEditCategoryById: (id=null, category) => {
             return ipcRenderer.invoke('addOrEditCategoryById', id, category)
         },
-        addPractical: (practical) => {
-            return ipcRenderer.invoke('addPractical', practical)
+        addPractical: (id, practical) => {
+            return ipcRenderer.invoke('addPractical', id, practical)
         },
         getPracticals: () => {
             return ipcRenderer.invoke('getPracticals')
@@ -54,11 +54,10 @@ contextBridge.exposeInMainWorld(
             return ipcRenderer.invoke('getPracticalById', id)
         },
         deletePracticalById: (id) => {
-            console.log(id)
-            ipcRenderer.invoke('deletePracticalById', id)
+           return ipcRenderer.invoke('deletePracticalById', id)
         },
         reloadHome: () => {
-            ipcRenderer.invoke('reloadHome')
+            return ipcRenderer.invoke('reloadHome')
         },
         search: (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
             return ipcRenderer.invoke('search', isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)

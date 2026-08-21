@@ -16,6 +16,6 @@ ipcMain.handle('getChecklistById', (event, id) => {
 })
 
 ipcMain.handle('deleteChecklistById', (event, id) => {
-    FileHelper.deleteChecklistImages(id)
+    FileHelper.deleteImages(id)
     localStorage.deleteChecklistById(id)
 })

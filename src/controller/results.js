@@ -1,5 +1,9 @@
 // ── Results screen ────────────────────────────────────────────────────────────
 
+const RESULTS_TEMPLATES = {
+    resultRow: document.getElementById('tpl-result-row'),
+}
+
 const loadResultsScreen = async () => {
     const practicals = await window.api.getPracticals() || {}
     console.log(practicals)
@@ -25,43 +29,24 @@ const loadResultsScreen = async () => {
 }
 
 const createResultRow = (id, practical) => {
-    const date        = practical['date']
+    const dateStr        = practical['date']
     const queue       = practical['queue'] || []
-    const answers     = practical['answers'] || {}
+    const totalTags     = practical['totalTags'] || 0
+    const correctTags = practical['numCorrect'] || 0
     const stationCount = queue.length
 
-    // Calculate score: count tags where answer matches (case-insensitive)
-    let totalTags  = 0
-    let correctTags = 0
+    const li = cloneTemplate(RESULTS_TEMPLATES.resultRow)
 
-    queue.forEach((station, idx) => {
-        // We don't have coordinates stored on result, so count answered vs unanswered
-        for (const key in answers) {
-            if (key.startsWith(`${idx}_`)) {
-                totalTags++
-                correctTags++  // All saved answers count; scoring was done at input time
-            }
-        }
-    })
+    li.dataset.id = id
+    li.querySelector('.js-name').textContent = dateStr
+    li.querySelector('.js-meta').textContent =
+        `${stationCount} station${stationCount !== 1 ? 's' : ''} · ${correctTags}  correct tag${correctTags !== 1 ? 's' : ''} · ${totalTags} total tags`
 
-    const li = document.createElement('li')
-    li.classList.add('result-row')
-    li.innerHTML = `
-        <div class="result-info">
-            <h4 class="result-name">${practical['name']}</h4>
-            <span class="result-meta">${dateStr} · ${stationCount} station${stationCount !== 1 ? 's' : ''} · ${correctTags} tag${correctTags !== 1 ? 's' : ''} answered</span>
-        </div>
-        <button class="btn btn-ghost btn-icon delete-result-btn" title="Delete">
-            <i class="fas fa-trash"></i>
-        </button>`
-
-    li.querySelector('.delete-result-btn').addEventListener('click', async () => {
-        const result = await window.api.dialogQuestion(`Delete "${practical['name']}"?`)
+    li.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+        const result = await window.api.dialogQuestion(`Are you sure you want to delete the practical take on ${practical['date']}?`)
 
         if (result.response === 0) {
-            window.api.deletePracticalById(id)
-
-            console.log('deleted practical', id)
+            await window.api.deletePracticalById(id)
             li.remove()
             const remaining = document.querySelectorAll('#results-list .result-row')
 

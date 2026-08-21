@@ -46,7 +46,8 @@
       "repo": "StudyHelper"
     },
     "mac": {
-      "category": "public.app-category.utilities"
+      "category": "public.app-category.utilities",
+      "icon": "src/images/AnatoMeIcon.png"
     }
   }
 }

@@ -1,5 +1,47 @@
 // ── Library screen ────────────────────────────────────────────────────────────
 
+const LIBRARY_TEMPLATES = {
+    checklistRow:    document.getElementById('tpl-checklist-row'),
+    bodyPartCard:    document.getElementById('tpl-body-part-card'),
+    bodyPartAddCard: document.getElementById('tpl-body-part-add-card'),
+    tagListItem:     document.getElementById('tpl-tag-list-item'),
+    noTagsEmpty:     document.getElementById('tpl-no-tags-empty'),
+    categoryItem:    document.getElementById('tpl-category-item'),
+}
+
+
+document.getElementById('library-checklist-list').addEventListener('click', async (e) => {
+    let element = e.target
+    let button = element.closest('[data-action]')
+
+    if (button) {
+        let row = button.closest('.checklist-row')
+
+        if (row) {
+            let dataAction = button.dataset.action
+            const { id, name } = row.dataset
+
+            switch (dataAction) {
+                case 'open': {
+                    openChecklistDetail(id, name);
+                    break;
+                }
+                case 'edit' : {
+                    openEditChecklistModal(id, name);
+                    break;
+                }
+                case 'delete' : {
+                    await deleteChecklist(id, row);
+                    break;
+                } default: {
+                    console.error(`No action found for ${id} ${dataAction}`)
+                }
+            }
+        }
+
+    }
+})
+
 const loadLibraryScreen = async () => {
     const checklists = await window.api.getChecklists()
     const list       = document.getElementById('library-checklist-list')
@@ -24,28 +66,13 @@ const loadLibraryScreen = async () => {
 }
 
 const createLibraryRow = (id, name, partCount) => {
-    const li = document.createElement('li')
-    li.classList.add('checklist-row')
-    li.innerHTML = `
-        <div class="checklist-info">
-            <h4>${name}</h4>
-            <span>${partCount} body part${partCount !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="checklist-actions">
-            <button class="btn btn-secondary open-btn">Open</button>
-            <button class="btn btn-ghost btn-icon edit-btn" title="Rename">
-                <i class="fas fa-pen"></i>
-            </button>
-            <button class="btn btn-ghost btn-icon delete-btn" title="Delete">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>`
+    const row = cloneTemplate(LIBRARY_TEMPLATES.checklistRow)
 
-    li.querySelector('.open-btn').addEventListener('click', () => openChecklistDetail(id, name))
-    li.querySelector('.edit-btn').addEventListener('click', () => openEditChecklistModal(id, name))
-    li.querySelector('.delete-btn').addEventListener('click', () => deleteChecklist(id, li))
-
-    return li
+    row.dataset.id   = id
+    row.dataset.name = name
+    row.querySelector('.js-name').textContent = name
+    row.querySelector('.js-meta').textContent = `${partCount} body part${partCount !== 1 ? 's' : ''}`
+    return row
 }
 
 const openChecklistDetail = (id, name) => {
@@ -139,28 +166,22 @@ const loadChecklistDetail = async () => {
     }
 
     // Add the "add body part" card at the end
-    const addCard = document.createElement('div')
-    addCard.classList.add('body-part-card', 'body-part-card--add')
-    addCard.innerHTML = `<i class="fas fa-plus"></i><span>Add body part</span>`
+    const addCard = cloneTemplate(LIBRARY_TEMPLATES.bodyPartAddCard)
     addCard.addEventListener('click', () => openBodyPartEditor(null))
     grid.appendChild(addCard)
 }
 
 const createBodyPartCard = (id, name, tagCount) => {
-    const card = document.createElement('div')
-    card.classList.add('body-part-card')
-    card.innerHTML = `
-        <div class="body-part-card-content">
-            <h4>${name}</h4>
-            <span>${tagCount} tag${tagCount !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="body-part-card-actions">
-            <button class="btn btn-secondary btn-sm edit-btn"><i class="fas fa-pen"></i> Edit</button>
-            <button class="btn btn-ghost btn-icon delete-btn"><i class="fas fa-trash"></i></button>
-        </div>`
+    const card = cloneTemplate(LIBRARY_TEMPLATES.bodyPartCard)
 
-    card.querySelector('.edit-btn').addEventListener('click', () => openBodyPartEditor(id))
-    card.querySelector('.delete-btn').addEventListener('click', () => deleteBodyPart(id, card))
+    card.dataset.id   = id
+    card.dataset.name = name
+    card.querySelector('.js-name').textContent = name
+    card.querySelector('.js-meta').textContent = `${tagCount} tag${tagCount !== 1 ? 's' : ''}`
+
+    card.querySelector('[data-action="edit"]').addEventListener('click', () => openBodyPartEditor(id))
+    card.querySelector('[data-action="delete"]').addEventListener('click', () => deleteBodyPart(id, card))
+
     return card
 }
 
@@ -185,6 +206,9 @@ let editorState = {
     fontSize:       16,
     currentTagId:   null,
     isEdit:         false,
+    // Set only when the user drops a new image. img.src is display-only and
+    // normalizes what you assign to it, so it can't be read back as state.
+    pendingImageDataUrl: null,
 }
 
 const openBodyPartEditor = (bodyPartId) => {
@@ -195,7 +219,7 @@ const openBodyPartEditor = (bodyPartId) => {
 
 const initBodyPartEditor = async () => {
     // Reset state
-    editorState = { coordinatesMap: {}, resizeScale: 1, fontSize: 16, currentTagId: null, isEdit: false }
+    editorState = { coordinatesMap: {}, resizeScale: 1, fontSize: 16, currentTagId: null, isEdit: false, pendingImageDataUrl: null }
     updateScaleLabel()
     renderTagList()
 
@@ -240,7 +264,7 @@ const initBodyPartEditor = async () => {
         renderTagList()
 
         // Refresh topbar breadcrumb now that we have the name
-        setTopbar(TOPBAR['bodypart-editor'].left(), TOPBAR['bodypart-editor'].right())
+        setTopbar('bodypart-editor')
     }
 }
 
@@ -263,6 +287,8 @@ dropZone.addEventListener('drop', e => {
 
     const reader = new FileReader()
     reader.onload = async (evt) => {
+        editorState.pendingImageDataUrl = evt.target.result
+
         const image   = document.getElementById('editor-image')
         const canvas  = document.getElementById('editor-canvas')
         const dropHint = document.getElementById('editor-drop-hint')
@@ -334,7 +360,6 @@ const openNewTagModal = (coords) => {
     editorState.currentTagId = null
     document.getElementById('editor-tag-modal-label').textContent = 'New tag'
     document.getElementById('editor-tag-name').value = ''
-    document.getElementById('editor-tag-delete-btn').classList.add('hide')
     const catSelect = document.getElementById('editor-tag-category')
     catSelect.value = 'null'
     editorTagModal.show()
@@ -369,44 +394,28 @@ document.getElementById('editor-tag-save-btn').addEventListener('click', async (
     renderTagList()
 })
 
-document.getElementById('editor-tag-delete-btn').addEventListener('click', async () => {
-    const result = await window.api.dialogQuestion('Delete this tag?')
-
-    if (result.response === 0) {
-        delete editorState.coordinatesMap[editorState.currentTagId]
-        editorTagModal.hide()
-        redrawEditor()
-        renderTagList()
-    }
-})
-
 const renderTagList = () => {
     const list  = document.getElementById('editor-tag-list')
     const count = document.getElementById('editor-tag-count')
     const tags  = editorState.coordinatesMap
-    list.innerHTML = ''
+    list.replaceChildren()
     const keys = Object.keys(tags)
     count.textContent = keys.length.toString()
 
     if (keys.length === 0) {
-        list.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">No tags yet. Right-click the image to add one.</li>'
+        list.appendChild(cloneTemplate(LIBRARY_TEMPLATES.noTagsEmpty))
         return
     }
 
     keys.forEach(id => {
-        const li = document.createElement('li')
-        li.classList.add('tag-list-item')
-        li.innerHTML = `
-        <div class="tag-row">
-            <span class="tag-name">${tags[id]['name']}</span>
-            <div class="tag-actions">
-                <button class="btn btn-ghost btn-icon edit-tag-btn"><i class="fas fa-pen"></i></button>
-                <button class="btn btn-ghost btn-icon delete-tag-btn"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-        `
-        li.querySelector('.delete-tag-btn').addEventListener('click', async () => {
-            const result = await window.api.dialogQuestion(`Delete tag "${name}"?`)
+        const tagName = tags[id]['name']
+        const li      = cloneTemplate(LIBRARY_TEMPLATES.tagListItem)
+
+        li.dataset.id = id
+        li.querySelector('.js-name').textContent = tagName
+
+        li.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+            const result = await window.api.dialogQuestion(`Delete tag "${tagName}"?`)
 
             if (result.response === 0) {
                 if (id != null) {
@@ -417,7 +426,7 @@ const renderTagList = () => {
             }
         })
 
-        li.querySelector('.edit-tag-btn').addEventListener('click', async () => {
+        li.querySelector('[data-action="edit"]').addEventListener('click', async () => {
             openEditTagModal(id)
         })
 
@@ -428,25 +437,27 @@ const renderTagList = () => {
 // Save body part
 document.getElementById('editor-save-btn').addEventListener('click', async () => {
     const name    = document.getElementById('editor-name').value.trim()
-    const image   = document.getElementById('editor-image')
-    const canvas  = document.getElementById('editor-canvas')
 
     if (!name) {
         await window.api.popup('Please enter a body part name.')
         return
     }
 
-    if (!image.src || image.src.startsWith('file://') === false && !image.src.startsWith('data:')) {
+    if (!editorState.isEdit && !editorState.pendingImageDataUrl) {
         await window.api.popup('Please add an image before saving.')
         return
     }
 
     const bodyPart = {
         name:        name,
-        image:         image.src,
         coordinates: editorState.coordinatesMap,
         scale:       editorState.resizeScale,
-        fontSize:    editorState.fontSize,
+        fontSize:    Number(editorState.fontSize),
+    }
+
+    // Omit image entirely when unchanged; the main process keeps what's on disk.
+    if (editorState.pendingImageDataUrl) {
+        bodyPart.image = editorState.pendingImageDataUrl
     }
 
     let bpId = window.AppState.currentBodyPartId || crypto.randomUUID()
@@ -465,7 +476,7 @@ const openCategoriesModal = async () => {
 const renderCategoryList = async () => {
     const categories = await window.api.getCategories()
     const list= document.getElementById('category-list')
-    list.innerHTML = ''
+    list.replaceChildren()
 
     for (const id in categories) {
         let category = categories[id]
@@ -474,14 +485,13 @@ const renderCategoryList = async () => {
 }
 
 const createCategoryItem = (id, name) => {
-    const li = document.createElement('li')
-    li.classList.add('category-item')
-    li.innerHTML = `
-        <span class="category-name">${name}</span>
-        <div class="category-actions">
-            <button class="btn btn-ghost btn-icon delete-cat-btn"><i class="fas fa-trash"></i></button>
-        </div>`
-    li.querySelector('.delete-cat-btn').addEventListener('click', async () => {
+    const li = cloneTemplate(LIBRARY_TEMPLATES.categoryItem)
+
+    li.dataset.id   = id
+    li.dataset.name = name
+    li.querySelector('.js-name').textContent = name
+
+    li.querySelector('[data-action="delete"]').addEventListener('click', async () => {
         const result = await window.api.dialogQuestion(`Delete category "${name}"?`)
 
         if (result.response === 0) {
@@ -505,11 +515,13 @@ document.getElementById('add-category-btn').addEventListener('click', async () =
         name: name,
     }
 
-    window.api.addOrEditCategoryById(null, category).then(res => {
+    try {
+        const newId = await window.api.addOrEditCategoryById(null, category)
         input.value = ''
-        document.getElementById('category-list').appendChild(createCategoryItem(res, name))
-    })
-
+        document.getElementById('category-list').appendChild(createCategoryItem(newId, name))
+    } catch (err) {
+        console.error(err)
+    }
 })
 
 // ── Shared helper: populate a category <select> ───────────────────────────────

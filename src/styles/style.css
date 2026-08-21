@@ -21,11 +21,14 @@
     --text-secondary:#6b4a55;
     --text-muted:    #a88090;
 
-    --sidebar-width: 200px;
+    --sidebar-width: 220px;
     --topbar-height: 56px;
     --radius-sm:     6px;
     --radius-md:     10px;
     --radius-lg:     14px;
+
+    --bs-primary: #C75B7A;
+    --bs-primary-rgb: 199, 91, 122;
 }
 
 /* ─── Design tokens — dark mode ──────────────────────────── */
@@ -77,9 +80,18 @@ html, body {
 }
 
 .sidebar-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     padding: 20px 16px 16px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 8px;
+}
+
+.sidebar-icon {
+    width: 72px;
+    height: 72px;
 }
 
 .sidebar-logo h1 {
@@ -374,6 +386,17 @@ html, body {
     border-color: var(--accent);
 }
 
+.btn-outline-primary {
+    --bs-btn-color: #C75B7A;
+    --bs-btn-border-color: #C75B7A;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #C75B7A;
+    --bs-btn-hover-border-color: #C75B7A;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #C75B7A;
+    --bs-btn-active-border-color: #C75B7A;
+}
+
 .btn-primary:hover {
     background: var(--accent-text);
     border-color: var(--accent-text);
@@ -402,6 +425,19 @@ html, body {
 
 .btn-icon {
     padding: 6px 8px;
+}
+
+.btn-outline-primary:disabled,
+.btn-outline-primary.disabled {
+    color: #C75B7A;
+    border-color: #C75B7A;
+}
+
+.btn-primary:disabled,
+.btn-primary.disabled {
+    background-color: #C75B7A;
+    border-color: #C75B7A;
+    color: #fff;
 }
 
 /* ─── Empty state ────────────────────────────────────────── */
@@ -622,6 +658,11 @@ canvas {
     color: var(--text-primary);
     width: 100%;          /* ← add */
     box-sizing: border-box; /* ← add so padding doesn't overflow */
+}
+
+.tag-list-empty {
+    color: var(--text-muted);
+    font-size: 12px;
 }
 
 .tag-row {
@@ -863,3 +904,13 @@ canvas {
     align-items: center;
     gap: 8px;
 }
+
+.progress-paragraph {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+#study-prev-btn, #study-next-btn {
+    flex: 1;
+}
+

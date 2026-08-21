@@ -1,5 +1,10 @@
 // ── Study screen ──────────────────────────────────────────────────────────────
 
+const STUDY_TEMPLATES = {
+    pickerItem:        document.getElementById('tpl-study-picker-item'),
+    noChecklistsEmpty: document.getElementById('tpl-no-checklists-empty'),
+}
+
 let studyState = {
     checklistId:    null,
     bodyPartIdList: [],
@@ -13,8 +18,20 @@ let studyState = {
     scale:          1,
     fontSize:       16,
     difficulty:     1,
+    answeredTags: {}
 }
 
+const DIFFICULTY = {
+    EASY:      0,
+    MEDIUM:    1,
+    HARD:      2,
+}
+
+//Offsets passed to loadBodyPart() to step through the session
+const DIRECTION = {
+    NEXT:     1,
+    PREVIOUS: -1,
+}
 
 
 // ── Study picker ──────────────────────────────────────────────────────────────
@@ -27,21 +44,19 @@ const loadStudyPicker = async () => {
     picker.classList.remove('hide')
     active.classList.add('hide')
 
-    setTopbar(TOPBAR['study'].left(), TOPBAR['study'].right())
+    setTopbar('study')
 
     const checklists = await window.api.getChecklists()
     const pickerList = document.getElementById('study-picker-list')
-    pickerList.innerHTML = ''
+    pickerList.replaceChildren()
 
     const keys = Object.keys(checklists)
 
     if (keys.length === 0) {
-        pickerList.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-folder-open"></i>
-                <p>No checklists in your library yet.</p>
-                <button class="btn btn-primary" onclick="navigate('library')">Go to Library</button>
-            </div>`
+        const emptyState = cloneTemplate(STUDY_TEMPLATES.noChecklistsEmpty)
+        emptyState.querySelector('[data-action="go-to-library"]')
+            .addEventListener('click', () => navigate('library'))
+        pickerList.appendChild(emptyState)
         return
     }
 
@@ -56,29 +71,24 @@ const loadStudyPicker = async () => {
         const bodyParts = checklist['bodyParts'] || {}
         const bpKeys    = Object.keys(bodyParts)
 
-        const item = document.createElement('div')
-        item.classList.add('study-picker-item')
-        item.innerHTML = `
-            <div>
-                <div class="study-picker-name">${checklist['name']}</div>
-                <div class="study-picker-meta">${bpKeys.length} body part${bpKeys.length !== 1 ? 's' : ''}</div>
-            </div>
-            <div class="study-picker-actions">
-                <button class="btn btn-secondary random-one-btn" ${bpKeys.length === 0 ? 'disabled' : ''}>
-                    Random body part
-                </button>
-                <button class="btn btn-primary study-all-btn" ${bpKeys.length === 0 ? 'disabled' : ''}>
-                    <i class="fas fa-book-open"></i> Study all
-                </button>
-            </div>`
+        const item       = cloneTemplate(STUDY_TEMPLATES.pickerItem)
+        const randomBtn  = item.querySelector('[data-action="random"]')
+        const studyAllBtn = item.querySelector('[data-action="all"]')
 
-        item.querySelector('.random-one-btn').addEventListener('click', () => {
+        item.dataset.id = id
+        item.querySelector('.js-name').textContent = checklist['name']
+        item.querySelector('.js-meta').textContent = `${bpKeys.length} body part${bpKeys.length !== 1 ? 's' : ''}`
+
+        randomBtn.disabled   = bpKeys.length === 0
+        studyAllBtn.disabled = bpKeys.length === 0
+
+        randomBtn.addEventListener('click', () => {
             const randomId = bpKeys[Math.floor(Math.random() * bpKeys.length)]
             window.AppState.currentChecklistId = id
             openStudySettings(id, checklist, [randomId])
         })
 
-        item.querySelector('.study-all-btn').addEventListener('click', () => {
+        studyAllBtn.addEventListener('click', () => {
             window.AppState.currentChecklistId = id
             openStudySettings(id, checklist, bpKeys)
         })
@@ -94,13 +104,14 @@ let _pendingBpIds = []
 
 const openStudySettings = (checklistId, checklist, bpIds = null) => {
     const bodyParts = checklist['bodyParts'] || {}
-    _pendingBpIds = bpIds || Object.keys(bodyParts)
+    let bodyPartIdList = bpIds || Object.keys(bodyParts)
+    _pendingBpIds = shuffle(bodyPartIdList)
     studySettingsModal.show()
 }
 
 document.getElementById('study-settings-save-btn').addEventListener('click', () => {
     studyState.difficulty     = parseInt(document.getElementById('study-difficulty').value)
-    studyState.hintsRemaining = parseInt(document.getElementById('study-hints').value)
+    studyState.hintsRemaining = studyState.difficulty === DIFFICULTY.EASY ? 3 : 0;
     studySettingsModal.hide()
     beginStudySession(_pendingBpIds)
 })
@@ -113,49 +124,76 @@ const beginStudySession = (bpIds) => {
     studyState.checklistId    = window.AppState.currentChecklistId
     studyState.correctTags    = {}
     studyState.hintText       = ''
+    studyState.answeredTags   = {}
+    studyState.currentBpId    = null
 
     document.getElementById('study-picker').classList.add('hide')
     document.getElementById('study-active').classList.remove('hide')
 
     // Show "next" button only if more than one body part
-    const nextBtn = document.getElementById('study-next-btn')
-    nextBtn.classList.toggle('hide', bpIds.length <= 1)
+    const bodyPartBtnGroup = document.getElementById('body-part-btn-group')
+    bodyPartBtnGroup.classList.toggle('hide', bpIds.length <= 1)
 
     loadNextBodyPart().catch(err => {
-        console.warn(err)
+        console.error(err)
     })
 }
 
-const loadNextBodyPart = async () => {
-    // Pick a random unused body part
-    let bpId
+const loadNextBodyPart = () => loadBodyPart(DIRECTION.NEXT)
 
-    do {
-        bpId = studyState.bodyPartIdList[Math.floor(Math.random() * studyState.bodyPartIdList.length)]
-    } while (studyState.usedIds.includes(bpId) && studyState.usedIds.length < studyState.bodyPartIdList.length)
+const loadPrevBodyPart = () => loadBodyPart(DIRECTION.PREVIOUS)
 
-    studyState.usedIds.push(bpId)
-    studyState.currentBpId  = bpId
+const loadBodyPart = async (offset) => {
+    let bodyPartIdList = studyState.bodyPartIdList
+    let nextBodyPartIndex = 0
+
+    //If this is the first time in the study app then we don't have a current,
+    //and we need to just set it to the first one
+    if (studyState.currentBpId) {
+        //Switching body parts need to updat the persisted answers
+        let currentBpId = studyState.currentBpId
+        studyState.answeredTags[currentBpId] = studyState.correctTags
+
+        let currentBodyPartIndex = bodyPartIdList.indexOf(currentBpId)
+
+        if (currentBodyPartIndex === -1) {
+            return
+        }
+
+        nextBodyPartIndex = currentBodyPartIndex + offset
+
+        if (nextBodyPartIndex >= bodyPartIdList.length) {
+            return
+        }
+
+    }
+
+    studyState.currentBpId  = bodyPartIdList[nextBodyPartIndex]
     studyState.correctTags  = {}
     studyState.hintText     = ''
     studyState.answerTag    = {}
 
     // Update progress
-    const done  = studyState.usedIds.length
+    const done  = nextBodyPartIndex + 1
     const total = studyState.bodyPartIdList.length
     document.getElementById('study-progress-label').textContent = `Body part ${done} of ${total}`
     const pct = (done / total) * 100
     document.getElementById('study-progress-bar').style.width = `${pct}%`
 
-    // Hide "next" when all done
-    if (studyState.usedIds.length >= studyState.bodyPartIdList.length) {
-        document.getElementById('study-next-btn').classList.add('hide')
-    }
+    let nextBtn = document.getElementById('study-next-btn')
+    let prevBtn = document.getElementById('study-prev-btn')
 
-    const bp  = await window.api.getBodyPartById(bpId, studyState.checklistId)
+    prevBtn.classList.toggle('disabled', done <= 1)
+    nextBtn.classList.toggle('disabled', done >= bodyPartIdList.length)
+
+
+    const bp  = await window.api.getBodyPartById(studyState.currentBpId, studyState.checklistId)
     studyState.scale    = bp['scale'] || 1
     studyState.fontSize = bp['fontSize'] || 16
     studyState.coordinates = bp['coordinates'] || {}
+
+    let currentBpId = studyState.currentBpId
+     studyState.correctTags = studyState.answeredTags[currentBpId] || {}
 
     document.getElementById('study-body-part-name').textContent = bp['name']
     document.getElementById('study-tags-progress').textContent =
@@ -188,7 +226,7 @@ const drawAllQuestionMarks = () => {
         const isCorrect = !!studyState.correctTags[id]
 
         if (isCorrect) {
-            drawNewText(canvas, studyState.coordinates[id]['name'], studyState.coordinates[id], studyState.fontSize)
+            drawNewText(canvas, studyState.coordinates[id]['name'], studyState.coordinates[id], studyState.scale, studyState.fontSize)
         } else {
             drawNewQuestionMark(canvas, studyState.coordinates[id], studyState.scale, studyState.fontSize)
         }
@@ -198,9 +236,9 @@ const drawAllQuestionMarks = () => {
 const setupWordBank = () => {
     const wordbank = document.getElementById('study-wordbank')
     const wrap     = document.getElementById('study-wordbank-wrap')
-    wordbank.innerHTML = ''
+    wordbank.replaceChildren()
 
-    const useWordBank = studyState.difficulty < 3
+    const useWordBank = studyState.difficulty < DIFFICULTY.HARD
     wrap.style.display = useWordBank ? 'block' : 'none'
 
     if (!useWordBank) {
@@ -225,11 +263,12 @@ const updateWordBank = () => {
 }
 
 const updateHintButton = () => {
-    const btn     = document.getElementById('study-hint-btn')
-    const useHints = studyState.difficulty < 4
-    btn.disabled  = !useHints || studyState.hintsRemaining <= 0
-    btn.textContent = useHints
-        ? `Use a hint (${studyState.hintsRemaining} left)`
+    const studyHintProgress     = document.getElementById('study-tags-hint')
+    const studyHintBtn = document.getElementById('study-hint-btn')
+    const useHints = studyState.difficulty === DIFFICULTY.EASY
+    studyHintBtn.disabled  = !useHints || studyState.hintsRemaining <= 0
+    studyHintProgress.textContent = useHints
+        ? `${studyState.hintsRemaining} hints left`
         : 'No hints available'
 }
 
@@ -244,6 +283,7 @@ document.getElementById('study-hint-btn').addEventListener('click', () => {
     studyState.hintsRemaining--
     updateHintButton()
     window.api.popup(`Hint: word starts with "${studyState.hintText}"`)
+        .catch(err => console.error(err))
 })
 
 // Click on canvas to answer a tag
@@ -311,10 +351,26 @@ const updateTagsProgress = () => {
 }
 
 document.getElementById('study-next-btn').addEventListener('click', () => {
-    loadNextBodyPart()
+    loadNextBodyPart().catch(err => {
+        console.error(err)
+    })
 })
 
-//Navigation
-document.getElementById('home-add-checklist-btn').addEventListener('click', () => {
-    navigate('library')
+document.getElementById('study-prev-btn').addEventListener('click', () => {
+    loadPrevBodyPart().catch(err => {
+        console.error(err)
+    })
+})
+
+document.getElementById('study-end-btn').addEventListener('click', async () => {
+    try {
+        const result = await window.api.dialogQuestion("Are you sure you want to end the current study session?")
+
+        if (result.response === 0) {
+            window.AppState.currentChecklistId = null
+            await loadStudyPicker()
+        }
+    } catch (err) {
+        console.error(err)
+    }
 })

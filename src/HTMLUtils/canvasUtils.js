@@ -1,4 +1,4 @@
-const question_mark_path = '../images/question-mark.png'
+
 
 const drawNewImage = async (canvas, imgElement, x, y, scale) => {
     return new Promise((resolve) => {
@@ -77,43 +77,17 @@ const drawNewQuestionMark = (canvas, coordinates, scale, fontSize) => {
 
 const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, isText, hasOffest=false) => {
     let foundKey = null
-    let offset = 0
-    if(hasOffest){
-        //offset = -15
-    }
 
     for(let key in coordinatesMap) {
         let coordinates = coordinatesMap[key]
         let imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, fontSize, isText)
-        console.log(imgBounds)
         let width = imgBounds['width']
         let height = imgBounds['height']
         let tagX = parseFloat(coordinates['x'])
         let tagY = parseFloat(coordinates['y'])
-        console.log('tagX', tagX, 'tagY', tagY, 'X', x, 'y', y, 'width', width, 'height', height)
-        if (x >= tagX && x <= tagX + width && y >= tagY + offset && y <= tagY + height + offset) {
+
+        if (x >= tagX && x <= tagX + width / scale && y >= tagY && y <= tagY + height / scale) {
             foundKey = key
-            break
-          }
-    }
-    return foundKey
-} 
-
-const checkCoordinatesExistList = (canvas, x, y, coordinatesList, scale, fontSize, isText, checkAnswer=false) => {
-    let foundKey = null
-    let offset = 0
-
-    for(let i=0; i<coordinatesList.length; i++){
-        let coordinates = coordinatesList[i]
-        let tagX = parseFloat(coordinates['x'])
-        let tagY = parseFloat(coordinates['y'])
-
-        let imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, fontSize, isText, checkAnswer)
-        let width = imgBounds['width']
-        let height = imgBounds['height']
-        console.log(x >= tagX, x <= tagX + width, y >= tagY + offset, y <= tagY + height + offset)
-        if (x >= tagX && x <= tagX + width && y >= tagY + offset && y <= tagY + height + offset) {
-            foundKey = i
             break
           }
     }

@@ -1,7 +1,8 @@
-const { BrowserWindow, Menu} = require("electron");
+const { BrowserWindow, Menu, nativeTheme} = require("electron");
 const updater = require("./updater");
 const windowStateKeeper = require("electron-window-state");
 const path = require("path");
+const localStorage = require("../storage/storageUtils");
 const windows = {};
 
 const createWindow = (guiFilePath, options) => {
@@ -28,16 +29,19 @@ const createWindow = (guiFilePath, options) => {
         y: windState.y,
         minHeight: 800,
         minWidth: 1200,
-        sandbox: true,
         parent: options.parent,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js')
-        }
+            preload: path.join(__dirname, 'preload.js'),
+            sandbox: true,
+            contextIsolation: true,
+            nodeIntegration: false,
+        },
+        icon: path.join(__dirname, '../images/AnatoMeIcon.png'),
     })
 
     windState.manage(win)
-
-    // nativeTheme.themeSource = (useDarkMode) ? 'dark' : 'light'
+    let isDarkMode = localStorage.getIsDarkMode()
+    nativeTheme.themeSource = (isDarkMode) ? 'dark' : 'light'
 
     win.loadFile(path.join(__dirname, guiFilePath))
         .catch(err => {

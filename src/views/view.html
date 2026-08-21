@@ -3,10 +3,27 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The page is served over file:, so each directive lists file: alongside 'self'.
+         The directive that matters most is script-src without 'unsafe-inline': it stops
+         inline handlers such as an injected onerror= from ever running, which is the
+         backstop for anything the textContent work missed. style-src still needs
+         'unsafe-inline' because Bootstrap sets inline style attributes at runtime. -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self' file:;
+        script-src 'self' file:;
+        style-src 'self' file: 'unsafe-inline';
+        img-src 'self' file: data:;
+        font-src 'self' file:;
+        connect-src 'none';
+        object-src 'none';
+        base-uri 'none';
+        form-action 'none'">
     <title>AnatoMe</title>
     <link rel="stylesheet" href="../../node_modules/bootstrap/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
     <link rel="stylesheet" href="../styles/style.css">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; img-src 'self' data: file:; style-src 'self' 'unsafe-inline'">
 </head>
 <body>
 
@@ -15,7 +32,8 @@
     <!-- ── Sidebar ────────────────────────────────────────────── -->
     <nav id="sidebar">
         <div class="sidebar-logo">
-            <h1>AnatoMe</h1>
+            <img src="../images/AnatoMeIcon.png" class="sidebar-icon" alt="">
+<!--            <h1>AnatoMe</h1>-->
             <span>Anatomy study tool</span>
         </div>
 
@@ -195,15 +213,8 @@
             <div id="study-picker" class="screen-content">
                 <div class="card" id="study-checklist-picker">
                     <div class="card-title">Choose what to study</div>
-                    <div id="study-picker-list">
-                        <div class="empty-state">
-                            <i class="fas fa-folder-open"></i>
-                            <p>No checklists in your library yet.</p>
-                            <button id="study-add-checklist-btn" class="btn btn-primary">
-                                Go to Library
-                            </button>
-                        </div>
-                    </div>
+                    <!-- Filled by loadStudyPicker(); empty state comes from tpl-no-checklists-empty -->
+                    <div id="study-picker-list"></div>
                 </div>
             </div>
 
@@ -232,13 +243,19 @@
                         </div>
                         <div class="card" style="margin-bottom: 12px;">
                             <div class="card-title">Progress</div>
-                            <p id="study-tags-progress" style="font-size: 13px; color: var(--text-secondary);">0 / 0 tags labeled</p>
-                            <button class="btn btn-secondary w-100" id="study-hint-btn" disabled>
-                                <i class="fas fa-lightbulb"></i> Use a hint
+                            <p id="study-tags-progress" class="progress-paragraph">0 / 0 tags labeled</p>
+                            <p id="study-tags-hint" class="progress-paragraph">3 hints left</p>
+                        </div>
+                        <div id="body-part-btn-group" class="d-flex gap-2 hide">
+                            <button class="btn btn-outline-primary" id="study-prev-btn">
+                                ← Previous
+                            </button>
+                            <button class="btn btn-primary" id="study-next-btn">
+                                Next →
                             </button>
                         </div>
-                        <button class="btn btn-primary w-100 hide" id="study-next-btn">
-                            Next body part →
+                        <button class="btn btn-danger w-100" id="study-end-btn">
+                            End study session
                         </button>
                     </div>
                 </div>
@@ -314,7 +331,7 @@
                         <li class="empty-state" id="results-empty">
                             <i class="fas fa-chart-bar"></i>
                             <p>No practicals taken yet.</p>
-                            <button id="results-start-practical-btn" class="btn btn-primary" onclick="navigate('practical')">
+                            <button id="results-start-practical-btn" class="btn btn-primary">
                                 Start a practical
                             </button>
                         </li>
@@ -395,7 +412,6 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger hide" id="editor-tag-delete-btn">Delete tag</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="editor-tag-save-btn">Save tag</button>
             </div>
@@ -415,6 +431,7 @@
                 <input type="text" class="form-control" id="study-answer-input" placeholder="Type your answer...">
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-link" id="study-hint-btn">Need a hint?</button>
                 <button type="button" class="btn btn-primary" id="study-answer-submit-btn">Check answer</button>
             </div>
         </div>
@@ -432,19 +449,9 @@
                 <div class="mb-3">
                     <label class="form-label field-label">Difficulty</label>
                     <select class="form-select" id="study-difficulty">
-                        <option value="1">Easy — word bank shown</option>
-                        <option value="2">Medium — limited word bank</option>
-                        <option value="3">Hard — no word bank</option>
-                        <option value="4">Big dawg — no hints, no word bank</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label field-label">Hints available</label>
-                    <select class="form-select" id="study-hints">
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3" selected>3</option>
-                        <option value="5">5</option>
+                        <option value="0">Easy — word bank, hints</option>
+                        <option value="1">Medium — word bank, no hints</option>
+                        <option value="2">Hard — no word bank, no hints</option>
                     </select>
                 </div>
             </div>
@@ -493,8 +500,151 @@
     </div>
 </div>
 
+<!-- ── Row templates ───────────────────────────────────────────────
+     Inert markup cloned by the controllers. Elements the JS fills in
+     or binds to are marked with js- classes or data-action, so a CSS
+     rename can't quietly break a controller. Never use ids in here —
+     cloning would duplicate them.
+
+     Grouped by the controller that owns each one, in script load order. -->
+
+<!-- shared -->
+<template id="tpl-no-checklists-empty">
+    <div class="empty-state">
+        <i class="fas fa-folder-open"></i>
+        <p>No checklists in your library yet.</p>
+        <button class="btn btn-primary" data-action="go-to-library">Go to Library</button>
+    </div>
+</template>
+
+<!-- home.js -->
+<template id="tpl-home-checklist-row">
+    <li class="checklist-row">
+        <div class="checklist-info">
+            <h4 class="js-name"></h4>
+            <span class="js-meta"></span>
+        </div>
+        <div class="checklist-actions">
+            <button class="btn btn-secondary" data-action="study">
+                <i class="fas fa-book-open"></i> Study
+            </button>
+        </div>
+    </li>
+</template>
+
+<!-- library.js -->
+<template id="tpl-checklist-row">
+    <li class="checklist-row">
+        <div class="checklist-info">
+            <h4 class="js-name"></h4>
+            <span class="js-meta"></span>
+        </div>
+        <div class="checklist-actions">
+            <button class="btn btn-secondary" data-action="open">Open</button>
+            <button class="btn btn-ghost btn-icon" data-action="edit" title="Rename">
+                <i class="fas fa-pen"></i>
+            </button>
+            <button class="btn btn-ghost btn-icon" data-action="delete" title="Delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </li>
+</template>
+
+<template id="tpl-body-part-card">
+    <div class="body-part-card">
+        <div class="body-part-card-content">
+            <h4 class="js-name"></h4>
+            <span class="js-meta"></span>
+        </div>
+        <div class="body-part-card-actions">
+            <button class="btn btn-secondary btn-sm" data-action="edit">
+                <i class="fas fa-pen"></i> Edit
+            </button>
+            <button class="btn btn-ghost btn-icon" data-action="delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+</template>
+
+<template id="tpl-body-part-add-card">
+    <div class="body-part-card body-part-card--add">
+        <i class="fas fa-plus"></i><span>Add body part</span>
+    </div>
+</template>
+
+<template id="tpl-no-tags-empty">
+    <li class="tag-list-empty">No tags yet. Right-click the image to add one.</li>
+</template>
+
+<template id="tpl-tag-list-item">
+    <li class="tag-list-item">
+        <div class="tag-row">
+            <span class="tag-name js-name"></span>
+            <div class="tag-actions">
+                <button class="btn btn-ghost btn-icon" data-action="edit"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-ghost btn-icon" data-action="delete"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    </li>
+</template>
+
+<template id="tpl-category-item">
+    <li class="category-item">
+        <span class="category-name js-name"></span>
+        <div class="category-actions">
+            <button class="btn btn-ghost btn-icon" data-action="delete"><i class="fas fa-trash"></i></button>
+        </div>
+    </li>
+</template>
+
+<!-- study.js -->
+<template id="tpl-study-picker-item">
+    <div class="study-picker-item">
+        <div>
+            <div class="study-picker-name js-name"></div>
+            <div class="study-picker-meta js-meta"></div>
+        </div>
+        <div class="study-picker-actions">
+            <button class="btn btn-secondary" data-action="random">Random body part</button>
+            <button class="btn btn-primary" data-action="all">
+                <i class="fas fa-book-open"></i> Study all
+            </button>
+        </div>
+    </div>
+</template>
+
+<!-- practical.js -->
+<template id="tpl-practical-checklist-option">
+    <label class="practical-checklist-option">
+        <input type="checkbox">
+        <div>
+            <span class="practical-cl-name js-name"></span>
+            <span class="practical-cl-meta js-meta"></span>
+        </div>
+    </label>
+</template>
+
+<!-- results.js -->
+<template id="tpl-result-row">
+    <li class="result-row">
+        <div class="result-info">
+            <h4 class="result-name js-name"></h4>
+            <span class="result-meta js-meta"></span>
+        </div>
+        <div class="checklist-actions">
+            <button class="btn btn-secondary" data-action="open">Open</button>
+            <button class="btn btn-ghost btn-icon" data-action="delete" title="Delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </li>
+</template>
+
 <script src="../../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../HTMLUtils/canvasUtils.js"></script>
+<script src="../HTMLUtils/domUtils.js"></script>
 <script src="../controller/home.js"></script>
 <script src="../controller/library.js"></script>
 <script src="../controller/study.js"></script>

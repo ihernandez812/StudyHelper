@@ -1,3 +1,7 @@
+const HOME_TEMPLATES = {
+    checklistRow: document.getElementById('tpl-home-checklist-row'),
+}
+
 // ── App state ─────────────────────────────────────────────────────────────────
 // Single source of truth for cross-screen state. Replaces localStorage hacks.
 window.AppState = {
@@ -10,123 +14,176 @@ window.AppState = {
 }
 
 // ── Topbar config per screen ──────────────────────────────────────────────────
-// Each entry defines the title/breadcrumb and optional action buttons.
-// Screens can override this by calling setTopbar() directly.
+// Describes what the topbar contains; setTopbar() turns it into DOM.
+//
+// `title` is a plain string because it never changes. `breadcrumb` and
+// `actions` are functions for two reasons: they read AppState, which is only
+// correct at render time, and they reference handlers defined in controllers
+// that load after this file. Evaluating either eagerly would blow up.
+//
+// A breadcrumb segment with a `screen` renders as a link to it; the last
+// segment normally has none and renders as plain current-page text.
 const TOPBAR = {
     home: {
-        left: () => '<h2>Home</h2>',
-        right: () => ''
+        title: 'Home',
     },
     library: {
-        left: () => '<h2>Library</h2>',
-        right: () => `
-            <button class="btn btn-ghost" onclick="openCategoriesModal()">
-                <i class="fas fa-tags"></i> Categories
-            </button>
-            <button class="btn btn-primary" onclick="openNewChecklistModal()">
-                <i class="fas fa-plus"></i> New checklist
-            </button>`
+        title: 'Library',
+        actions: () => [
+            { label: 'Categories',    icon: 'fa-tags', className: 'btn-ghost',   onClick: openCategoriesModal },
+            { label: 'New checklist', icon: 'fa-plus', className: 'btn-primary', onClick: openNewChecklistModal },
+        ],
     },
     'checklist-detail': {
-        left: () => `
-            <nav class="breadcrumb">
-                <a class="breadcrumb-link" onclick="navigate('library')">Library</a>
-                <span class="breadcrumb-sep"><i class="fas fa-chevron-right"></i></span>
-                <span class="breadcrumb-current">${window.AppState.currentChecklistName || ''}</span>
-            </nav>`,
-        right: () => `
-            <button class="btn btn-secondary" onclick="navigateToStudyFromChecklist()">
-                <i class="fas fa-book-open"></i> Study this
-            </button>
-            <button class="btn btn-primary" onclick="openBodyPartEditor(null)">
-                <i class="fas fa-plus"></i> Add body part
-            </button>`
+        breadcrumb: () => [
+            { label: 'Library', screen: 'library' },
+            { label: window.AppState.currentChecklistName || '' },
+        ],
+        actions: () => [
+            { label: 'Study this',    icon: 'fa-book-open', className: 'btn-secondary', onClick: () => navigate('study') },
+            { label: 'Add body part', icon: 'fa-plus',      className: 'btn-primary',   onClick: () => openBodyPartEditor(null) },
+        ],
     },
     'bodypart-editor': {
-        left: () => `
-            <nav class="breadcrumb">
-                <a class="breadcrumb-link" onclick="navigate('library')">Library</a>
-                <span class="breadcrumb-sep"><i class="fas fa-chevron-right"></i></span>
-                <a class="breadcrumb-link" onclick="navigate('checklist-detail')">${window.AppState.currentChecklistName || ''}</a>
-                <span class="breadcrumb-sep"><i class="fas fa-chevron-right"></i></span>
-                <span class="breadcrumb-current">${window.AppState.currentBodyPartName || 'New body part'}</span>
-            </nav>`,
-        right: () => ''
+        breadcrumb: () => [
+            { label: 'Library', screen: 'library' },
+            { label: window.AppState.currentChecklistName || '', screen: 'checklist-detail' },
+            { label: window.AppState.currentBodyPartName || 'New body part' },
+        ],
     },
     study: {
-        left: () => '<h2>Study</h2>',
-        right: () => ''
+        title: 'Study',
     },
     practical: {
-        left: () => '<h2>Practical</h2>',
-        right: () => ''
+        title: 'Practical',
     },
     results: {
-        left: () => '<h2>Results</h2>',
-        right: () => ''
+        title: 'Results',
     },
+}
+
+// ── Screen registry ───────────────────────────────────────────────────────────
+// One entry per screen: which sidebar item highlights it (sub-screens point at
+// their parent), what runs on entry, and what to clean up on exit.
+//
+// `load` and `teardown` are thunks for the same reason TOPBAR's are: they name
+// functions defined in controllers that parse after this file, so the reference
+// has to resolve at call time rather than at definition time.
+const SCREENS = {
+    'home':             { sidebar: 'home',      load: () => loadHomeScreen() },
+    'library':          { sidebar: 'library',   load: () => loadLibraryScreen() },
+    'checklist-detail': { sidebar: 'library',   load: () => loadChecklistDetail() },
+    'bodypart-editor':  { sidebar: 'library',   load: () => initBodyPartEditor() },
+    'study':            { sidebar: 'study',     load: () => loadStudyPicker() },
+    'practical':        { sidebar: 'practical', load: () => loadPracticalSetup(),
+                                                teardown: () => stopPracticalTimer() },
+    'results':          { sidebar: 'results',   load: () => loadResultsScreen() },
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 
 const navigate = (screenName) => {
+    const config = SCREENS[screenName]
+
+    if (!config) {
+        console.error(`Unknown screen: ${screenName}`)
+        return
+    }
+
+    SCREENS[window.AppState.currentPage]?.teardown?.()
+
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
-
-    // Sidebar highlight — map sub-screens to their parent sidebar item
-    const sidebarMap = {
-        'home':             'home',
-        'library':          'library',
-        'checklist-detail': 'library',
-        'bodypart-editor':  'library',
-        'study':            'study',
-        'practical':        'practical',
-        'results':          'results',
-    }
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
-    const sidebarKey = sidebarMap[screenName] || screenName
-    const navItem = document.querySelector(`.nav-item[data-screen="${sidebarKey}"]`)
-    if (navItem) navItem.classList.add('active')
 
-    const screen = document.getElementById(`screen-${screenName}`)
-    if (screen) screen.classList.add('active')
+    document.querySelector(`.nav-item[data-screen="${config.sidebar}"]`)?.classList.add('active')
+    document.getElementById(`screen-${screenName}`)?.classList.add('active')
 
-    // Update topbar
-    const config = TOPBAR[screenName]
-    if (config) setTopbar(config.left(), config.right())
+    setTopbar(screenName)
+    window.AppState.currentPage = screenName
 
-    // Fire screen-specific init
-    if (screenName === 'home') {
-        loadHomeScreen().catch(error => console.log(error))
-    }
-
-    if (screenName === 'library') {
-        loadLibraryScreen().catch(error => console.log(error))
-    }
-
-    if (screenName === 'checklist-detail') {
-        loadChecklistDetail().catch(error => console.log(error))
-    }
-
-    if (screenName === 'bodypart-editor') {
-        initBodyPartEditor().catch(error => console.log(error))
-    }
-
-    if (screenName === 'study'){
-        loadStudyPicker().catch(error => console.log(error))
-    }
-
-    if (screenName === 'practical') {
-        loadPracticalSetup().catch(error => console.log(error))
-    }
-
-    if (screenName === 'results') {
-        loadResultsScreen().catch(error => console.log(error))
-    }
+    config.load().catch(error => console.error(error))
 }
 
-const setTopbar = (leftHtml, rightHtml) => {
-    document.getElementById('topbar-left').innerHTML  = leftHtml
-    document.getElementById('topbar-right').innerHTML = rightHtml
+const buildIcon = (iconClass) => {
+    const icon = document.createElement('i')
+    icon.className = `fas ${iconClass}`
+    return icon
+}
+
+const buildTopbarTitle = (text) => {
+    const heading = document.createElement('h2')
+    heading.textContent = text
+    return heading
+}
+
+const buildBreadcrumb = (segments) => {
+    const nav = document.createElement('nav')
+    nav.className = 'breadcrumb'
+
+    segments.forEach((segment, index) => {
+        if (index > 0) {
+            const separator = document.createElement('span')
+            separator.className = 'breadcrumb-sep'
+            separator.appendChild(buildIcon('fa-chevron-right'))
+            nav.appendChild(separator)
+        }
+
+        if (segment.screen) {
+            const link = document.createElement('a')
+            link.className   = 'breadcrumb-link'
+            link.textContent = segment.label
+            link.addEventListener('click', () => navigate(segment.screen))
+            nav.appendChild(link)
+        } else {
+            const current = document.createElement('span')
+            current.className   = 'breadcrumb-current'
+            current.textContent = segment.label
+            nav.appendChild(current)
+        }
+    })
+
+    return nav
+}
+
+const buildTopbarButton = ({ label, icon, className, onClick }) => {
+    const button = document.createElement('button')
+    button.className = `btn ${className}`
+
+    if (icon) {
+        button.appendChild(buildIcon(icon))
+        button.append(' ')
+    }
+
+    //append() takes a string and inserts it as text, so the label is never parsed as markup
+    button.append(label)
+    button.addEventListener('click', onClick)
+
+    return button
+}
+
+const setTopbar = (screenName) => {
+    const left  = document.getElementById('topbar-left')
+    const right = document.getElementById('topbar-right')
+
+    //replaceChildren() with no arguments empties an element
+    left.replaceChildren()
+    right.replaceChildren()
+
+    const config = TOPBAR[screenName]
+
+    if (!config) {
+        return
+    }
+
+    if (config.breadcrumb) {
+        left.appendChild(buildBreadcrumb(config.breadcrumb()))
+    } else if (config.title) {
+        left.appendChild(buildTopbarTitle(config.title))
+    }
+
+    if (config.actions) {
+        config.actions().forEach(action => right.appendChild(buildTopbarButton(action)))
+    }
 }
 
 document.getElementById('home-add-checklist-btn').addEventListener('click', () => {
@@ -171,39 +228,28 @@ const loadHomeScreen = async () => {
 }
 
 const createHomeChecklistRow = (id, name, partCount) => {
-    const li = document.createElement('li')
-    li.classList.add('checklist-row')
-    li.innerHTML = `
-        <div class="checklist-info">
-            <h4>${name}</h4>
-            <span>${partCount} body part${partCount !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="checklist-actions">
-            <button class="btn btn-secondary study-btn">
-                <i class="fas fa-book-open"></i> Study
-            </button>
-        </div>`
+    const row = cloneTemplate(HOME_TEMPLATES.checklistRow)
 
-    li.querySelector('.study-btn').addEventListener('click', () => {
+    row.dataset.id   = id
+    row.dataset.name = name
+    row.querySelector('.js-name').textContent = name
+    row.querySelector('.js-meta').textContent = `${partCount} body part${partCount !== 1 ? 's' : ''}`
+
+    row.querySelector('[data-action="study"]').addEventListener('click', () => {
         window.AppState.currentChecklistId   = id
         window.AppState.currentChecklistName = name
         navigate('study')
     })
-    return li
+
+    return row
 }
-
-// ── Helper: navigate to study from checklist detail ───────────────────────────
-
-const navigateToStudyFromChecklist = () => {
-    navigate('study')
-}
-
-// ── Init ──────────────────────────────────────────────────────────────────────
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 
 const applyTheme = (isDark) => {
     document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light')
+    const icon = document.querySelector('.sidebar-icon')
+    if (icon) icon.src = isDark ? '../images/AnatoMeIconDark.png' : '../images/AnatoMeIcon.png'
 }
 
 window.addEventListener('load', async () => {

@@ -19,11 +19,20 @@ document.getElementById('sidebar').addEventListener('click', async (e) => {
             }
 
             if (doNavigate) {
-                //Reset current checklist
+                //Reset current checklist; navigate() owns currentPage
                 window.AppState.currentChecklistId = null
-                window.AppState.currentPage = dataTarget
                 navigate(dataTarget)
             }
         }
     }
 })
+
+
+const shuffle = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+
+    return arr
+}

@@ -82,8 +82,7 @@ const checkSearchInput = (possibleValue, query) => {
     return result
 }
 
-const addPractical = (practical) => {
-    let id = crypto.randomUUID()
+const addPractical = (id, practical) => {
     localStorage.set(`practicals.${id}`, { ...practical, id: id })
     return id
 }
