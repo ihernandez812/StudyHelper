@@ -9,38 +9,118 @@ const LIBRARY_TEMPLATES = {
     categoryItem:    document.getElementById('tpl-category-item'),
 }
 
-
 document.getElementById('library-checklist-list').addEventListener('click', async (e) => {
-    let element = e.target
-    let button = element.closest('[data-action]')
+    const target = getActionTarget(e.target, '.checklist-row');
 
-    if (button) {
-        let row = button.closest('.checklist-row')
+    if (!target) {
+        return;
+    }
 
-        if (row) {
-            let dataAction = button.dataset.action
-            const { id, name } = row.dataset
+    const { id, name } = target.data;
+    const action = target.action;
+    const parentElement = target.parentElement;
 
-            switch (dataAction) {
-                case 'open': {
-                    openChecklistDetail(id, name);
-                    break;
-                }
-                case 'edit' : {
-                    openEditChecklistModal(id, name);
-                    break;
-                }
-                case 'delete' : {
-                    await deleteChecklist(id, row);
-                    break;
-                } default: {
-                    console.error(`No action found for ${id} ${dataAction}`)
-                }
-            }
+
+    try {
+        switch (action) {
+            case 'open':
+                openChecklistDetail(id, name);
+                break;
+            case 'edit':
+                openEditChecklistModal(id, name);
+                break
+            case 'delete':
+                await deleteChecklist(id, parentElement);
+                break;
+            default:
+                console.error(`Unknown action "${target.action}" on checklist row ${id}`);
         }
-
+    } catch (err) {
+        console.error(err)
     }
 })
+
+document.getElementById('body-part-grid').addEventListener('click', async (e) => {
+    const target = getActionTarget(e.target, '.body-part-card')
+
+    if (!target) {
+        return;
+    }
+
+    const { id } = target.data;
+    const action = target.action;
+    const parentElement = target.parentElement;
+
+    try {
+        switch (action) {
+            case 'edit':
+                openBodyPartEditor(id)
+                break;
+            case 'delete':
+                await  deleteBodyPart(id, parentElement);
+                break;
+            case 'add':
+                openBodyPartEditor(null)
+                break;
+            default:
+                console.error(`Unknown action "${action}" on body part card ${id}`);
+        }
+    } catch (err) {
+        console.error(err)
+    }
+})
+
+document.getElementById('editor-tag-list').addEventListener('click', async (e) => {
+    const target = getActionTarget(e.target, '.tag-list-item');
+
+    if (!target) {
+        return;
+    }
+
+    const { id, name } = target.data;
+    const action = target.action;
+
+    try {
+        switch (action) {
+            case 'edit':
+                openEditTagModal(id)
+                break;
+            case 'delete':
+                await  deleteTag(id, name);
+                break;
+            default:
+                console.error(`Unknown action "${action}" on tag list item ${id}`);
+        }
+    } catch (err) {
+        console.error(err)
+    }
+})
+
+document.getElementById('category-list').addEventListener('click', async (e) => {
+    const target = getActionTarget(e.target, '.category-item');
+
+    if (!target) {
+        return;
+    }
+
+    const { id, name } = target.data;
+    const action = target.action;
+    const parentElement = target.parentElement;
+
+    try {
+        switch (action) {
+            case 'delete':
+                await  deleteCategory(id, name, parentElement);
+                break;
+            default:
+                console.error(`Unknown action "${action}" on category item ${id}`);
+        }
+    } catch (err) {
+        console.error(err)
+    }
+})
+
+
 
 const loadLibraryScreen = async () => {
     const checklists = await window.api.getChecklists()
@@ -167,7 +247,6 @@ const loadChecklistDetail = async () => {
 
     // Add the "add body part" card at the end
     const addCard = cloneTemplate(LIBRARY_TEMPLATES.bodyPartAddCard)
-    addCard.addEventListener('click', () => openBodyPartEditor(null))
     grid.appendChild(addCard)
 }
 
@@ -178,9 +257,6 @@ const createBodyPartCard = (id, name, tagCount) => {
     card.dataset.name = name
     card.querySelector('.js-name').textContent = name
     card.querySelector('.js-meta').textContent = `${tagCount} tag${tagCount !== 1 ? 's' : ''}`
-
-    card.querySelector('[data-action="edit"]').addEventListener('click', () => openBodyPartEditor(id))
-    card.querySelector('[data-action="delete"]').addEventListener('click', () => deleteBodyPart(id, card))
 
     return card
 }
@@ -375,6 +451,18 @@ const openEditTagModal = (tagId) => {
     editorTagModal.show()
 }
 
+const deleteTag = async (tagId, tagName) => {
+    const result = await window.api.dialogQuestion(`Delete tag "${tagName}"?`)
+
+    if (result.response === 0) {
+        if (tagId != null) {
+            delete editorState.coordinatesMap[tagId]
+            redrawEditor()
+            renderTagList()
+        }
+    }
+}
+
 document.getElementById('editor-tag-save-btn').addEventListener('click', async () => {
     const name     = document.getElementById('editor-tag-name').value.trim()
     const category = document.getElementById('editor-tag-category').value
@@ -412,23 +500,8 @@ const renderTagList = () => {
         const li      = cloneTemplate(LIBRARY_TEMPLATES.tagListItem)
 
         li.dataset.id = id
+        li.dataset.name = tagName
         li.querySelector('.js-name').textContent = tagName
-
-        li.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-            const result = await window.api.dialogQuestion(`Delete tag "${tagName}"?`)
-
-            if (result.response === 0) {
-                if (id != null) {
-                    delete editorState.coordinatesMap[id]
-                    redrawEditor()
-                    renderTagList()
-                }
-            }
-        })
-
-        li.querySelector('[data-action="edit"]').addEventListener('click', async () => {
-            openEditTagModal(id)
-        })
 
         list.appendChild(li)
     })
@@ -491,16 +564,16 @@ const createCategoryItem = (id, name) => {
     li.dataset.name = name
     li.querySelector('.js-name').textContent = name
 
-    li.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-        const result = await window.api.dialogQuestion(`Delete category "${name}"?`)
-
-        if (result.response === 0) {
-            await window.api.removeCategory(id)
-            li.remove()
-        }
-    })
-
     return li
+}
+
+const deleteCategory = async (id, name, rowElement) => {
+    const result = await window.api.dialogQuestion(`Delete category "${name}"?`)
+
+    if (result.response === 0) {
+        await window.api.removeCategory(id)
+        rowElement.remove()
+    }
 }
 
 document.getElementById('add-category-btn').addEventListener('click', async () => {

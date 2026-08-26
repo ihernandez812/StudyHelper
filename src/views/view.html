@@ -22,8 +22,6 @@
     <link rel="stylesheet" href="../../node_modules/bootstrap/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
     <link rel="stylesheet" href="../styles/style.css">
-    <meta http-equiv="Content-Security-Policy"
-          content="default-src 'self'; img-src 'self' data: file:; style-src 'self' 'unsafe-inline'">
 </head>
 <body>
 
@@ -569,7 +567,7 @@
 </template>
 
 <template id="tpl-body-part-add-card">
-    <div class="body-part-card body-part-card--add">
+    <div class="body-part-card body-part-card--add" data-action="add">
         <i class="fas fa-plus"></i><span>Add body part</span>
     </div>
 </template>

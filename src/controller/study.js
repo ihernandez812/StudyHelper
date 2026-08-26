@@ -33,6 +33,43 @@ const DIRECTION = {
     PREVIOUS: -1,
 }
 
+const STUDY_TYPES = {
+    ALL:      0,
+    RANDOM:   1,
+}
+
+document.getElementById('study-picker-list').addEventListener('click', (e) => {
+    //If there are no body parts to study it is empty and the only thing to be clicked is a navigate to library
+    if (e.target.closest('[data-action="go-to-library"]')) {
+        navigate('library')
+        return
+    }
+
+
+    const target = getActionTarget(e.target, '.study-picker-item');
+
+    if (!target) {
+        return;
+    }
+
+    const { id } = target.data;
+    const action = target.action;
+
+    try {
+        switch (action) {
+            case 'all':
+                loadStudySettings(id)
+                break;
+            case 'random':
+                loadRandomBodyStudySession(id);
+                break;
+            default:
+                console.error(`Unknown action "${action}" on checklist row ${id}`);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+})
 
 // ── Study picker ──────────────────────────────────────────────────────────────
 
@@ -54,15 +91,13 @@ const loadStudyPicker = async () => {
 
     if (keys.length === 0) {
         const emptyState = cloneTemplate(STUDY_TEMPLATES.noChecklistsEmpty)
-        emptyState.querySelector('[data-action="go-to-library"]')
-            .addEventListener('click', () => navigate('library'))
         pickerList.appendChild(emptyState)
         return
     }
 
     // If a checklist was already chosen (e.g. "Study this" from home), open settings
     if (window.AppState.currentChecklistId) {
-        openStudySettings(window.AppState.currentChecklistId, checklists[window.AppState.currentChecklistId])
+        await openStudySettings(window.AppState.currentChecklistId, STUDY_TYPES.ALL)
         return
     }
 
@@ -82,19 +117,43 @@ const loadStudyPicker = async () => {
         randomBtn.disabled   = bpKeys.length === 0
         studyAllBtn.disabled = bpKeys.length === 0
 
-        randomBtn.addEventListener('click', () => {
-            const randomId = bpKeys[Math.floor(Math.random() * bpKeys.length)]
-            window.AppState.currentChecklistId = id
-            openStudySettings(id, checklist, [randomId])
-        })
-
-        studyAllBtn.addEventListener('click', () => {
-            window.AppState.currentChecklistId = id
-            openStudySettings(id, checklist, bpKeys)
-        })
-
         pickerList.appendChild(item)
     })
+}
+
+const getBodyPartIdList = async (checklistId) => {
+    let bodyPartIdList = []
+
+    try {
+        const checklist = await window.api.getChecklistById(checklistId)
+        const bodyParts = checklist['bodyParts'] || {}
+        bodyPartIdList = Object.keys(bodyParts)
+    } catch (err) {
+        console.error(err)
+    }
+
+    return bodyPartIdList
+}
+
+const getRandomBodyPartId = async (checklistId) => {
+    let randomId = null
+
+    try {
+        const bpKeys = await getBodyPartIdList(checklistId)
+        randomId = bpKeys[Math.floor(Math.random() * bpKeys.length)]
+    } catch (err) {
+        console.error(err)
+    }
+
+    return randomId
+}
+
+const loadStudySettings = (checklistId) => {
+    openStudySettings(checklistId, STUDY_TYPES.ALL);
+}
+
+const loadRandomBodyStudySession = (checklistId) => {
+    openStudySettings(checklistId, STUDY_TYPES.RANDOM);
 }
 
 // ── Study settings modal ──────────────────────────────────────────────────────
@@ -102,9 +161,26 @@ const loadStudyPicker = async () => {
 const studySettingsModal = new bootstrap.Modal(document.getElementById('study-settings-modal'))
 let _pendingBpIds = []
 
-const openStudySettings = (checklistId, checklist, bpIds = null) => {
-    const bodyParts = checklist['bodyParts'] || {}
-    let bodyPartIdList = bpIds || Object.keys(bodyParts)
+const openStudySettings = async (checklistId, studyType) => {
+    let bodyPartIdList = [];
+
+    switch (studyType) {
+        case STUDY_TYPES.ALL:
+            bodyPartIdList = await getBodyPartIdList(checklistId);
+            break;
+        case STUDY_TYPES.RANDOM:
+            let randomBodyPartId = await getRandomBodyPartId(checklistId);
+
+            if (randomBodyPartId) {
+                bodyPartIdList.push(randomBodyPartId)
+            }
+
+            break;
+        default:
+            console.error('Unknown study type for study session')
+    }
+
+    window.AppState.currentChecklistId = checklistId;
     _pendingBpIds = shuffle(bodyPartIdList)
     studySettingsModal.show()
 }

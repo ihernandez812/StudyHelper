@@ -190,6 +190,29 @@ document.getElementById('home-add-checklist-btn').addEventListener('click', () =
     navigate('library')
 })
 
+document.getElementById('home-checklist-list').addEventListener('click', async (e) => {
+    const target = getActionTarget(e.target, '.checklist-row');
+
+    if (!target) {
+        return;
+    }
+
+    const { id, name } = target.data;
+    const action = target.action;
+
+    try {
+        switch (action) {
+            case 'study':
+                navigateToStudy(id, name)
+                break;
+            default:
+                console.error(`Unknown action "${action}" on checklist row ${id}`);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+})
+
 // ── Home screen ───────────────────────────────────────────────────────────────
 
 const loadHomeScreen = async () => {
@@ -235,13 +258,13 @@ const createHomeChecklistRow = (id, name, partCount) => {
     row.querySelector('.js-name').textContent = name
     row.querySelector('.js-meta').textContent = `${partCount} body part${partCount !== 1 ? 's' : ''}`
 
-    row.querySelector('[data-action="study"]').addEventListener('click', () => {
-        window.AppState.currentChecklistId   = id
-        window.AppState.currentChecklistName = name
-        navigate('study')
-    })
-
     return row
+}
+
+const navigateToStudy = (id, name) => {
+    window.AppState.currentChecklistId   = id
+    window.AppState.currentChecklistName = name
+    navigate('study')
 }
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
