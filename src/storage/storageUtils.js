@@ -1,174 +1,145 @@
-const Storage = require('electron-light-storage')
-const localStorage = new Storage()
-
-
-const sanatizeId = (id) => {
-    //Converting from actual localStorage to 
-    //this doesn't work all that well
-    //sub object keys are strings with "
-    //so we have to remove them
-    while(id.includes('"') || id.includes(' ')){
-        id = id.replace('"', '')
-        id = id.replace(' ', '')
-    }
-    return id
-}
+const Store = require('electron-store')
+const lightStorage = new Store()
 
 //Need to store checklist and categories in here
 //During upgrade tasks we need to set the checklist to here
 const setChecklists = (checklists) => {
-    localStorage.set({
-        checklists: checklists
-    })
+    lightStorage.set('checklists', checklists)
 }
 
 const addOrEditChecklistById =  (id, checklist) => {
-    let checklists = localStorage.get('checklists')|| {}
-    checklists[id] = checklist
-    localStorage.set({
-        checklists: checklists
-    })
+    const key = id ?? crypto.randomUUID()
+    lightStorage.set(`checklists.${key}`, { ...checklist, id: key})
+    return key
 }
 
 const getChecklists = () => {
-    return localStorage.get('checklists') || {}
+    return lightStorage.get('checklists', {})
 }
 
-const getChecklistById = (key) => {
-    let checklists = localStorage.get('checklists') || {}
-    let id = sanatizeId(key)
-    return checklists[id]
+const getChecklistById = (id) => {
+    return lightStorage.get(`checklists.${id}`, {})
+}
+
+const deleteChecklistById = (id) => {
+    lightStorage.delete(`checklists.${id}`)
 }
 
 const getBodyPartById = (bodyPartId, checklistId) => {
-    let checklists = localStorage.get('checklists') || {}
-    checklistId = sanatizeId(checklistId)
-    let checklist = checklists[checklistId]
-    let bodyParts = checklist['bodyParts']
-    bodyPartId = sanatizeId(bodyPartId)
-    return bodyParts[bodyPartId]
+    return lightStorage.get(`checklists.${checklistId}.bodyParts.${bodyPartId}`, {})
 }
 
 const addOrEditBodyPartById = (bodyPartId, checklistId, bodyPart) => {
-    let checklists = localStorage.get('checklists') || {}
-    checklistId = sanatizeId(checklistId)
-    let checklist = checklists[checklistId]
-    let bodyParts = checklist['bodyParts']
-    bodyPartId = sanatizeId(bodyPartId)
-    bodyParts[bodyPartId] = bodyPart
-    localStorage.set({
-        checklists: checklists
-    })
+    const key = bodyPartId ?? crypto.randomUUID()
+    lightStorage.set(`checklists.${checklistId}.bodyParts.${key}`, { ...bodyPart, id: key })
+    return key
 }
 
-const removeBodyPart = (key, checklistKey) => {
-    let checklists = localStorage.get('checklists')
-    checklistKey = sanatizeId(checklistKey)
-    let checklist = checklists[checklistKey]
-    let bodyParts = checklist['bodyParts']
-    delete bodyParts[key]
-
-    localStorage.set({
-        checklists: checklists
-    })
+const removeBodyPart = (bodyPartId, checklistId) => {
+    lightStorage.delete(`checklists.${checklistId}.bodyParts.${bodyPartId}`)
 }
 
-//During upgrade tasks we need to set the categoriesto here
+//During upgrade tasks we need to set the categories here
 const setCategories = (categories) => {
-    localStorage.set({
-        categories: categories
-    })
+    lightStorage.set('categories', categories)
 }
-const getCategories = () => {
-    return localStorage.get('categories') || {}
 
+const getCategories = () => {
+    return lightStorage.get('categories', {})
 }
 
 const getCategoryById = (id) => {
-    let categories = localStorage.get('categories') || {}
-    id = sanatizeId(id)
-    return categories[id]
+    return lightStorage.get(`categories.${id}`, {})
 }
 
 const removeCategory = (id) => {
-    let categories = localStorage.get('categories') || {}
-    id = sanatizeId(id)
-    delete categories[id]
-    localStorage.set({
-        categories: categories
-    })
+    lightStorage.delete(`categories.${id}`)
 }
 
 const addOrEditCategoryById = (id, category) => {
-    let categories = localStorage.get('categories') || {}
-    id = sanatizeId(id)
-    categories[id] = category
-    localStorage.set({
-        categories: categories
-    })
+    const key = id ?? crypto.randomUUID()
+    lightStorage.set(`categories.${key}`, {...category, id: key})
+    return key
 }
 
 const checkSearchInput = (possibleValue, query) => {
     let result = false
     possibleValue = possibleValue.toLowerCase()
     query = query.toLowerCase()
+
     if(query && query.length > 0){
         if(query.length >= 3){
             if(possibleValue.includes(query)){
                 result = true
             }
-        } 
-        else{
+        } else{
             if(possibleValue.startsWith(query)){
                 result = true
             }
         }
     }
+
     return result
 }
 
-const addPractical = (practicalId, practical) => {
-    let practicals = localStorage.get('practicals')|| {}
-    practicals[practicalId] = practical 
-    localStorage.set({
-        practicals: practicals
-    })
+const addPractical = (id, practical) => {
+    lightStorage.set(`practicals.${id}`, { ...practical, id: id })
+    return id
 }
 
 const getPracticals = () => {
-    return localStorage.get('practicals')
+    return lightStorage.get('practicals')
 }
 
 const getPracticalById = (practicalId) => {
-    let practicals = localStorage.get('practicals')|| {}
-    return practicals[practicalId]
+    return lightStorage.get(`practicals.${practicalId}`, {})
+}
+
+const deletePracticalById = (id) => {
+    lightStorage.delete(`practicals.${id}`)
+}
+
+const getIsDarkMode = () => {
+    return lightStorage.get('isDarkMode', false)
+}
+
+const setIsDarkMode = (isDarkMode) => {
+    lightStorage.set('isDarkMode', isDarkMode)
 }
 
 const search = (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
-    let checklists = localStorage.get('checklists') || {}
-    let foundChecklists = {}
-    let foundBodyParts = {}
-    let foundBodyTags = {}
-    for(let checklistId in checklists){
-        let checklist = checklists[checklistId]
-        let checklistName = checklist['name']
+    const checklists = lightStorage.get('checklists', {})
+    const foundChecklists = {}
+    const foundBodyParts = {}
+    const foundBodyTags = {}
+
+    for(const checklistId in checklists){
+        const checklist = checklists[checklistId]
+        const checklistName = checklist['name']
+
         if(isChecklistFilterChecked && checkSearchInput(checklistName, searchQuery)){
             foundChecklists[checklistId] = checklistName
         }
-        let bodyParts = checklist['bodyParts']
-        for(let bodyPartId in bodyParts){
-            let bodyPart = bodyParts[bodyPartId]
-            let bodyPartName = bodyPart['name']
+
+        const bodyParts = checklist['bodyParts']
+
+        for(const bodyPartId in bodyParts){
+            const bodyPart = bodyParts[bodyPartId]
+            const bodyPartName = bodyPart['name']
+
             if(isBodyPartFilterChecked && checkSearchInput(bodyPartName, searchQuery)){
-                let key = `${checklistId}_ ${bodyPartId}`
+                const key = `${checklistId}_ ${bodyPartId}`
                 foundBodyParts[key] = `${bodyPartName} - ${checklistName}`
             }
-            let bodyTags = bodyPart['coordinates']
-            for(let bodyTagId in bodyTags){
-                let bodyTag = bodyTags[bodyTagId]
-                let bodyTagName = bodyTag['name']
+
+            const bodyTags = bodyPart['coordinates']
+
+            for(const bodyTagId in bodyTags){
+                const bodyTag = bodyTags[bodyTagId]
+                const bodyTagName = bodyTag['name']
+
                 if(isBodyTagFilterChecked && checkSearchInput(bodyTagName, searchQuery)){
-                    let key = `${checklistId}_ ${bodyPartId}`
+                    const key = `${checklistId}_ ${bodyPartId}`
                     foundBodyTags[key] = `${bodyTagName} - ${bodyPartName}`
                 }
             }
@@ -188,6 +159,7 @@ module.exports = {
     addOrEditChecklistById, 
     getChecklists,
     getChecklistById,
+    deleteChecklistById,
     getBodyPartById,
     addOrEditBodyPartById,
     removeBodyPart,
@@ -199,5 +171,8 @@ module.exports = {
     search,
     addPractical,
     getPracticals,
-    getPracticalById
+    getPracticalById,
+    deletePracticalById,
+    getIsDarkMode,
+    setIsDarkMode,
 }

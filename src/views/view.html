@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The page is served over file:, so each directive lists file: alongside 'self'.
+         The directive that matters most is script-src without 'unsafe-inline': it stops
+         inline handlers such as an injected onerror= from ever running, which is the
+         backstop for anything the textContent work missed. style-src still needs
+         'unsafe-inline' because Bootstrap sets inline style attributes at runtime. -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self' file:;
+        script-src 'self' file:;
+        style-src 'self' file: 'unsafe-inline';
+        img-src 'self' file: data:;
+        font-src 'self' file:;
+        connect-src 'none';
+        object-src 'none';
+        base-uri 'none';
+        form-action 'none'">
+    <title>AnatoMe</title>
+    <link rel="stylesheet" href="../../node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+
+<div id="app">
+
+    <!-- ── Sidebar ────────────────────────────────────────────── -->
+    <nav id="sidebar">
+        <div class="sidebar-logo">
+            <img src="../images/AnatoMeIcon.png" class="sidebar-icon" alt="">
+<!--            <h1>AnatoMe</h1>-->
+            <span>Anatomy study tool</span>
+        </div>
+
+        <div class="nav-section-label">Learn</div>
+        <a id='home-nav-item' class="nav-item active" data-screen="home">
+            <i class="fas fa-home"></i> Home
+        </a>
+        <a id='library-nav-item' class="nav-item" data-screen="library">
+            <i class="fas fa-folder"></i> Library
+        </a>
+        <a id='study-nav-item' class="nav-item" data-screen="study">
+            <i class="fas fa-book-open"></i> Study
+        </a>
+
+        <div class="nav-section-label">Test</div>
+        <a id='practical-nav-item'  class="nav-item" data-screen="practical">
+            <i class="fas fa-clipboard-list"></i> Practical
+        </a>
+        <a id='results-nav-item'  class="nav-item" data-screen="results">
+            <i class="fas fa-chart-bar"></i> Results
+        </a>
+    </nav>
+
+    <!-- ── Main ──────────────────────────────────────────────── -->
+    <div id="main">
+
+        <!-- Dynamic topbar (updated by JS on each navigate call) -->
+        <div class="topbar" id="topbar">
+            <div id="topbar-left"></div>
+            <div id="topbar-right"></div>
+        </div>
+
+        <!-- ── Home ───────────────────────────────────────────── -->
+        <div id="screen-home" class="screen active">
+            <div class="screen-content">
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Checklists</div>
+                        <div class="stat-value" id="stat-checklists">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Body parts</div>
+                        <div class="stat-value" id="stat-bodyparts">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Practicals taken</div>
+                        <div class="stat-value" id="stat-practicals">—</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">How it works</div>
+                    <div class="how-it-works">
+                        <div class="how-step">
+                            <div class="how-step-icon"><i class="fas fa-folder-plus"></i></div>
+                            <h3>1. Build your library</h3>
+                            <p>Create checklists, add body parts, and place labeled tags on images.</p>
+                        </div>
+                        <div class="how-step">
+                            <div class="how-step-icon"><i class="fas fa-book-open"></i></div>
+                            <h3>2. Study</h3>
+                            <p>Quiz yourself on body part tags at your own pace with optional hints.</p>
+                        </div>
+                        <div class="how-step">
+                            <div class="how-step-icon"><i class="fas fa-stopwatch"></i></div>
+                            <h3>3. Take a practical</h3>
+                            <p>Run a timed exam with random body parts from your chosen checklists.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Your checklists</div>
+                    <ul class="checklist-list" id="home-checklist-list">
+                        <li class="empty-state" id="home-empty">
+                            <i class="fas fa-folder-open"></i>
+                            <p>No checklists yet.</p>
+                            <button id="home-add-checklist-btn" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create your first checklist
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Library ─────────────────────────────────────────── -->
+        <div id="screen-library" class="screen">
+            <div class="screen-content">
+                <div class="card">
+                    <ul class="checklist-list" id="library-checklist-list">
+                        <li class="empty-state" id="library-empty">
+                            <i class="fas fa-folder-open"></i>
+                            <p>No checklists yet. Create one to get started.</p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Checklist detail ────────────────────────────────── -->
+        <div id="screen-checklist-detail" class="screen">
+            <div class="screen-content">
+                <div class="body-part-grid" id="body-part-grid">
+                    <div class="empty-state" id="body-part-empty">
+                        <i class="fas fa-image"></i>
+                        <p>No body parts yet. Add one to get started.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Body part editor ────────────────────────────────── -->
+        <div id="screen-bodypart-editor" class="screen">
+            <div class="editor-layout">
+                <div class="editor-sidebar">
+                    <div class="editor-field">
+                        <label for="editor-name" class="field-label">Body part name</label>
+                        <input type="text" id="editor-name" class="form-control" placeholder="e.g. Bicep brachii">
+                    </div>
+
+                    <div class="editor-field">
+                        <label for="editor-font-size" class="field-label">Font size</label>
+                        <select class="form-select" id="editor-font-size">
+                            <option value=14>14</option>
+                            <option value=16 selected>16</option>
+                            <option value=18>18</option>
+                            <option value=20>20</option>
+                            <option value=22>22</option>
+                            <option value=24>24</option>
+                            <option value=28>28</option>
+                            <option value=36>36</option>
+                        </select>
+                    </div>
+
+                    <div class="editor-field">
+                        <label class="field-label">Zoom</label>
+                        <div class="btn-group w-100">
+                            <button class="btn btn-secondary" id="editor-scale-down">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button class="btn btn-secondary" id="editor-scale-up">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <span class="field-hint" id="editor-scale-label">Scale: 1.0×</span>
+                    </div>
+
+                    <div class="editor-field">
+                        <label class="field-label">Tags <span class="tag-count" id="editor-tag-count">0</span></label>
+                        <ul class="tag-list" id="editor-tag-list"></ul>
+                    </div>
+
+                    <button class="btn btn-primary w-100 mt-auto" id="editor-save-btn">
+                        <i class="fas fa-save"></i> Save body part
+                    </button>
+                </div>
+
+                <div class="editor-canvas-area">
+                    <div class="canvas-drop-zone" id="editor-drop-zone">
+                        <div class="drop-hint" id="editor-drop-hint">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag an image here</p>
+                            <span>Then right-click on the image to place tags</span>
+                        </div>
+                        <img id="editor-image" src="" style="display:none;" alt="">
+                        <canvas id="editor-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Study ───────────────────────────────────────────── -->
+        <div id="screen-study" class="screen">
+
+            <!-- Study picker: shown when no body part is active -->
+            <div id="study-picker" class="screen-content">
+                <div class="card" id="study-checklist-picker">
+                    <div class="card-title">Choose what to study</div>
+                    <!-- Filled by loadStudyPicker(); empty state comes from tpl-no-checklists-empty -->
+                    <div id="study-picker-list"></div>
+                </div>
+            </div>
+
+            <!-- Active quiz: shown when studying -->
+            <div id="study-active" class="hide">
+                <div class="study-layout">
+                    <div class="study-canvas-area">
+                        <div class="study-progress">
+                            <span id="study-progress-label">Body part 1 of 1</span>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="study-progress-bar"></div>
+                            </div>
+                        </div>
+                        <img id="study-image" src="" style="display:none;" alt="">
+                        <canvas id="study-canvas"></canvas>
+                    </div>
+                    <div class="study-sidebar">
+                        <div class="card" style="margin-bottom: 12px;">
+                            <div class="card-title">
+                                <span id="study-body-part-name">—</span>
+                            </div>
+                            <div id="study-wordbank-wrap">
+                                <div class="field-label" style="margin-bottom: 6px;">Word bank</div>
+                                <div id="study-wordbank"></div>
+                            </div>
+                        </div>
+                        <div class="card" style="margin-bottom: 12px;">
+                            <div class="card-title">Progress</div>
+                            <p id="study-tags-progress" class="progress-paragraph">0 / 0 tags labeled</p>
+                            <p id="study-tags-hint" class="progress-paragraph">3 hints left</p>
+                        </div>
+                        <div id="body-part-btn-group" class="d-flex gap-2 hide">
+                            <button class="btn btn-outline-primary" id="study-prev-btn">
+                                ← Previous
+                            </button>
+                            <button class="btn btn-primary" id="study-next-btn">
+                                Next →
+                            </button>
+                        </div>
+                        <button class="btn btn-danger w-100" id="study-end-btn">
+                            End study session
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Practical ───────────────────────────────────────── -->
+        <div id="screen-practical" class="screen">
+
+            <!-- Setup state -->
+            <div id="practical-setup" class="screen-content">
+                <div class="card" style="margin-bottom: 16px;">
+                    <div class="card-title">Select checklists</div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                        Body parts will be selected randomly from the checklists you choose.
+                    </p>
+                    <div id="practical-checklist-select"></div>
+                </div>
+                <div class="card" style="margin-bottom: 16px;">
+                    <div class="card-title">Time limit</div>
+                    <div class="time-options" id="practical-time-options">
+                        <label class="time-option">
+                            <input type="radio" name="time-limit" value="0" checked> No limit
+                        </label>
+                        <label class="time-option">
+                            <input type="radio" name="time-limit" value="300"> 5 min
+                        </label>
+                        <label class="time-option">
+                            <input type="radio" name="time-limit" value="600"> 10 min
+                        </label>
+                        <label class="time-option">
+                            <input type="radio" name="time-limit" value="900"> 15 min
+                        </label>
+                    </div>
+                </div>
+                <div class="practical-summary card" style="margin-bottom: 16px;">
+                    <p id="practical-summary-text" style="font-size: 13px; color: var(--text-secondary); margin: 0;">
+                        Select at least one checklist to begin.
+                    </p>
+                </div>
+                <button class="btn btn-primary" id="practical-start-btn" disabled>
+                    <i class="fas fa-play"></i> Start practical
+                </button>
+            </div>
+
+            <!-- Active test state -->
+            <div id="practical-active" class="hide">
+                <div class="practical-header">
+                    <div>
+                        <div class="field-label">Station</div>
+                        <div id="practical-station-name" style="font-size: 15px; font-weight: 600;"></div>
+                    </div>
+                    <div id="practical-timer" class="practical-timer hide">
+                        <i class="fas fa-stopwatch"></i>
+                        <span id="practical-timer-display">00:00</span>
+                    </div>
+                    <button class="btn btn-secondary" id="practical-next-btn">
+                        Next station →
+                    </button>
+                </div>
+                <div class="practical-canvas-wrap">
+                    <img id="practical-image" src="" style="display:none;" alt="">
+                    <canvas id="practical-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Results ─────────────────────────────────────────── -->
+        <div id="screen-results" class="screen">
+            <div class="screen-content">
+                <div class="card">
+                    <ul class="results-list" id="results-list">
+                        <li class="empty-state" id="results-empty">
+                            <i class="fas fa-chart-bar"></i>
+                            <p>No practicals taken yet.</p>
+                            <button id="results-start-practical-btn" class="btn btn-primary">
+                                Start a practical
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── Modals ──────────────────────────────────────────────────── -->
+
+<!-- Checklist name modal (add/edit) -->
+<div class="modal fade" id="checklist-modal" tabindex="-1" aria-labelledby="checklist-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="checklist-modal-label">New checklist</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="form-control" id="checklist-name-input" placeholder="e.g. Upper limb">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="checklist-save-btn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Categories modal -->
+<div class="modal fade" id="categories-modal" tabindex="-1" aria-labelledby="categories-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="categories-modal-label">Tag categories</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                    Categories let you give tags a type (e.g. "muscle", "nerve", "vessel"). When studying, the question will say "What is this nerve?" instead of "What is this?"
+                </p>
+                <ul class="category-list" id="category-list"></ul>
+                <div class="input-group mt-3">
+                    <input type="text" class="form-control" id="new-category-input" placeholder="New category name">
+                    <button class="btn btn-primary" id="add-category-btn">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Body tag modal (editor: add/edit a tag) -->
+<div class="modal fade" id="editor-tag-modal" tabindex="-1" aria-labelledby="editor-tag-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editor-tag-modal-label">Tag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="editor-tag-name" class="form-label field-label">Tag name</label>
+                    <input type="text" class="form-control" id="editor-tag-name" placeholder="e.g. Origin">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label field-label">Category <span style="color: var(--text-muted); font-weight: 400;">(optional)</span></label>
+                    <select class="form-select" id="editor-tag-category">
+                        <option value="null">None</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="editor-tag-save-btn">Save tag</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Study answer modal -->
+<div class="modal fade" id="study-answer-modal" tabindex="-1" aria-labelledby="study-answer-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="study-answer-modal-label">What is this?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="form-control" id="study-answer-input" placeholder="Type your answer...">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link" id="study-hint-btn">Need a hint?</button>
+                <button type="button" class="btn btn-primary" id="study-answer-submit-btn">Check answer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Study settings modal -->
+<div class="modal fade" id="study-settings-modal" tabindex="-1" aria-labelledby="study-settings-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="study-settings-modal-label">Study settings</h5>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label field-label">Difficulty</label>
+                    <select class="form-select" id="study-difficulty">
+                        <option value="0">Easy — word bank, hints</option>
+                        <option value="1">Medium — word bank, no hints</option>
+                        <option value="2">Hard — no word bank, no hints</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="study-settings-save-btn">Start studying</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Practical tag answer modal -->
+<div class="modal fade" id="practical-tag-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="practical-tag-prompt">Enter tag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="form-control" id="practical-tag-input" placeholder="Type your answer...">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="practical-tag-save-btn">Save tag</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Practical save modal -->
+<div class="modal fade" id="practical-save-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Save practical</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label field-label">Give this practical a name</label>
+                <input type="text" class="form-control" id="practical-save-name" placeholder="e.g. Upper limb practical #1">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Discard</button>
+                <button type="button" class="btn btn-primary" id="practical-save-btn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row templates ───────────────────────────────────────────────
+     Inert markup cloned by the controllers. Elements the JS fills in
+     or binds to are marked with js- classes or data-action, so a CSS
+     rename can't quietly break a controller. Never use ids in here —
+     cloning would duplicate them.
+
+     Grouped by the controller that owns each one, in script load order. -->
+
+<!-- shared -->
+<template id="tpl-no-checklists-empty">
+    <div class="empty-state">
+        <i class="fas fa-folder-open"></i>
+        <p>No checklists in your library yet.</p>
+        <button class="btn btn-primary" data-action="go-to-library">Go to Library</button>
+    </div>
+</template>
+
+<!-- home.js -->
+<template id="tpl-home-checklist-row">
+    <li class="checklist-row">
+        <div class="checklist-info">
+            <h4 class="js-name"></h4>
+            <span class="js-meta"></span>
+        </div>
+        <div class="checklist-actions">
+            <button class="btn btn-secondary" data-action="study">
+                <i class="fas fa-book-open"></i> Study
+            </button>
+        </div>
+    </li>
+</template>
+
+<!-- library.js -->
+<template id="tpl-checklist-row">
+    <li class="checklist-row">
+        <div class="checklist-info">
+            <h4 class="js-name"></h4>
+            <span class="js-meta"></span>
+        </div>
+        <div class="checklist-actions">
+            <button class="btn btn-secondary" data-action="open">Open</button>
+            <button class="btn btn-ghost btn-icon" data-action="edit" title="Rename">
+                <i class="fas fa-pen"></i>
+            </button>
+            <button class="btn btn-ghost btn-icon" data-action="delete" title="Delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </li>
+</template>
+
+<template id="tpl-body-part-card">
+    <div class="body-part-card">
+        <div class="body-part-card-content">
+            <h4 class="js-name"></h4>
+            <span class="js-meta"></span>
+        </div>
+        <div class="body-part-card-actions">
+            <button class="btn btn-secondary btn-sm" data-action="edit">
+                <i class="fas fa-pen"></i> Edit
+            </button>
+            <button class="btn btn-ghost btn-icon" data-action="delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+</template>
+
+<template id="tpl-body-part-add-card">
+    <div class="body-part-card body-part-card--add" data-action="add">
+        <i class="fas fa-plus"></i><span>Add body part</span>
+    </div>
+</template>
+
+<template id="tpl-no-tags-empty">
+    <li class="tag-list-empty">No tags yet. Right-click the image to add one.</li>
+</template>
+
+<template id="tpl-tag-list-item">
+    <li class="tag-list-item">
+        <div class="tag-row">
+            <span class="tag-name js-name"></span>
+            <div class="tag-actions">
+                <button class="btn btn-ghost btn-icon" data-action="edit"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-ghost btn-icon" data-action="delete"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    </li>
+</template>
+
+<template id="tpl-category-item">
+    <li class="category-item">
+        <span class="category-name js-name"></span>
+        <div class="category-actions">
+            <button class="btn btn-ghost btn-icon" data-action="delete"><i class="fas fa-trash"></i></button>
+        </div>
+    </li>
+</template>
+
+<!-- study.js -->
+<template id="tpl-study-picker-item">
+    <div class="study-picker-item">
+        <div>
+            <div class="study-picker-name js-name"></div>
+            <div class="study-picker-meta js-meta"></div>
+        </div>
+        <div class="study-picker-actions">
+            <button class="btn btn-secondary" data-action="random">Random body part</button>
+            <button class="btn btn-primary" data-action="all">
+                <i class="fas fa-book-open"></i> Study all
+            </button>
+        </div>
+    </div>
+</template>
+
+<!-- practical.js -->
+<template id="tpl-practical-checklist-option">
+    <label class="practical-checklist-option">
+        <input type="checkbox">
+        <div>
+            <span class="practical-cl-name js-name"></span>
+            <span class="practical-cl-meta js-meta"></span>
+        </div>
+    </label>
+</template>
+
+<!-- results.js -->
+<template id="tpl-result-row">
+    <li class="result-row">
+        <div class="result-info">
+            <h4 class="result-name js-name"></h4>
+            <span class="result-meta js-meta"></span>
+        </div>
+        <div class="checklist-actions">
+            <button class="btn btn-secondary" data-action="open">Open</button>
+            <button class="btn btn-ghost btn-icon" data-action="delete" title="Delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </li>
+</template>
+
+<script src="../../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../HTMLUtils/canvasUtils.js"></script>
+<script src="../HTMLUtils/domUtils.js"></script>
+<script src="../controller/home.js"></script>
+<script src="../controller/library.js"></script>
+<script src="../controller/study.js"></script>
+<script src="../controller/practical.js"></script>
+<script src="../controller/results.js"></script>
+<script src="../controller/anatome.js"></script>
+</body>
+</html>

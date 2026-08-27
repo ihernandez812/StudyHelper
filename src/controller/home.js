@@ -1,423 +1,291 @@
-const imgCanvas = document.querySelector("#img_canvas")
-const kianImage = document.querySelector("#kianImage")
-const checklistNav = document.querySelector("#checklists")
-const addChecklistBtn = document.querySelector("#add_checklist")
-const checklistModalElement = document.querySelector("#checklist_modal")
-const checklistBtn = document.querySelector('#checklist_btn')
-const checklistTxt = document.querySelector("#checklist_title")
-const filterModalElement = document.querySelector('#filter_modal')
-const filterBtn = document.querySelector('#filter_btn')
-const searchDropdown = document.querySelector('#search_dropdown')
-const searchInput = document.querySelector('#search_input')
-const saveFilterBtn = document.querySelector("#save_filter_btn")
-const checklistFilter = document.querySelector('#checklist_filter')
-const bodyPartFilter = document.querySelector('#body_part_filter')
-const bodyTagFilter = document.querySelector('#body_tag_filter')
-const filterModal = new bootstrap.Modal(filterModalElement)
-const checklistModal = new bootstrap.Modal(checklistModalElement)
-let editChecklistId = null
-let editChecklistTitleElement = null
+const HOME_TEMPLATES = {
+    checklistRow: document.getElementById('tpl-home-checklist-row'),
+}
 
-window.addEventListener('load', async (e) => {
-    await window.api.addIdsToChecklists()
-    await window.api.addIdsToTags()
-    await window.api.addChecklistAndCategoriesToDB()
-    const ctx = imgCanvas.getContext("2d");
-    ctx.canvas.width = kianImage.width;
-    ctx.canvas.height = kianImage.height;
-    ctx.drawImage(kianImage, -1400, 0);
-    createDropdowns()
-})
+// ── App state ─────────────────────────────────────────────────────────────────
+// Single source of truth for cross-screen state. Replaces localStorage hacks.
+window.AppState = {
+    currentChecklistId:   null,
+    currentChecklistName: null,
+    currentBodyPartId:    null,
+    currentBodyPartName:  null,
+    currentBodyPartIds:   [],   // used in study mode for multi-body-part sessions
+    currentPage: 'home'
+}
 
-searchInput.addEventListener('focus', () => {
-    searchDropdown.classList.add('show')
-})
+// ── Topbar config per screen ──────────────────────────────────────────────────
+// Describes what the topbar contains; setTopbar() turns it into DOM.
+//
+// `title` is a plain string because it never changes. `breadcrumb` and
+// `actions` are functions for two reasons: they read AppState, which is only
+// correct at render time, and they reference handlers defined in controllers
+// that load after this file. Evaluating either eagerly would blow up.
+//
+// A breadcrumb segment with a `screen` renders as a link to it; the last
+// segment normally has none and renders as plain current-page text.
+const TOPBAR = {
+    home: {
+        title: 'Home',
+    },
+    library: {
+        title: 'Library',
+        actions: () => [
+            { label: 'Categories',    icon: 'fa-tags', className: 'btn-ghost',   onClick: openCategoriesModal },
+            { label: 'New checklist', icon: 'fa-plus', className: 'btn-primary', onClick: openNewChecklistModal },
+        ],
+    },
+    'checklist-detail': {
+        breadcrumb: () => [
+            { label: 'Library', screen: 'library' },
+            { label: window.AppState.currentChecklistName || '' },
+        ],
+        actions: () => [
+            { label: 'Study this',    icon: 'fa-book-open', className: 'btn-secondary', onClick: () => navigate('study') },
+            { label: 'Add body part', icon: 'fa-plus',      className: 'btn-primary',   onClick: () => openBodyPartEditor(null) },
+        ],
+    },
+    'bodypart-editor': {
+        breadcrumb: () => [
+            { label: 'Library', screen: 'library' },
+            { label: window.AppState.currentChecklistName || '', screen: 'checklist-detail' },
+            { label: window.AppState.currentBodyPartName || 'New body part' },
+        ],
+    },
+    study: {
+        title: 'Study',
+    },
+    practical: {
+        title: 'Practical',
+    },
+    results: {
+        title: 'Results',
+    },
+}
 
-searchInput.addEventListener('blur', async() => {
-    await new Promise(r => setTimeout(r, 200));
-    searchDropdown.classList.remove('show')
-})
+// ── Screen registry ───────────────────────────────────────────────────────────
+// One entry per screen: which sidebar item highlights it (sub-screens point at
+// their parent), what runs on entry, and what to clean up on exit.
+//
+// `load` and `teardown` are thunks for the same reason TOPBAR's are: they name
+// functions defined in controllers that parse after this file, so the reference
+// has to resolve at call time rather than at definition time.
+const SCREENS = {
+    'home':             { sidebar: 'home',      load: () => loadHomeScreen() },
+    'library':          { sidebar: 'library',   load: () => loadLibraryScreen() },
+    'checklist-detail': { sidebar: 'library',   load: () => loadChecklistDetail() },
+    'bodypart-editor':  { sidebar: 'library',   load: () => initBodyPartEditor() },
+    'study':            { sidebar: 'study',     load: () => loadStudyPicker() },
+    'practical':        { sidebar: 'practical', load: () => loadPracticalSetup(),
+                                                teardown: () => stopPracticalTimer() },
+    'results':          { sidebar: 'results',   load: () => loadResultsScreen() },
+}
 
-searchInput.addEventListener('search', (event) => {
-    event.preventDefault()
-    event.stopImmediatePropagation()
-    search()
-})
+// ── Navigation ────────────────────────────────────────────────────────────────
 
-//There will be no submitting lol
-document.addEventListener('submit', (event) => {
-    event.preventDefault()
-    event.stopImmediatePropagation()
-    search()
-}, false)
+const navigate = (screenName) => {
+    const config = SCREENS[screenName]
 
-searchInput.addEventListener('keyup', () => {
-    search()
-})
+    if (!config) {
+        console.error(`Unknown screen: ${screenName}`)
+        return
+    }
 
+    try {
+        SCREENS[window.AppState.currentPage]?.teardown?.()
+    } catch (err) {
+        console.error(err)
+    }
 
-saveFilterBtn.addEventListener('click', () => {
-    //reload search 
-    search()
-    filterModal.hide()
-})
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
 
-filterBtn.addEventListener('click', () => {
-    filterModal.show()
-})
+    document.querySelector(`.nav-item[data-screen="${config.sidebar}"]`)?.classList.add('active')
+    document.getElementById(`screen-${screenName}`)?.classList.add('active')
 
-addChecklistBtn.addEventListener('click', () => {
-    checklistModal.show()
-})
+    setTopbar(screenName)
+    window.AppState.currentPage = screenName
 
-checklistBtn.addEventListener('click', async () => {
-    let checklistTitle = checklistTxt.value
-    if(checklistTitle){
-        if(editChecklistId && editChecklistTitleElement){
-            editChecklist(editChecklistId, editChecklistTitleElement, checklistTitle)
+    config.load().catch(error => console.error(error))
+}
+
+const buildIcon = (iconClass) => {
+    const icon = document.createElement('i')
+    icon.className = `fas ${iconClass}`
+    return icon
+}
+
+const buildTopbarTitle = (text) => {
+    const heading = document.createElement('h2')
+    heading.textContent = text
+    return heading
+}
+
+const buildBreadcrumb = (segments) => {
+    const nav = document.createElement('nav')
+    nav.className = 'breadcrumb'
+
+    segments.forEach((segment, index) => {
+        if (index > 0) {
+            const separator = document.createElement('span')
+            separator.className = 'breadcrumb-sep'
+            separator.appendChild(buildIcon('fa-chevron-right'))
+            nav.appendChild(separator)
         }
-        else{
-            addChecklist(checklistTitle)
+
+        if (segment.screen) {
+            const link = document.createElement('a')
+            link.className   = 'breadcrumb-link'
+            link.textContent = segment.label
+            link.addEventListener('click', () => navigate(segment.screen))
+            nav.appendChild(link)
+        } else {
+            const current = document.createElement('span')
+            current.className   = 'breadcrumb-current'
+            current.textContent = segment.label
+            nav.appendChild(current)
         }
-        
-        checklistModal.hide()
+    })
+
+    return nav
+}
+
+const buildTopbarButton = ({ label, icon, className, onClick }) => {
+    const button = document.createElement('button')
+    button.className = `btn ${className}`
+
+    if (icon) {
+        button.appendChild(buildIcon(icon))
+        button.append(' ')
     }
-    else{
-        alert('You Gotta Type Something Big Dog')
+
+    //append() takes a string and inserts it as text, so the label is never parsed as markup
+    button.append(label)
+    button.addEventListener('click', onClick)
+
+    return button
+}
+
+const setTopbar = (screenName) => {
+    const left  = document.getElementById('topbar-left')
+    const right = document.getElementById('topbar-right')
+
+    //replaceChildren() with no arguments empties an element
+    left.replaceChildren()
+    right.replaceChildren()
+
+    const config = TOPBAR[screenName]
+
+    if (!config) {
+        return
+    }
+
+    if (config.breadcrumb) {
+        left.appendChild(buildBreadcrumb(config.breadcrumb()))
+    } else if (config.title) {
+        left.appendChild(buildTopbarTitle(config.title))
+    }
+
+    if (config.actions) {
+        config.actions().forEach(action => right.appendChild(buildTopbarButton(action)))
+    }
+}
+
+document.getElementById('home-add-checklist-btn').addEventListener('click', () => {
+    navigate('library')
+})
+
+document.getElementById('home-checklist-list').addEventListener('click', async (e) => {
+    const target = getActionTarget(e.target, '.checklist-row');
+
+    if (!target) {
+        return;
+    }
+
+    const { id, name } = target.data;
+    const action = target.action;
+
+    try {
+        switch (action) {
+            case 'study':
+                navigateToStudy(id, name)
+                break;
+            default:
+                console.error(`Unknown action "${action}" on checklist row ${id}`);
+        }
+    } catch (err) {
+        console.error(err);
     }
 })
 
-const editChecklist = async (editChecklistId, editChecklistTitleElement, checklistTitle) => {
-    let checklist = await window.api.getChecklistById(editChecklistId)
+// ── Home screen ───────────────────────────────────────────────────────────────
 
-    checklist['name'] = checklistTitle
-    window.api.addOrEditChecklistById(editChecklistId, checklist)
-    editChecklistTitleElement.innerHTML = checklistTitle
-    editChecklistTitleElement = null
-    editChecklistId = null
-}
+const loadHomeScreen = async () => {
+    const checklists = await window.api.getChecklists()
+    const practicals = await window.api.getPracticals() || {}
 
-const addChecklist = async () => {
-    let id = await window.api.generateId()
-    let checklist = {
-        name: checklistTitle,
-        bodyParts: {}
-    }
-    window.api.addOrEditChecklistById(id, checklist)
-    let checklistDropdown = createDropdown(checklist, id)
-    checklistNav.appendChild(checklistDropdown)
-}
+    const checklistKeys = Object.keys(checklists)
+    let totalBodyParts  = 0
 
-const createDropdowns = async () => {
-    let checklists = await window.api.getChecklists() 
-    for(let key in checklists){
-        let checklist = checklists[key]
-        let checklistDropdown = createDropdown(checklist, key)
-        checklistNav.append(checklistDropdown)
+    for (const id of checklistKeys) {
+        totalBodyParts += Object.keys(checklists[id]['bodyParts'] || {}).length
     }
 
-}
+    document.getElementById('stat-checklists').textContent = checklistKeys.length.toString()
+    document.getElementById('stat-bodyparts').textContent  = totalBodyParts.toString()
+    document.getElementById('stat-practicals').textContent = Object.keys(practicals).length.toString()
 
-const createDropdown = (checklist, key) => {
-    let list = document.createElement('li')
-    list.classList.add('nav-item')
-    list.classList.add('dropdown')
-    let titleElement = createChecklistTitle(checklist)
-    list.appendChild(titleElement)
-    let bodyParts = checklist['bodyParts']
-    let dropdownItems = createDropdownList(bodyParts, key)
-    list.appendChild(dropdownItems)
-    list.addEventListener('contextmenu', () => {
-        setupEditChecklist(titleElement, key)
+    const list       = document.getElementById('home-checklist-list')
+    const emptyState = document.getElementById('home-empty')
+
+    // Clear previous rows (keep empty state element)
+    Array.from(list.children).forEach(c => { if (c.id !== 'home-empty') c.remove() })
+
+    if (checklistKeys.length === 0) {
+        emptyState.classList.remove('hide')
+        return
+    }
+
+    emptyState.classList.add('hide')
+
+    checklistKeys.forEach(id => {
+        const checklist = checklists[id]
+        const partCount = Object.keys(checklist['bodyParts'] || {}).length
+        list.appendChild(createHomeChecklistRow(id, checklist['name'], partCount))
     })
-    return list
 }
 
-const setupEditChecklist = (titleElement, checklistId) => {
-    editChecklistTitleElement = titleElement
-    editChecklistId = checklistId
-    checklistModal.show()
+const createHomeChecklistRow = (id, name, partCount) => {
+    const row = cloneTemplate(HOME_TEMPLATES.checklistRow)
+
+    row.dataset.id   = id
+    row.dataset.name = name
+    row.querySelector('.js-name').textContent = name
+    row.querySelector('.js-meta').textContent = `${partCount} body part${partCount !== 1 ? 's' : ''}`
+
+    return row
 }
 
-const createChecklistTitle = (checklist) =>{
-    let link = document.createElement('a')
-    let checklistTitle = checklist['name']
-    link.classList.add('nav-link')
-    link.classList.add('dropdown-toggle')
-    link.setAttribute('data-bs-toggle', 'dropdown')
-    link.innerHTML = checklistTitle
-    return link
+const navigateToStudy = (id, name) => {
+    window.AppState.currentChecklistId   = id
+    window.AppState.currentChecklistName = name
+    navigate('study')
 }
 
-const createDropdownList = (bodyParts, checklistKey) => {
-    let list = document.createElement('ul')
-    list.classList.add('dropdown-menu')
-    for(let key in bodyParts){
-        let bodyPart = bodyParts[key]
-        let dropDownItem = createDropdownItem(bodyPart, key, checklistKey)
-        list.appendChild(dropDownItem)
-    }
-    let divider = createDropdownDivider()
-    let otherDivider = createDropdownDivider()
-    let randomItem = createDropdownItemForRandom(checklistKey)
-    let addBodyPartItem = createDropdownItemForAddBodyPart(checklistKey)
-    if(Object.keys(bodyParts).length > 0){
-        list.appendChild(divider)
-        list.appendChild(randomItem)
-    }
-    list.appendChild(otherDivider)
-    list.appendChild(addBodyPartItem)
-    return list
+// ── Dark mode ─────────────────────────────────────────────────────────────────
+
+const applyTheme = (isDark) => {
+    document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light')
+    const icon = document.querySelector('.sidebar-icon')
+    if (icon) icon.src = isDark ? '../images/AnatoMeIconDark.png' : '../images/AnatoMeIcon.png'
 }
 
-//<span class="fa-icons"><i class="fa fa-pencil-square-o"></i> <i class="fa fa-trash-o" aria-hidden="true"></i> </span>
+window.addEventListener('load', async () => {
+    // Restore saved preference before first paint
+    const savedDark = await window.api.getDarkMode()
+    applyTheme(savedDark)
 
-const createDropdownItem = (bodyPart, key, checklistKey) =>{
-    let link = document.createElement('a')
-    let title = bodyPart['name']
-    link.classList.add('dropdown-item')
-    //data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
-    
+    // Listen for menu-triggered toggles
+    window.api.onDarkModeChanged((isDark) => applyTheme(isDark))
 
-    let linkSpan = document.createElement('span')
-    linkSpan.classList.add('dropdown-title')
-    linkSpan.innerHTML = title
-    
-
-    let span = document.createElement('span')
-    span.classList.add('fa-icons')
-
-    let editIcon = document.createElement('i')
-    editIcon.classList.add('fa')
-    editIcon.classList.add('fa-pencil-square-o')
-
-    let deleteIcon = document.createElement('i')
-    deleteIcon.classList.add('fa')
-    deleteIcon.classList.add('fa-trash-o')
-
-    span.appendChild(editIcon)
-    span.appendChild(deleteIcon)
-    link.appendChild(linkSpan)
-    link.appendChild(span)
-
-
-    let listItem = document.createElement('li')
-    listItem.appendChild(link)
-    listItem.setAttribute('data-bs-toggle', 'tooltip')
-    listItem.setAttribute('data-bs-placement', 'top')
-    listItem.setAttribute('title', title)
-    //listItem.appendChild(span)
-    link.addEventListener('click', () => {
-        window.api.setCurrChecklist(checklistKey)
-        window.api.setCurrBodyPart([key])
-        window.api.loadChecklistTest()
-    })
-
-    editIcon.addEventListener('click', (event) => {
-        event.stopImmediatePropagation()
-        window.api.setCurrBodyPart(key)
-        window.api.setCurrChecklist(checklistKey)
-        window.api.loadConfigBodyPart()
-    })
-    
-    deleteIcon.addEventListener('click', (event) => {
-        event.stopImmediatePropagation()
-        window.api.dialogQuestion('Are you sure you want to delete?')
-        .then(res => {
-            let result = res.response
-            if(result == 0){
-                let dropdownList = listItem.parentElement
-                listItem.remove()
-                window.api.removeBodyPart(key, checklistKey)
-                //we know there are only the random and add body part list items
-                //if there are only 4 children
-                if(dropdownList.children.length == 4){
-                    let randomDropdown = document.querySelector(`#random_${checklistKey}`)
-                    randomDropdown.remove()
-                    dropdownList.children[0].remove()
-                }
-            }
-        })
-    })
-    return listItem
-    
-}
-
-const createDropdownDivider = () => {
-
-    let list = document.createElement('li')
-    let line = document.createElement('hr')
-    line.classList.add('dropdown-divider')
-    list.appendChild(line)
-    return list
-}
-
-const createDropdownItemForRandom = (checklistKey) => {
-    let link = document.createElement('a')
-    link.classList.add('dropdown-item')
-    link.innerHTML = 'Random'
-
-    let arrowIcon = document.createElement('i')
-    arrowIcon.classList.add('fa')
-    arrowIcon.classList.add('fa-caret-right')
-    link.appendChild(arrowIcon)
-
-    let listItem = document.createElement('li')
-    listItem.appendChild(link)
-    //Used so we can delete the random list item if they
-    //delete the last body part won't happen often but 
-    //irked me during testing 
-    let randomSubmenu = document.createElement('ul')
-    randomSubmenu.classList.add('submenu')
-    randomSubmenu.classList.add('dropdown-menu')
-
-    let singleRandom = document.createElement('li')
-    let singleRandomLink = document.createElement('a')
-    singleRandomLink.classList.add('dropdown-item')
-    singleRandomLink.innerHTML = 'Single Body Part'
-
-    let continuousRandom = document.createElement('li')
-    let continuousRandomLink = document.createElement('a')
-    continuousRandomLink.classList.add('dropdown-item')
-    continuousRandomLink.innerHTML = 'All Body Parts'
-
-    singleRandom.appendChild(singleRandomLink)
-    continuousRandom.appendChild(continuousRandomLink)
-    randomSubmenu.append(singleRandom, continuousRandom)
-    listItem.appendChild(randomSubmenu)
-
-    
-    listItem.setAttribute('id', `random_${checklistKey}`)
-    singleRandom.addEventListener('click', async (event) => {
-        event.stopImmediatePropagation()
-        event.preventDefault()
-        let bodyPartList = await getBodyPartKeys(checklistKey)
-        let randomItem = bodyPartList[Math.floor(Math.random()* bodyPartList.length)]
-        window.api.setCurrChecklist(checklistKey)
-        window.api.setCurrBodyPart([randomItem])
-        window.api.loadChecklistTest()
-    })
-
-    continuousRandom.addEventListener('click', async (event) => {
-        event.stopImmediatePropagation()
-        event.preventDefault()
-        let bodyPartList = await getBodyPartKeys(checklistKey)
-        window.api.setCurrChecklist(checklistKey)
-        window.api.setCurrBodyPart(bodyPartList)
-        window.api.loadChecklistTest()
-    })
-    
-    return listItem
-}
-
-const getBodyPartKeys = async (checklistKey) => {
-    let checklist = await window.api.getChecklistById(checklistKey)
-    let bodyParts = checklist['bodyParts']
-    let bodyPartList = Object.keys(bodyParts)
-    return bodyPartList
-}
-
-const createDropdownItemForAddBodyPart = (checklistKey) => {
-    let link = document.createElement('a')
-    link.classList.add('dropdown-item')
-    link.innerHTML = 'Add Body Part'
-
-    let listItem = document.createElement('li')
-    listItem.appendChild(link)
-    listItem.addEventListener('click', () => {
-        window.api.setCurrChecklist(checklistKey)
-        window.api.loadConfigBodyPart()
-    })
-    
-    return listItem
-}
-
-
-const createSearchDropdownItem = (key, txt, canEdit=true) => {
-    let link = document.createElement('a')
-    link.classList.add('dropdown-item')
-
-    let linkSpan = document.createElement('span')
-    linkSpan.classList.add('dropdown-title')
-    linkSpan.innerHTML = txt
-    
-    let span = document.createElement('span')
-    span.classList.add('fa-icons')
-
-    let editIcon = document.createElement('i')
-    editIcon.classList.add('fa')
-    editIcon.classList.add('fa-pencil-square-o')
-    if(canEdit){
-        span.appendChild(editIcon)
-    }
-    link.appendChild(linkSpan)
-    link.appendChild(span)
-
-
-    let listItem = document.createElement('li')
-    listItem.appendChild(link)
-    listItem.setAttribute('data-bs-toggle', 'tooltip')
-    listItem.setAttribute('data-bs-placement', 'top')
-    listItem.setAttribute('title', txt)
-    //listItem.appendChild(span)
-    
-    let idList = key.split('_')
-    let checklistId = idList[0]
-    let bodyPartId = ''
-    //If the search is on a checklist then there will only be one id
-    //if it is on a body part or body tag it will have 2 ids
-    if(idList.length > 1){
-        bodyPartId = idList[1]
-    }
-
-    //we only want these event listeners is a body part
-    //or body tag. 
-    if(checklistId && bodyPartId) {
-        listItem.addEventListener('click', () => {
-            window.api.setCurrChecklist(checklistId)
-            window.api.setCurrBodyPart([bodyPartId])
-            window.api.loadChecklistTest()
-        })
-        editIcon.addEventListener('click', (event) => {
-            event.stopImmediatePropagation()
-            window.api.setCurrBodyPart(bodyPartId)
-            window.api.setCurrChecklist(checklistId)
-            window.api.loadConfigBodyPart()
-        })
-    }
-    
-    return listItem
-}
-
-const search = async () => {
-    let isChecklistFilterChecked = checklistFilter.checked
-    let isBodyPartFilterChecked = bodyPartFilter.checked
-    let isBodyTagFilterChecked = bodyTagFilter.checked
-    let searchValue = searchInput.value
-    let searchResults = await window.api.search(isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchValue)
-    let checklists = searchResults['checklists']
-    let bodyParts = searchResults['bodyParts']
-    let bodyTags = searchResults['bodyTags']
-    searchDropdown.innerHTML = ''
-    for(let key in checklists){
-        let checklist = checklists[key]
-        let listItem = createSearchDropdownItem(key, checklist, false)
-        if(listItem){
-            searchDropdown.appendChild(listItem)
-        }
-    }
-    for(let key in bodyParts){
-        let bodyPart = bodyParts[key]
-        let listItem = createSearchDropdownItem(key, bodyPart)
-        if(listItem){
-            searchDropdown.appendChild(listItem)
-        }
-    }
-    for(let key in bodyTags){
-        let bodyTag = bodyTags[key]
-        let listItem = createSearchDropdownItem(key, bodyTag)
-        if(listItem){
-            searchDropdown.appendChild(listItem)
-        }
-    }
-}
+    navigate('home')
+})

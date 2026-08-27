@@ -11,7 +11,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
     "build": "electron-builder -m",
-    "deploy": "electron-builder build -m --publish always"
+    "deploy": "electron-builder build -m --publish always",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "lint:strict" : "npx tsc --noEmit --strict false"
   },
   "author": "Isaiah Hernandez",
   "license": "ISC",
@@ -25,11 +28,20 @@
   "homepage": "https://github.com/ihernandez812/StudyHelper",
   "keywords": [],
   "devDependencies": {
-    "electron": "^32.1.2",
-    "electron-builder": "^24.13.3"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.4.0",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^10.9.1",
+    "eslint-plugin-no-unsanitized": "^4.1.5",
+    "globals": "^17.11.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.68.0"
   },
   "dependencies": {
-    "electron-light-storage": "^1.2.0",
+    "@fortawesome/fontawesome-free": "^7.2.0",
+    "bootstrap": "^5.3.8",
+    "electron-store": "^8.2.0",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3",
     "id-generator.js": "^1.0.1"
@@ -44,7 +56,8 @@
       "repo": "StudyHelper"
     },
     "mac": {
-      "category": "public.app-category.utilities"
+      "category": "public.app-category.utilities",
+      "icon": "src/images/AnatoMeIcon.png"
     }
   }
 }
