@@ -4,14 +4,14 @@ const RESULTS_TEMPLATES = {
     resultRow: document.getElementById('tpl-result-row'),
 }
 
-document.addEventListener('results-list', async (e) => {
+document.getElementById('results-list').addEventListener('click', async (e) => {
     const target = getActionTarget(e.target, '.result-row');
 
     if (!target) {
         return;
     }
 
-    const { id, dateStr } = target.data;
+    const { id, date } = target.data;
     const action = target.action;
     const parentElement = target.parentElement;
 
@@ -21,7 +21,7 @@ document.addEventListener('results-list', async (e) => {
                 //TODO create view practical results
                 break;
             case 'delete':
-                await deleteResultRow(id, dateStr, parentElement);
+                await deleteResultRow(id, date, parentElement);
                 break;
             default:
                 console.error(`Unknown action "${action}" on result row ${id}`);

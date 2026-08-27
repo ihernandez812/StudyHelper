@@ -75,16 +75,16 @@ const drawNewQuestionMark = (canvas, coordinates, scale, fontSize) => {
 }
 
 
-const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, isText, hasOffest=false) => {
+const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, isText) => {
     let foundKey = null
 
-    for(let key in coordinatesMap) {
-        let coordinates = coordinatesMap[key]
-        let imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, fontSize, isText)
-        let width = imgBounds['width']
-        let height = imgBounds['height']
-        let tagX = parseFloat(coordinates['x'])
-        let tagY = parseFloat(coordinates['y'])
+    for(const key in coordinatesMap) {
+        const coordinates = coordinatesMap[key]
+        const imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, fontSize, isText)
+        const width = imgBounds['width']
+        const height = imgBounds['height']
+        const tagX = parseFloat(coordinates['x'])
+        const tagY = parseFloat(coordinates['y'])
 
         if (x >= tagX && x <= tagX + width / scale && y >= tagY && y <= tagY + height / scale) {
             foundKey = key
@@ -94,16 +94,12 @@ const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, is
     return foundKey
 }
 
-const getWidthAndHeightOfCoordinate = (canvas, coordinates, scale, fontSize, isText, checkAnswer=false) => {
-    let imgBounds = {}
-
-    if(isText){
-        imgBounds = getWidthAndHeightOfText(canvas, coordinates, checkAnswer, fontSize)
-    } else{
-        imgBounds = getWidthAndHeightOfQuestionMark(canvas, scale, fontSize)
+const getWidthAndHeightOfCoordinate = (canvas, coordinates, scale, fontSize, isText) => {
+    if (isText) {
+        return getWidthAndHeightOfText(canvas, coordinates, false, fontSize)
     }
 
-    return imgBounds
+    return getWidthAndHeightOfQuestionMark(canvas, scale, fontSize)
 }
 
 const getWidthAndHeightOfQuestionMark = (canvas, scale, fontSize) => {
@@ -152,16 +148,13 @@ const getClickCoordinates = (event, scale) => {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    let deltaX = x / scale
-    let deltaY = y / scale
+    const deltaX = x / scale
+    const deltaY = y / scale
 
-    let currCoordinates = {
+    return {
         x: deltaX,
         y: deltaY
     }
-    
-
-    return currCoordinates
 }
 
 const clearCanvas = (canvas) => {
@@ -171,7 +164,7 @@ const clearCanvas = (canvas) => {
 }
 
 const redrawEverything = async (canvas, imgElement, coordinatesMap, fontSize, scale = 1) => {
-    let image = imgElement.src
+    const image = imgElement.src
     clearCanvas(canvas)
     imgElement.src = image
     await drawBodyPartWithTags(canvas, imgElement, coordinatesMap, fontSize, scale)
@@ -180,9 +173,9 @@ const redrawEverything = async (canvas, imgElement, coordinatesMap, fontSize, sc
 const drawBodyPartWithTags = async (canvas, imgElement, coordinatesMap, fontSize, scale = 1) => {
     await drawNewImage(canvas, imgElement, 0, 0, scale)
     requestAnimationFrame(() => {
-        for (let key in coordinatesMap) {
-            let coordinates = coordinatesMap[key]
-            let tagName = coordinates['name']
+        for (const key in coordinatesMap) {
+            const coordinates = coordinatesMap[key]
+            const tagName = coordinates['name']
             drawNewText(canvas, tagName, coordinates, scale, fontSize)
         }
     })
@@ -191,8 +184,8 @@ const drawBodyPartWithTags = async (canvas, imgElement, coordinatesMap, fontSize
 const drawBodyPartWithQuestionMark = async (canvas, imgElement, coordinatesMap, fontSize, scale = 1) => {
     await drawNewImage(canvas, imgElement, 0, 0, scale)
     requestAnimationFrame(() => {
-        for (let key in coordinatesMap) {
-            let coordinates = coordinatesMap[key]
+        for (const key in coordinatesMap) {
+            const coordinates = coordinatesMap[key]
             drawNewQuestionMark(canvas, coordinates, scale, fontSize)
         }
     })

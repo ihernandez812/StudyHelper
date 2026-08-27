@@ -1,10 +1,10 @@
 const { Menu, shell , nativeTheme} = require('electron')
-const localStorage = require("../storage/storageUtils");
+const lightStorage = require("../storage/storageUtils");
 
 const toggleDarkMode = () => {
     const isDark = nativeTheme.shouldUseDarkColors
     nativeTheme.themeSource = isDark ? 'light' : 'dark'
-    localStorage.setIsDarkMode(!isDark)
+    lightStorage.setIsDarkMode(!isDark)
 
     // Tell all renderer windows to update Bootstrap's data-bs-theme
     const { BrowserWindow } = require('electron')
@@ -102,8 +102,9 @@ const getHelpMenu = () => {
 }
 
 const menuBuilder = () => {
-    let baseMenu = getBaseMenu()
-    let helpMenu = getHelpMenu()
+    const baseMenu = getBaseMenu()
+    const helpMenu = getHelpMenu()
+    baseMenu.push(helpMenu)
     return Menu.buildFromTemplate(baseMenu)
 }
 

@@ -1,21 +1,21 @@
 const { ipcMain } = require('electron')
-const localStorage = require("../../storage/storageUtils");
+const lightStorage = require("../../storage/storageUtils");
 const FileHelper = require("../FileHelper");
 
 ipcMain.handle('setChecklists', (event, checklists) => {
-    localStorage.setChecklists(checklists)
+    lightStorage.setChecklists(checklists)
 })
 ipcMain.handle('addOrEditChecklistById', (event, id, checklist) => {
-    localStorage.addOrEditChecklistById(id, checklist)
+    lightStorage.addOrEditChecklistById(id, checklist)
 })
-ipcMain.handle('getChecklists', (event) => {
-    return localStorage.getChecklists()
+ipcMain.handle('getChecklists', () => {
+    return lightStorage.getChecklists()
 })
 ipcMain.handle('getChecklistById', (event, id) => {
-    return localStorage.getChecklistById(id)
+    return lightStorage.getChecklistById(id)
 })
 
 ipcMain.handle('deleteChecklistById', (event, id) => {
     FileHelper.deleteImages(id)
-    localStorage.deleteChecklistById(id)
+    lightStorage.deleteChecklistById(id)
 })

@@ -4,7 +4,7 @@ const { filePaths } = require('../WindowConstants');
 
 
 ipcMain.handle('popup', (event, message) => {
-    let win = getWindow(filePaths.home);
+    const win = getWindow(filePaths.home);
 
     dialog.showMessageBox(win, {
         title: 'Study Helper',
@@ -15,7 +15,7 @@ ipcMain.handle('popup', (event, message) => {
 })
 
 ipcMain.handle('dialogQuestion', async (event, message) => {
-    let win = getWindow(filePaths.home);
+    const win = getWindow(filePaths.home);
 
     return await dialog.showMessageBox(win,{
         type: 'info',
@@ -27,8 +27,8 @@ ipcMain.handle('dialogQuestion', async (event, message) => {
     })
 })
 
-ipcMain.handle('loadChecklistTester', (event) => {
-    let win = getWindow(filePaths.home);
+ipcMain.handle('loadChecklistTester', () => {
+    const win = getWindow(filePaths.home);
     const options = {
         parent: win
     }
@@ -36,12 +36,12 @@ ipcMain.handle('loadChecklistTester', (event) => {
     createWindow(filePaths.index, options)
 })
 
-ipcMain.handle('reloadHome', (event) => {
+ipcMain.handle('reloadHome', () => {
     reloadWindow(filePaths.home)
 })
 
-ipcMain.handle('loadConfigBodyPart', (event) => {
-    let win = getWindow(filePaths.home);
+ipcMain.handle('loadConfigBodyPart', () => {
+    const win = getWindow(filePaths.home);
     const options = {
         parent: win
     }
@@ -49,10 +49,10 @@ ipcMain.handle('loadConfigBodyPart', (event) => {
     createWindow(filePaths.config, options)
 })
 
-ipcMain.handle('closeConfig', (event) => {
+ipcMain.handle('closeConfig', () => {
     closeWindow(filePaths.config)
 })
 
-ipcMain.handle('closePracticalTest', (event) => {
+ipcMain.handle('closePracticalTest', () => {
    closeWindow(filePaths.practicalTest)
 })

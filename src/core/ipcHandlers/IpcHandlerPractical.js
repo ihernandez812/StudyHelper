@@ -1,27 +1,27 @@
 const { ipcMain } = require('electron')
 const FileHelper = require('../FileHelper')
-const localStorage = require("../../storage/storageUtils");
+const lightStorage = require("../../storage/storageUtils");
 
 ipcMain.handle('addPractical', async (event, id,  practical) => {
-    let practicalQueue = practical.queue;
+    const practicalQueue = practical.queue;
 
     for (const station of practicalQueue) {
-        let bodyPart = station.bodyPart
+        const bodyPart = station.bodyPart
         bodyPart.image = await FileHelper.copyBodyPartImage(bodyPart.image, id, bodyPart.id)
     }
 
-    return localStorage.addPractical(id, practical)
+    return lightStorage.addPractical(id, practical)
 })
 
-ipcMain.handle('getPracticals', (event) => {
-    return localStorage.getPracticals()
+ipcMain.handle('getPracticals', () => {
+    return lightStorage.getPracticals()
 })
 
 ipcMain.handle('getPracticalById', (event, practicalId) => {
-    return localStorage.getPracticalById(practicalId)
+    return lightStorage.getPracticalById(practicalId)
 })
 
 ipcMain.handle('deletePracticalById', (event, practicalId) => {
     FileHelper.deleteImages(practicalId)
-    localStorage.deletePracticalById(practicalId)
+    lightStorage.deletePracticalById(practicalId)
 })

@@ -122,7 +122,7 @@ html, body {
     align-items: center;
     gap: 10px;
     padding: 9px 16px;
-    font-size: 13.5px;
+    font-size: 13.5px;  /*this was 13.5 if it breaks*/
     color: var(--text-secondary);
     cursor: pointer;
     border-left: 2px solid transparent;
@@ -746,7 +746,7 @@ canvas {
     background: var(--accent);
     border-radius: 99px;
     height: 6px;
-    width: 0%;
+    width: 0;
     transition: width 0.3s ease;
 }
 

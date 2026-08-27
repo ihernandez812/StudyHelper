@@ -1,64 +1,64 @@
 const Store = require('electron-store')
-const localStorage = new Store()
+const lightStorage = new Store()
 
 //Need to store checklist and categories in here
 //During upgrade tasks we need to set the checklist to here
 const setChecklists = (checklists) => {
-    localStorage.set('checklists', checklists)
+    lightStorage.set('checklists', checklists)
 }
 
 const addOrEditChecklistById =  (id, checklist) => {
-    let key = id ?? crypto.randomUUID()
-    localStorage.set(`checklists.${key}`, { ...checklist, id: key})
+    const key = id ?? crypto.randomUUID()
+    lightStorage.set(`checklists.${key}`, { ...checklist, id: key})
     return key
 }
 
 const getChecklists = () => {
-    return localStorage.get('checklists', {})
+    return lightStorage.get('checklists', {})
 }
 
 const getChecklistById = (id) => {
-    return localStorage.get(`checklists.${id}`, {})
+    return lightStorage.get(`checklists.${id}`, {})
 }
 
 const deleteChecklistById = (id) => {
-    localStorage.delete(`checklists.${id}`)
+    lightStorage.delete(`checklists.${id}`)
 }
 
 const getBodyPartById = (bodyPartId, checklistId) => {
-    return localStorage.get(`checklists.${checklistId}.bodyParts.${bodyPartId}`, {})
+    return lightStorage.get(`checklists.${checklistId}.bodyParts.${bodyPartId}`, {})
 }
 
 const addOrEditBodyPartById = (bodyPartId, checklistId, bodyPart) => {
-    let key = bodyPartId ?? crypto.randomUUID()
-    localStorage.set(`checklists.${checklistId}.bodyParts.${key}`, { ...bodyPart, id: key })
+    const key = bodyPartId ?? crypto.randomUUID()
+    lightStorage.set(`checklists.${checklistId}.bodyParts.${key}`, { ...bodyPart, id: key })
     return key
 }
 
 const removeBodyPart = (bodyPartId, checklistId) => {
-    localStorage.delete(`checklists.${checklistId}.bodyParts.${bodyPartId}`)
+    lightStorage.delete(`checklists.${checklistId}.bodyParts.${bodyPartId}`)
 }
 
 //During upgrade tasks we need to set the categories here
 const setCategories = (categories) => {
-    localStorage.set('categories', categories)
+    lightStorage.set('categories', categories)
 }
 
 const getCategories = () => {
-    return localStorage.get('categories', {})
+    return lightStorage.get('categories', {})
 }
 
 const getCategoryById = (id) => {
-    return localStorage.get(`categories.${id}`, {})
+    return lightStorage.get(`categories.${id}`, {})
 }
 
 const removeCategory = (id) => {
-    localStorage.delete(`categories.${id}`)
+    lightStorage.delete(`categories.${id}`)
 }
 
 const addOrEditCategoryById = (id, category) => {
-    let key = id ?? crypto.randomUUID()
-    localStorage.set(`categories.${key}`, {...category, id: key})
+    const key = id ?? crypto.randomUUID()
+    lightStorage.set(`categories.${key}`, {...category, id: key})
     return key
 }
 
@@ -83,61 +83,63 @@ const checkSearchInput = (possibleValue, query) => {
 }
 
 const addPractical = (id, practical) => {
-    localStorage.set(`practicals.${id}`, { ...practical, id: id })
+    lightStorage.set(`practicals.${id}`, { ...practical, id: id })
     return id
 }
 
 const getPracticals = () => {
-    return localStorage.get('practicals')
+    return lightStorage.get('practicals')
 }
 
 const getPracticalById = (practicalId) => {
-    return localStorage.get(`practicals.${practicalId}`, {})
+    return lightStorage.get(`practicals.${practicalId}`, {})
 }
 
 const deletePracticalById = (id) => {
-    localStorage.delete(`practicals.${id}`)
+    lightStorage.delete(`practicals.${id}`)
 }
 
 const getIsDarkMode = () => {
-    return localStorage.get('isDarkMode', false)
+    return lightStorage.get('isDarkMode', false)
 }
 
 const setIsDarkMode = (isDarkMode) => {
-    localStorage.set('isDarkMode', isDarkMode)
+    lightStorage.set('isDarkMode', isDarkMode)
 }
 
 const search = (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
-    let checklists = localStorage.get('checklists', {})
-    let foundChecklists = {}
-    let foundBodyParts = {}
-    let foundBodyTags = {}
+    const checklists = lightStorage.get('checklists', {})
+    const foundChecklists = {}
+    const foundBodyParts = {}
+    const foundBodyTags = {}
 
-    for(let checklistId in checklists){
-        let checklist = checklists[checklistId]
-        let checklistName = checklist['name']
+    for(const checklistId in checklists){
+        const checklist = checklists[checklistId]
+        const checklistName = checklist['name']
 
         if(isChecklistFilterChecked && checkSearchInput(checklistName, searchQuery)){
             foundChecklists[checklistId] = checklistName
         }
-        let bodyParts = checklist['bodyParts']
 
-        for(let bodyPartId in bodyParts){
-            let bodyPart = bodyParts[bodyPartId]
-            let bodyPartName = bodyPart['name']
+        const bodyParts = checklist['bodyParts']
+
+        for(const bodyPartId in bodyParts){
+            const bodyPart = bodyParts[bodyPartId]
+            const bodyPartName = bodyPart['name']
 
             if(isBodyPartFilterChecked && checkSearchInput(bodyPartName, searchQuery)){
-                let key = `${checklistId}_ ${bodyPartId}`
+                const key = `${checklistId}_ ${bodyPartId}`
                 foundBodyParts[key] = `${bodyPartName} - ${checklistName}`
             }
-            let bodyTags = bodyPart['coordinates']
 
-            for(let bodyTagId in bodyTags){
-                let bodyTag = bodyTags[bodyTagId]
-                let bodyTagName = bodyTag['name']
+            const bodyTags = bodyPart['coordinates']
+
+            for(const bodyTagId in bodyTags){
+                const bodyTag = bodyTags[bodyTagId]
+                const bodyTagName = bodyTag['name']
 
                 if(isBodyTagFilterChecked && checkSearchInput(bodyTagName, searchQuery)){
-                    let key = `${checklistId}_ ${bodyPartId}`
+                    const key = `${checklistId}_ ${bodyPartId}`
                     foundBodyTags[key] = `${bodyTagName} - ${bodyPartName}`
                 }
             }

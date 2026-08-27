@@ -1,18 +1,18 @@
 const { ipcMain } = require('electron')
-const localStorage = require("../../storage/storageUtils");
+const lightStorage = require("../../storage/storageUtils");
 
 ipcMain.handle('setCategories', (event, categories) => {
-    return localStorage.setCategories(categories)
+    return lightStorage.setCategories(categories)
 })
-ipcMain.handle('getCategories', (event) => {
-    return localStorage.getCategories()
+ipcMain.handle('getCategories', () => {
+    return lightStorage.getCategories()
 })
 ipcMain.handle('getCategoryById', (event, categoryId) => {
-    return localStorage.getCategoryById(categoryId)
+    return lightStorage.getCategoryById(categoryId)
 })
 ipcMain.handle('addOrEditCategoryById', (event, categoryId, category) => {
-    return localStorage.addOrEditCategoryById(categoryId, category)
+    return lightStorage.addOrEditCategoryById(categoryId, category)
 })
 ipcMain.handle('removeCategory', (event, categoryId) => {
-    localStorage.removeCategory(categoryId)
+    lightStorage.removeCategory(categoryId)
 })

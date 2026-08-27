@@ -5,7 +5,7 @@ const STUDY_TEMPLATES = {
     noChecklistsEmpty: document.getElementById('tpl-no-checklists-empty'),
 }
 
-let studyState = {
+const studyState = {
     checklistId:    null,
     bodyPartIdList: [],
     usedIds:        [],
@@ -38,8 +38,8 @@ const STUDY_TYPES = {
     RANDOM:   1,
 }
 
-document.getElementById('study-picker-list').addEventListener('click', (e) => {
-    //If there are no body parts to study it is empty and the only thing to be clicked is a navigate to library
+document.getElementById('study-picker-list').addEventListener('click', async (e) => {
+    //If there are no body parts to study if it is empty and the only thing to be clicked is a navigate to library
     if (e.target.closest('[data-action="go-to-library"]')) {
         navigate('library')
         return
@@ -58,10 +58,10 @@ document.getElementById('study-picker-list').addEventListener('click', (e) => {
     try {
         switch (action) {
             case 'all':
-                loadStudySettings(id)
+                await loadStudySettings(id)
                 break;
             case 'random':
-                loadRandomBodyStudySession(id);
+                await loadRandomBodyStudySession(id);
                 break;
             default:
                 console.error(`Unknown action "${action}" on checklist row ${id}`);
@@ -148,12 +148,20 @@ const getRandomBodyPartId = async (checklistId) => {
     return randomId
 }
 
-const loadStudySettings = (checklistId) => {
-    openStudySettings(checklistId, STUDY_TYPES.ALL);
+const loadStudySettings = async (checklistId) => {
+    try {
+        await openStudySettings(checklistId, STUDY_TYPES.ALL);
+    } catch (err) {
+        console.error(err)
+    }
 }
 
-const loadRandomBodyStudySession = (checklistId) => {
-    openStudySettings(checklistId, STUDY_TYPES.RANDOM);
+const loadRandomBodyStudySession = async (checklistId) => {
+    try {
+        await openStudySettings(checklistId, STUDY_TYPES.RANDOM);
+    } catch (err) {
+        console.error(err)
+    }
 }
 
 // ── Study settings modal ──────────────────────────────────────────────────────
@@ -165,19 +173,21 @@ const openStudySettings = async (checklistId, studyType) => {
     let bodyPartIdList = [];
 
     switch (studyType) {
-        case STUDY_TYPES.ALL:
+        case STUDY_TYPES.ALL: {
             bodyPartIdList = await getBodyPartIdList(checklistId);
             break;
-        case STUDY_TYPES.RANDOM:
-            let randomBodyPartId = await getRandomBodyPartId(checklistId);
+        }
+        case STUDY_TYPES.RANDOM: {
+            const randomBodyPartId = await getRandomBodyPartId(checklistId);
 
             if (randomBodyPartId) {
                 bodyPartIdList.push(randomBodyPartId)
             }
-
             break;
+        }
         default:
             console.error('Unknown study type for study session')
+            return;
     }
 
     window.AppState.currentChecklistId = checklistId;
@@ -220,17 +230,17 @@ const loadNextBodyPart = () => loadBodyPart(DIRECTION.NEXT)
 const loadPrevBodyPart = () => loadBodyPart(DIRECTION.PREVIOUS)
 
 const loadBodyPart = async (offset) => {
-    let bodyPartIdList = studyState.bodyPartIdList
+    const bodyPartIdList = studyState.bodyPartIdList
     let nextBodyPartIndex = 0
 
     //If this is the first time in the study app then we don't have a current,
     //and we need to just set it to the first one
     if (studyState.currentBpId) {
         //Switching body parts need to updat the persisted answers
-        let currentBpId = studyState.currentBpId
+        const currentBpId = studyState.currentBpId
         studyState.answeredTags[currentBpId] = studyState.correctTags
 
-        let currentBodyPartIndex = bodyPartIdList.indexOf(currentBpId)
+        const currentBodyPartIndex = bodyPartIdList.indexOf(currentBpId)
 
         if (currentBodyPartIndex === -1) {
             return
@@ -256,8 +266,8 @@ const loadBodyPart = async (offset) => {
     const pct = (done / total) * 100
     document.getElementById('study-progress-bar').style.width = `${pct}%`
 
-    let nextBtn = document.getElementById('study-next-btn')
-    let prevBtn = document.getElementById('study-prev-btn')
+    const nextBtn = document.getElementById('study-next-btn')
+    const prevBtn = document.getElementById('study-prev-btn')
 
     prevBtn.classList.toggle('disabled', done <= 1)
     nextBtn.classList.toggle('disabled', done >= bodyPartIdList.length)
@@ -268,7 +278,7 @@ const loadBodyPart = async (offset) => {
     studyState.fontSize = bp['fontSize'] || 16
     studyState.coordinates = bp['coordinates'] || {}
 
-    let currentBpId = studyState.currentBpId
+    const currentBpId = studyState.currentBpId
      studyState.correctTags = studyState.answeredTags[currentBpId] || {}
 
     document.getElementById('study-body-part-name').textContent = bp['name']
@@ -363,13 +373,17 @@ document.getElementById('study-hint-btn').addEventListener('click', () => {
 })
 
 // Click on canvas to answer a tag
-document.getElementById('study-canvas').addEventListener('click', (e) => {
+document.getElementById('study-canvas').addEventListener('click', async (e) => {
     const canvas  = document.getElementById('study-canvas')
     const coords  = getClickCoordinates(e, studyState.scale)
     const key     = checkCoordinatesExist(canvas, coords.x, coords.y, studyState.coordinates, studyState.scale, studyState.fontSize,false)
 
     if (key && !studyState.correctTags[key]) {
-        openStudyAnswerModal(key)
+        try {
+            await openStudyAnswerModal(key)
+        } catch (err) {
+            console.error(err)
+        }
     }
 })
 

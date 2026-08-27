@@ -5,16 +5,16 @@ ipcMain.handle('addIdsToChecklists', (event, checklists) => {
     let sanitizedChecklists = {}
 
     if (Array.isArray(checklists)) {
-        for (let checklist of checklists) {
-            let checklistName = Object.keys(checklist)[0]
-            let bodyParts = checklist[checklistName]
-            let checklistId = generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
-            let sanitizedBodyParts = {}
+        for (const checklist of checklists) {
+            const checklistName = Object.keys(checklist)[0]
+            const bodyParts = checklist[checklistName]
+            const checklistId = generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
+            const sanitizedBodyParts = {}
 
-            for (let bodyPartObj of bodyParts) {
-                let bodyPartName = Object.keys(bodyPartObj)[0]
-                let bodyPartId = generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
-                let bodyPart = bodyPartObj[bodyPartName]
+            for (const bodyPartObj of bodyParts) {
+                const bodyPartName = Object.keys(bodyPartObj)[0]
+                const bodyPartId = generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
+                const bodyPart = bodyPartObj[bodyPartName]
 
                 sanitizedBodyParts[bodyPartId] = {
                     name: bodyPartName,
@@ -36,28 +36,28 @@ ipcMain.handle('addIdsToChecklists', (event, checklists) => {
 })
 
 ipcMain.handle('addIdsToTags', (event, checklists) => {
-    for (let key in checklists) {
-        let checklist = checklists[key]
-        let bodyParts = checklist['bodyParts']
+    for (const key in checklists) {
+        const checklist = checklists[key]
+        const bodyParts = checklist['bodyParts']
 
-        for (let key in bodyParts) {
-            let bodyPart = bodyParts[key]
-            let coordinates = bodyPart['coordinates']
-            let sanitizedCoordinates = {}
+        for (const key in bodyParts) {
+            const bodyPart = bodyParts[key]
+            const coordinates = bodyPart['coordinates']
+            const sanitizedCoordinates = {}
 
-            for (let key in coordinates) {
-                let coordinatesString = coordinates[key]
+            for (const key in coordinates) {
+                const coordinatesString = coordinates[key]
 
                 if (typeof coordinatesString == 'string'){
-                    let id = generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
+                    const id = generateID('XXXX-XXXX-XXXX-XXXX', { letters: true, numbers: true })
 
-                    let x_coordinate = coordinatesString.split(' ')[0]
-                    let y_coordinate = coordinatesString.split(' ')[1]
+                    const xCoordinate = coordinatesString.split(' ')[0]
+                    const yCoordinate = coordinatesString.split(' ')[1]
 
                     sanitizedCoordinates[id] = {
                         name: key,
-                        x: x_coordinate,
-                        y: y_coordinate
+                        x: xCoordinate,
+                        y: yCoordinate
 
                     }
                 } else {

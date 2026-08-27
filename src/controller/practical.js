@@ -5,7 +5,7 @@ const PRACTICAL_TEMPLATES = {
     noChecklistsEmpty: document.getElementById('tpl-no-checklists-empty'),
 }
 
-let practicalState = {
+const practicalState = {
     selectedChecklistIds: [],
     bodyPartQueue:        [],
     currentStationIdx:    0,
@@ -15,6 +15,31 @@ let practicalState = {
     scale:                1,
     fontSize:             16,
 }
+
+document.getElementById('practical-checklist-select').addEventListener('change', async (e) => {
+    const checkbox= e.target;
+
+    if ((checkbox instanceof HTMLInputElement) && checkbox.type === 'checkbox') {
+        const id = checkbox.value;
+
+        if (checkbox.checked) {
+            practicalState.selectedChecklistIds.push(id)
+        } else {
+            practicalState.selectedChecklistIds = practicalState.selectedChecklistIds.filter(x => x !== id)
+        }
+
+        await updatePracticalSummary();
+    }
+})
+
+document.getElementById('practical-checklist-select').addEventListener('click', async (e) => {
+    const element = e.target;
+
+    if ((element instanceof HTMLInputElement) && element.closest('[data-action="go-to-library"]')) {
+        navigate('library')
+    }
+})
+
 
 //Called on entry to the practical screen and again on exit, so a running
 //countdown can't outlive the screen and force a navigation from elsewhere.
@@ -43,8 +68,6 @@ const loadPracticalSetup = async () => {
 
     if (keys.length === 0) {
         const emptyState = cloneTemplate(PRACTICAL_TEMPLATES.noChecklistsEmpty)
-        emptyState.querySelector('[data-action="go-to-library"]')
-            .addEventListener('click', () => navigate('library'))
         container.appendChild(emptyState)
         return
     }
@@ -62,16 +85,6 @@ const loadPracticalSetup = async () => {
 
         checkbox.value    = id
         checkbox.disabled = bpCount === 0
-
-        checkbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                practicalState.selectedChecklistIds.push(id)
-            } else {
-                practicalState.selectedChecklistIds = practicalState.selectedChecklistIds.filter(x => x !== id)
-            }
-
-            updatePracticalSummary()
-        })
 
         container.appendChild(label)
     })
@@ -100,8 +113,12 @@ const updatePracticalSummary = async () => {
 }
 
 document.getElementById('practical-start-btn').addEventListener('click', async () => {
-    await buildBodyPartQueue()
-    startPractical()
+    try {
+        await buildBodyPartQueue(),
+        await startPractical()
+    } catch (err) {
+        console.error(err)
+    }
 })
 
 const buildBodyPartQueue = async () => {
@@ -111,7 +128,7 @@ const buildBodyPartQueue = async () => {
     practicalState.selectedChecklistIds.forEach(clId => {
         const bodyParts = checklists[clId]['bodyParts'] || {}
         Object.keys(bodyParts).forEach(bpId => {
-            let bodyPart = bodyParts[bpId]
+            const bodyPart = bodyParts[bpId]
             queue.push({
                 checklistId: clId,
                 bodyPart: bodyPart
@@ -131,7 +148,7 @@ const buildBodyPartQueue = async () => {
 
 // ── Active test ───────────────────────────────────────────────────────────────
 
-const startPractical = () => {
+const startPractical = async () => {
     document.getElementById('practical-setup').classList.add('hide')
     document.getElementById('practical-active').classList.remove('hide')
 
@@ -157,7 +174,11 @@ const startPractical = () => {
         timerEl.classList.add('hide')
     }
 
-    loadCurrentStation()
+    try {
+        await loadCurrentStation()
+    } catch (err) {
+        console.error(err)
+    }
 }
 
 const updateTimerDisplay = () => {
@@ -196,8 +217,8 @@ const drawPracticalQuestionMarks = () => {
     const canvas = document.getElementById('practical-canvas')
 
     for (const id in practicalState.currentCoordinates) {
-        let station = practicalState.bodyPartQueue[practicalState.currentStationIdx]
-        let tag = station.bodyPart.coordinates[id]
+        const station = practicalState.bodyPartQueue[practicalState.currentStationIdx]
+        const tag = station.bodyPart.coordinates[id]
         let answer = null
 
         if (tag) {
@@ -213,13 +234,17 @@ const drawPracticalQuestionMarks = () => {
 }
 
 // Click a tag to answer it
-document.getElementById('practical-canvas').addEventListener('click', (e) => {
+document.getElementById('practical-canvas').addEventListener('click', async (e) => {
     const canvas = document.getElementById('practical-canvas')
     const coords = getClickCoordinates(e, practicalState.scale)
     const key    = checkCoordinatesExist(canvas, coords.x, coords.y, practicalState.currentCoordinates, practicalState.scale, practicalState.fontSize, false)
 
     if (key) {
-        openPracticalTagModal(key)
+        try {
+            await openPracticalTagModal(key);
+        } catch (err) {
+            console.error(err);
+        }
     }
 })
 
@@ -238,8 +263,8 @@ const openPracticalTagModal = async (tagId) => {
     }
 
     document.getElementById('practical-tag-prompt').textContent = prompt
-    let station = practicalState.bodyPartQueue[practicalState.currentStationIdx]
-    let bodyPartTag = station.bodyPart.coordinates[tagId]
+    const station = practicalState.bodyPartQueue[practicalState.currentStationIdx]
+    const bodyPartTag = station.bodyPart.coordinates[tagId]
     document.getElementById('practical-tag-input').value = bodyPartTag['given'] || ''
     practicalTagModal.show()
 }
@@ -248,8 +273,8 @@ document.getElementById('practical-tag-save-btn').addEventListener('click', asyn
     const txt      = document.getElementById('practical-tag-input').value.trim()
 
     if (txt) {
-        let station = practicalState.bodyPartQueue[practicalState.currentStationIdx]
-        let tag = station.bodyPart.coordinates[_practicalCurrentTagId]
+        const station = practicalState.bodyPartQueue[practicalState.currentStationIdx]
+        const tag = station.bodyPart.coordinates[_practicalCurrentTagId]
 
         if (tag) {
             tag['given'] = txt
@@ -272,18 +297,18 @@ document.getElementById('practical-tag-save-btn').addEventListener('click', asyn
 document.getElementById('practical-next-btn').addEventListener('click', async () => {
     practicalState.currentStationIdx++
 
-    if (practicalState.currentStationIdx >= practicalState.bodyPartQueue.length) {
-        try {
+    try {
+        if (practicalState.currentStationIdx >= practicalState.bodyPartQueue.length) {
             const res = await window.api.dialogQuestion("End practical? Your results will be saved.")
 
             if (res.response === 0) {
                 await endPractical()
             }
-        } catch (err) {
-            console.error(err)
+        } else {
+            await loadCurrentStation()
         }
-    } else {
-        loadCurrentStation()
+    } catch (err) {
+        console.error(err)
     }
 })
 
@@ -292,17 +317,17 @@ const endPractical = async () => {
 
     let numCorrect = 0
     let totalTags = 0
-    let queue = practicalState.bodyPartQueue
+    const queue = practicalState.bodyPartQueue
 
-    queue.forEach((station, idx) => {
-        let bodyPart = station.bodyPart
-        let coordinates = bodyPart.coordinates
-        let coordinateIds = Object.keys(coordinates)
+    queue.forEach((station) => {
+        const bodyPart = station.bodyPart
+        const coordinatesList = bodyPart.coordinates
+        const coordinateIds = Object.keys(coordinatesList)
 
         for (const key of coordinateIds) {
-            let coord = coordinates[key]
-            let given = coord['given'] ? coord['given'].toLowerCase() : ''
-            let answer = coord['name'].toLowerCase()
+            const coordinates = coordinatesList[key]
+            const given = coordinates['given'] ? coordinates['given'].toLowerCase() : ''
+            const answer = coordinates['name'].toLowerCase()
             let isCorrect = false
 
             if (given === answer) {
@@ -310,7 +335,7 @@ const endPractical = async () => {
                 numCorrect++
             }
 
-            coord['isCorrect'] = isCorrect
+            coordinates['isCorrect'] = isCorrect
             totalTags++
         }
     })
@@ -326,7 +351,7 @@ const endPractical = async () => {
         numCorrect: numCorrect,
     }
 
-    let id = crypto.randomUUID()
+    const id = crypto.randomUUID()
 
     try {
         await window.api.addPractical(id, practical)

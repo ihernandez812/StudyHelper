@@ -327,8 +327,12 @@ const initBodyPartEditor = async () => {
         dropHint.style.display = 'none'
         canvas.style.display = 'block'
 
-        image.onload = () => {
-            drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
+        image.onload = async () => {
+            try {
+                await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
+            } catch (err) {
+                console.error(err)
+            }
         }
         image.src = bp['image']
 
@@ -372,8 +376,12 @@ dropZone.addEventListener('drop', e => {
         dropHint.style.display = 'none'
         canvas.style.display = 'block'
 
-        image.onload = () => {
-            drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
+        image.onload = async () => {
+            try {
+                await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
+            } catch (err) {
+                console.error(err)
+            }
         }
 
         image.src = evt.target.result
@@ -387,7 +395,7 @@ dropZone.addEventListener('drop', e => {
 document.getElementById('editor-canvas').addEventListener('contextmenu', async (e) => {
     const canvas = document.getElementById('editor-canvas')
     const coords = getClickCoordinates(e, editorState.resizeScale)
-    const existingKey = checkCoordinatesExist(canvas, coords.x, coords.y, editorState.coordinatesMap, editorState.resizeScale, editorState.fontSize, true, false)
+    const existingKey = checkCoordinatesExist(canvas, coords.x, coords.y, editorState.coordinatesMap, editorState.resizeScale, editorState.fontSize, true)
     await populateCategorySelect('editor-tag-category')
 
     if (!existingKey) {
@@ -533,7 +541,7 @@ document.getElementById('editor-save-btn').addEventListener('click', async () =>
         bodyPart.image = editorState.pendingImageDataUrl
     }
 
-    let bpId = window.AppState.currentBodyPartId || crypto.randomUUID()
+    const bpId = window.AppState.currentBodyPartId || crypto.randomUUID()
     await window.api.addOrEditBodyPartById(bpId, window.AppState.currentChecklistId, bodyPart)
     navigate('checklist-detail')
 })
@@ -552,7 +560,7 @@ const renderCategoryList = async () => {
     list.replaceChildren()
 
     for (const id in categories) {
-        let category = categories[id]
+        const category = categories[id]
         list.appendChild(createCategoryItem(id, category.name))
     }
 }
@@ -609,7 +617,7 @@ const populateCategorySelect = async (selectId) => {
     for (const id in categories) {
         const option   = document.createElement('option')
         option.value   = id
-        let category = categories[id]
+        const category = categories[id]
         option.textContent = category.name
         select.appendChild(option)
     }

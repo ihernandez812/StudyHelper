@@ -1,7 +1,6 @@
 const { app } = require('electron')
 const { createWindow } = require('./WindowFactory')
 const { filePaths } = require('./WindowConstants')
-const updater = require('./updater')
 const { menuBuilder } = require('./menu')
 require('./ipcHandlers/IpcHandlerBase')
 require('./ipcHandlers/IpcHandlerBodyPart')
@@ -17,7 +16,7 @@ require('./ipcHandlers/IpcHandlerWindow')
 //app.disableHardwareAcceleration();
 
 app.on('ready', () => {
-    let menu = menuBuilder()
+    const menu = menuBuilder()
     const options = {
         menu: menu,
     }

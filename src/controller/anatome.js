@@ -8,13 +8,13 @@ document.getElementById('sidebar').addEventListener('click', async (e) => {
             navItem = navItem.parentElement
         }
 
-        let dataTarget = navItem.getAttribute('data-screen')
+        const dataTarget = navItem.getAttribute('data-screen')
 
         if (dataTarget) {
             let doNavigate = true
 
             if (window.AppState.currentPage === 'study' && window.AppState.currentChecklistId) {
-                let res = await window.api.dialogQuestion("Are you sure?\nLeaving this page will reset the current study session.")
+                const res = await window.api.dialogQuestion("Are you sure?\nLeaving this page will reset the current study session.")
                 doNavigate = res.response === 0
             }
 

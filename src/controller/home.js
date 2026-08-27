@@ -90,7 +90,11 @@ const navigate = (screenName) => {
         return
     }
 
-    SCREENS[window.AppState.currentPage]?.teardown?.()
+    try {
+        SCREENS[window.AppState.currentPage]?.teardown?.()
+    } catch (err) {
+        console.error(err)
+    }
 
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))

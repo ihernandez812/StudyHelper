@@ -1,0 +1,14 @@
+{
+  "//": "Not a TypeScript migration. This exists so typescript-eslint can build a type-aware program over the plain JS, which is what powers no-floating-promises and friends. checkJs stays false: TypeScript reports nothing, it only supplies types. Nothing is ever emitted.",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.js", "src/**/*.d.ts"]
+}

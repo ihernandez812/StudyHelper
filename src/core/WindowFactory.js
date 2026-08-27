@@ -1,8 +1,7 @@
 const { BrowserWindow, Menu, nativeTheme} = require("electron");
-const updater = require("./updater");
 const windowStateKeeper = require("electron-window-state");
 const path = require("path");
-const localStorage = require("../storage/storageUtils");
+const lightStorage = require("../storage/storageUtils");
 const windows = {};
 
 const createWindow = (guiFilePath, options) => {
@@ -15,7 +14,7 @@ const createWindow = (guiFilePath, options) => {
         return;
     }
 
-    let windState = windowStateKeeper({
+    const windState = windowStateKeeper({
         defaultHeight: 800,
         defaultWidth: 1200,
         file: `window-state-${path.basename(guiFilePath)}.json`
@@ -40,7 +39,7 @@ const createWindow = (guiFilePath, options) => {
     })
 
     windState.manage(win)
-    let isDarkMode = localStorage.getIsDarkMode()
+    const isDarkMode = lightStorage.getIsDarkMode()
     nativeTheme.themeSource = (isDarkMode) ? 'dark' : 'light'
 
     win.loadFile(path.join(__dirname, guiFilePath))
@@ -61,8 +60,8 @@ const createWindow = (guiFilePath, options) => {
     windows[guiFilePath] = win;
 }
 
-const reloadWindow = (guiFilePath, options) => {
-    let win = windows[guiFilePath]
+const reloadWindow = (guiFilePath) => {
+    const win = windows[guiFilePath]
 
     if (win) {
         win.reload()
@@ -74,7 +73,7 @@ const getWindow = (guiFilePath) => {
 }
 
 const closeWindow = (guiFilePath) => {
-    let win = windows[guiFilePath];
+    const win = windows[guiFilePath];
 
     if (win) {
         win.close()
