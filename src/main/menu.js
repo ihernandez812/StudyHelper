@@ -1,5 +1,5 @@
 const { Menu, shell , nativeTheme} = require('electron')
-const lightStorage = require("../storage/storageUtils");
+const lightStorage = require("./storage/storageUtils");
 
 const toggleDarkMode = () => {
     const isDark = nativeTheme.shouldUseDarkColors

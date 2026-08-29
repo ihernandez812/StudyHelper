@@ -1,3 +1,4 @@
+import {navigate} from "./router.js";
 
 document.getElementById('sidebar').addEventListener('click', async (e) => {
     let navItem = e.target

@@ -1,5 +1,15 @@
 // ── Practical screen ──────────────────────────────────────────────────────────
 
+import {registerScreen, navigate} from "./router.js";
+
+registerScreen('practical', {
+    sidebar: 'practical',
+    load: () => loadPracticalSetup(),
+    teardown: () => stopPracticalTimer(),
+    topbar: { title: 'Practical' },
+})
+
+
 const PRACTICAL_TEMPLATES = {
     checklistOption:   document.getElementById('tpl-practical-checklist-option'),
     noChecklistsEmpty: document.getElementById('tpl-no-checklists-empty'),

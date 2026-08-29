@@ -1,5 +1,7 @@
 // ── Library screen ────────────────────────────────────────────────────────────
 
+import {navigate, refreshTopbar, registerScreen} from "./router.js";
+
 const LIBRARY_TEMPLATES = {
     checklistRow:    document.getElementById('tpl-checklist-row'),
     bodyPartCard:    document.getElementById('tpl-body-part-card'),
@@ -8,6 +10,47 @@ const LIBRARY_TEMPLATES = {
     noTagsEmpty:     document.getElementById('tpl-no-tags-empty'),
     categoryItem:    document.getElementById('tpl-category-item'),
 }
+
+// library.js
+registerScreen('library', {
+    sidebar: 'library',
+    load: () => loadLibraryScreen(),
+    topbar: {
+        title: 'Library',
+        actions: () => [
+            { label: 'Categories',    icon: 'fa-tags', className: 'btn-ghost',   onClick: openCategoriesModal },
+            { label: 'New checklist', icon: 'fa-plus', className: 'btn-primary', onClick: openNewChecklistModal },
+        ],
+    },
+})
+
+// library.js, after the 'library' one
+registerScreen('checklist-detail', {
+    sidebar: 'library',
+    load: () => loadChecklistDetail(),
+    topbar: {
+        breadcrumb: () => [
+            { label: 'Library', screen: 'library' },
+            { label: window.AppState.currentChecklistName || '' },
+        ],
+        actions: () => [
+            { label: 'Study this',    icon: 'fa-book-open', className: 'btn-secondary', onClick: () => navigate('study') },
+            { label: 'Add body part', icon: 'fa-plus',      className: 'btn-primary',   onClick: () => openBodyPartEditor(null) },
+        ],
+    },
+})
+
+registerScreen('bodypart-editor', {
+    sidebar: 'library',
+    load: () => initBodyPartEditor(),
+    topbar: {
+        breadcrumb: () => [
+            { label: 'Library', screen: 'library' },
+            { label: window.AppState.currentChecklistName || '', screen: 'checklist-detail' },
+            { label: window.AppState.currentBodyPartName || 'New body part' },
+        ],
+    },
+})
 
 document.getElementById('library-checklist-list').addEventListener('click', async (e) => {
     const target = getActionTarget(e.target, '.checklist-row');
@@ -343,8 +386,7 @@ const initBodyPartEditor = async () => {
         updateScaleLabel()
         renderTagList()
 
-        // Refresh topbar breadcrumb now that we have the name
-        setTopbar('bodypart-editor')
+        refreshTopbar()
     }
 }
 

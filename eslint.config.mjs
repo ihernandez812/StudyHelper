@@ -18,11 +18,11 @@ import tseslint from 'typescript-eslint'
 //
 // DELETE ALL OF THIS once the renderer moves to <script type="module">: each
 // file gets its own scope then, and imports make no-undef work unaided.
-const RENDERER_DIRS = ['src/controller', 'src/HTMLUtils']
+const RENDERER_DIRS = ['src/renderer']
 const DECLARATION_RE = /^(?:const|let|var|function)\s+([A-Za-z_$][\w$]*)/gm
 
 const rendererFiles = RENDERER_DIRS.flatMap(dir =>
-    fs.readdirSync(dir)
+    fs.readdirSync(dir, { recursive: true })
         .filter(file => file.endsWith('.js'))
         .map(file => path.join(dir, file)),
 )
@@ -71,7 +71,8 @@ export default [
 
     // ── Main process ──────────────────────────────────────────────────────────
     {
-        files: ['src/core/**/*.js', 'src/storage/**/*.js'],
+        // preload runs in a Node context with require(), same as main
+        files: ['src/main/**/*.js', 'src/preload/**/*.js'],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: 'commonjs',

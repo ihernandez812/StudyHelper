@@ -1,5 +1,15 @@
+
+import { registerScreen, navigate } from "./router.js";
+
 // ── Study screen ──────────────────────────────────────────────────────────────
 
+
+// study.js
+registerScreen('study', {
+    sidebar: 'study',
+    load: () => loadStudyPicker(),
+    topbar: { title: 'Study' },
+})
 const STUDY_TEMPLATES = {
     pickerItem:        document.getElementById('tpl-study-picker-item'),
     noChecklistsEmpty: document.getElementById('tpl-no-checklists-empty'),
@@ -80,8 +90,6 @@ const loadStudyPicker = async () => {
     const active = document.getElementById('study-active')
     picker.classList.remove('hide')
     active.classList.add('hide')
-
-    setTopbar('study')
 
     const checklists = await window.api.getChecklists()
     const pickerList = document.getElementById('study-picker-list')

@@ -1,5 +1,5 @@
 const { ipcMain } = require('electron')
-const lightStorage = require("../../storage/storageUtils");
+const lightStorage = require("../storage/storageUtils");
 
 ipcMain.handle('setCategories', (event, categories) => {
     return lightStorage.setCategories(categories)

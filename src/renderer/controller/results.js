@@ -1,5 +1,15 @@
 // ── Results screen ────────────────────────────────────────────────────────────
 
+import {registerScreen, navigate} from "./router.js";
+
+// study.js
+registerScreen('results', {
+    sidebar: 'results',
+    load: () => loadResultsScreen(),
+    topbar: { title: 'Results' },
+})
+
+
 const RESULTS_TEMPLATES = {
     resultRow: document.getElementById('tpl-result-row'),
 }
