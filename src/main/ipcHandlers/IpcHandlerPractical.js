@@ -1,6 +1,6 @@
 const { ipcMain } = require('electron')
 const FileHelper = require('../FileHelper')
-const lightStorage = require("../../storage/storageUtils");
+const lightStorage = require("../storage/storageUtils");
 
 ipcMain.handle('addPractical', async (event, id,  practical) => {
     const practicalQueue = practical.queue;

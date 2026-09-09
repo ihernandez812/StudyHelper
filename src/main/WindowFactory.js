@@ -1,7 +1,7 @@
 const { BrowserWindow, Menu, nativeTheme} = require("electron");
 const windowStateKeeper = require("electron-window-state");
 const path = require("path");
-const lightStorage = require("../storage/storageUtils");
+const lightStorage = require("./storage/storageUtils");
 const windows = {};
 
 const createWindow = (guiFilePath, options) => {
@@ -30,12 +30,12 @@ const createWindow = (guiFilePath, options) => {
         minWidth: 1200,
         parent: options.parent,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
+            preload: path.join(__dirname, '../preload/preload.js'),
             sandbox: true,
             contextIsolation: true,
             nodeIntegration: false,
         },
-        icon: path.join(__dirname, '../images/AnatoMeIcon.png'),
+        icon: path.join(__dirname, '../renderer/images/AnatoMeIcon.png'),
     })
 
     windState.manage(win)

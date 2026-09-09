@@ -5,7 +5,7 @@
 // `window.api` at runtime, so without a declaration every IPC call is untyped
 // and mistakes like a forgotten `await` are invisible.
 //
-// Keep it in step with src/core/preload.js: one entry per exposed method.
+// Keep it in step with src/main/preload.js: one entry per exposed method.
 
 // ── Stored data model ─────────────────────────────────────────────────────────
 
@@ -141,12 +141,4 @@ interface StudyHelperApi {
 
 interface Window {
     api: StudyHelperApi
-    AppState: {
-        currentChecklistId: string | null
-        currentChecklistName: string | null
-        currentBodyPartId: string | null
-        currentBodyPartName: string | null
-        currentBodyPartIds: string[]
-        currentPage: string
-    }
 }

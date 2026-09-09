@@ -1,5 +1,5 @@
 const { ipcMain } = require('electron')
-const lightStorage = require("../../storage/storageUtils");
+const lightStorage = require("../storage/storageUtils");
 const FileHelper = require("../FileHelper");
 
 ipcMain.handle('setChecklists', (event, checklists) => {

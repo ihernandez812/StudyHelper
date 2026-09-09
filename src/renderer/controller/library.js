@@ -1,15 +1,61 @@
 // ── Library screen ────────────────────────────────────────────────────────────
 
-const LIBRARY_TEMPLATES = {
-    checklistRow:    document.getElementById('tpl-checklist-row'),
-    bodyPartCard:    document.getElementById('tpl-body-part-card'),
-    bodyPartAddCard: document.getElementById('tpl-body-part-add-card'),
-    tagListItem:     document.getElementById('tpl-tag-list-item'),
-    noTagsEmpty:     document.getElementById('tpl-no-tags-empty'),
-    categoryItem:    document.getElementById('tpl-category-item'),
+import {navigate, refreshTopbar, registerScreen} from "./router.js";
+import {checkCoordinatesExist, getClickCoordinates, redrawEverything, drawBodyPartWithTags} from "../HTMLUtils/canvasUtils.js"
+import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {AppState} from "./state.js"
+
+const TEMPLATES = {
+    checklistRow:    mustGetElementById('tpl-checklist-row'),
+    bodyPartCard:    mustGetElementById('tpl-body-part-card'),
+    bodyPartAddCard: mustGetElementById('tpl-body-part-add-card'),
+    tagListItem:     mustGetElementById('tpl-tag-list-item'),
+    noTagsEmpty:     mustGetElementById('tpl-no-tags-empty'),
+    categoryItem:    mustGetElementById('tpl-category-item'),
 }
 
-document.getElementById('library-checklist-list').addEventListener('click', async (e) => {
+// library.js
+registerScreen('library', {
+    sidebar: 'library',
+    load: () => loadLibraryScreen(),
+    topbar: {
+        title: 'Library',
+        actions: () => [
+            { label: 'Categories',    icon: 'fa-tags', className: 'btn-ghost',   onClick: openCategoriesModal },
+            { label: 'New checklist', icon: 'fa-plus', className: 'btn-primary', onClick: openNewChecklistModal },
+        ],
+    },
+})
+
+// library.js, after the 'library' one
+registerScreen('checklist-detail', {
+    sidebar: 'library',
+    load: () => loadChecklistDetail(),
+    topbar: {
+        breadcrumb: () => [
+            { label: 'Library', screen: 'library' },
+            { label: AppState.currentChecklistName || '' },
+        ],
+        actions: () => [
+            { label: 'Study this',    icon: 'fa-book-open', className: 'btn-secondary', onClick: () => navigate('study') },
+            { label: 'Add body part', icon: 'fa-plus',      className: 'btn-primary',   onClick: () => openBodyPartEditor(null) },
+        ],
+    },
+})
+
+registerScreen('bodypart-editor', {
+    sidebar: 'library',
+    load: () => initBodyPartEditor(),
+    topbar: {
+        breadcrumb: () => [
+            { label: 'Library', screen: 'library' },
+            { label: AppState.currentChecklistName || '', screen: 'checklist-detail' },
+            { label: AppState.currentBodyPartName || 'New body part' },
+        ],
+    },
+})
+
+mustGetElementById('library-checklist-list').addEventListener('click', async (e) => {
     const target = getActionTarget(e.target, '.checklist-row');
 
     if (!target) {
@@ -40,7 +86,7 @@ document.getElementById('library-checklist-list').addEventListener('click', asyn
     }
 })
 
-document.getElementById('body-part-grid').addEventListener('click', async (e) => {
+mustGetElementById('body-part-grid').addEventListener('click', async (e) => {
     const target = getActionTarget(e.target, '.body-part-card')
 
     if (!target) {
@@ -70,7 +116,7 @@ document.getElementById('body-part-grid').addEventListener('click', async (e) =>
     }
 })
 
-document.getElementById('editor-tag-list').addEventListener('click', async (e) => {
+mustGetElementById('editor-tag-list').addEventListener('click', async (e) => {
     const target = getActionTarget(e.target, '.tag-list-item');
 
     if (!target) {
@@ -96,7 +142,7 @@ document.getElementById('editor-tag-list').addEventListener('click', async (e) =
     }
 })
 
-document.getElementById('category-list').addEventListener('click', async (e) => {
+mustGetElementById('category-list').addEventListener('click', async (e) => {
     const target = getActionTarget(e.target, '.category-item');
 
     if (!target) {
@@ -146,7 +192,7 @@ const loadLibraryScreen = async () => {
 }
 
 const createLibraryRow = (id, name, partCount) => {
-    const row = cloneTemplate(LIBRARY_TEMPLATES.checklistRow)
+    const row = cloneTemplate(TEMPLATES.checklistRow)
 
     row.dataset.id   = id
     row.dataset.name = name
@@ -156,15 +202,15 @@ const createLibraryRow = (id, name, partCount) => {
 }
 
 const openChecklistDetail = (id, name) => {
-    window.AppState.currentChecklistId   = id
-    window.AppState.currentChecklistName = name
+    AppState.currentChecklistId   = id
+    AppState.currentChecklistName = name
     navigate('checklist-detail')
 }
 
 // ── Checklist modal (add/edit) ────────────────────────────────────────────────
 
 let _editingChecklistId = null
-const checklistModal = new bootstrap.Modal(document.getElementById('checklist-modal'))
+const checklistModal = new bootstrap.Modal(mustGetElementById('checklist-modal'))
 
 const openNewChecklistModal = () => {
     _editingChecklistId = null
@@ -180,7 +226,7 @@ const openEditChecklistModal = (id, name) => {
     checklistModal.show()
 }
 
-document.getElementById('checklist-save-btn').addEventListener('click', async () => {
+mustGetElementById('checklist-save-btn').addEventListener('click', async () => {
     const name = document.getElementById('checklist-name-input').value.trim()
 
     if (!name) {
@@ -218,7 +264,7 @@ const deleteChecklist = async (id, rowElement) => {
 
 // ── Checklist detail screen ───────────────────────────────────────────────────
 const loadChecklistDetail = async () => {
-    const id        = window.AppState.currentChecklistId
+    const id        = AppState.currentChecklistId
     const checklist = await window.api.getChecklistById(id)
 
     if (!checklist) {
@@ -246,12 +292,12 @@ const loadChecklistDetail = async () => {
     }
 
     // Add the "add body part" card at the end
-    const addCard = cloneTemplate(LIBRARY_TEMPLATES.bodyPartAddCard)
+    const addCard = cloneTemplate(TEMPLATES.bodyPartAddCard)
     grid.appendChild(addCard)
 }
 
 const createBodyPartCard = (id, name, tagCount) => {
-    const card = cloneTemplate(LIBRARY_TEMPLATES.bodyPartCard)
+    const card = cloneTemplate(TEMPLATES.bodyPartCard)
 
     card.dataset.id   = id
     card.dataset.name = name
@@ -265,7 +311,7 @@ const deleteBodyPart = async (id, cardElement) => {
     const result = await window.api.dialogQuestion('Delete this body part?')
 
     if (result.response === 0) {
-        await window.api.removeBodyPart(id, window.AppState.currentChecklistId)
+        await window.api.removeBodyPart(id, AppState.currentChecklistId)
         cardElement.remove()
         const grid = document.getElementById('body-part-grid')
         const cards = grid.querySelectorAll('.body-part-card:not(.body-part-card--add)')
@@ -288,8 +334,8 @@ let editorState = {
 }
 
 const openBodyPartEditor = (bodyPartId) => {
-    window.AppState.currentBodyPartId   = bodyPartId
-    window.AppState.currentBodyPartName = bodyPartId ? null : null // set after load
+    AppState.currentBodyPartId   = bodyPartId
+    AppState.currentBodyPartName = bodyPartId ? null : null // set after load
     navigate('bodypart-editor')
 }
 
@@ -299,8 +345,8 @@ const initBodyPartEditor = async () => {
     updateScaleLabel()
     renderTagList()
 
-    const bpId        = window.AppState.currentBodyPartId
-    const checklistId = window.AppState.currentChecklistId
+    const bpId        = AppState.currentBodyPartId
+    const checklistId = AppState.currentChecklistId
     const nameInput   = document.getElementById('editor-name')
     const image       = document.getElementById('editor-image')
     const canvas      = document.getElementById('editor-canvas')
@@ -318,7 +364,7 @@ const initBodyPartEditor = async () => {
         editorState.coordinatesMap  = bp['coordinates'] || {}
         editorState.resizeScale     = bp['scale'] || 1
         editorState.fontSize        = bp['fontSize'] || 16
-        window.AppState.currentBodyPartName = bp['name']
+        AppState.currentBodyPartName = bp['name']
 
         const fontSelect = document.getElementById('editor-font-size')
         fontSelect.value = editorState.fontSize
@@ -343,13 +389,12 @@ const initBodyPartEditor = async () => {
         updateScaleLabel()
         renderTagList()
 
-        // Refresh topbar breadcrumb now that we have the name
-        setTopbar('bodypart-editor')
+        refreshTopbar()
     }
 }
 
 // Drag and drop image onto canvas
-const dropZone = document.getElementById('editor-drop-zone')
+const dropZone = mustGetElementById('editor-drop-zone')
 dropZone.addEventListener('dragover', e => e.preventDefault())
 dropZone.addEventListener('drop', e => {
     e.preventDefault()
@@ -392,7 +437,7 @@ dropZone.addEventListener('drop', e => {
 })
 
 // Right-click on canvas to add/edit tag
-document.getElementById('editor-canvas').addEventListener('contextmenu', async (e) => {
+mustGetElementById('editor-canvas').addEventListener('contextmenu', async (e) => {
     const canvas = document.getElementById('editor-canvas')
     const coords = getClickCoordinates(e, editorState.resizeScale)
     const existingKey = checkCoordinatesExist(canvas, coords.x, coords.y, editorState.coordinatesMap, editorState.resizeScale, editorState.fontSize, true)
@@ -404,7 +449,7 @@ document.getElementById('editor-canvas').addEventListener('contextmenu', async (
 })
 
 // Scale controls
-document.getElementById('editor-scale-up').addEventListener('click', () => {
+mustGetElementById('editor-scale-up').addEventListener('click', () => {
     if (editorState.resizeScale < 2.0) {
         editorState.resizeScale = Math.round((editorState.resizeScale + 0.05) * 100) / 100
         updateScaleLabel()
@@ -412,14 +457,14 @@ document.getElementById('editor-scale-up').addEventListener('click', () => {
     }
 })
 
-document.getElementById('editor-scale-down').addEventListener('click', () => {
+mustGetElementById('editor-scale-down').addEventListener('click', () => {
     if (editorState.resizeScale > 0.1) {
         editorState.resizeScale = Math.round((editorState.resizeScale - 0.05) * 100) / 100
         updateScaleLabel()
         redrawEditor()
     }
 })
-document.getElementById('editor-font-size').addEventListener('change', (e) => {
+mustGetElementById('editor-font-size').addEventListener('change', (e) => {
     editorState.fontSize = e.target.value
     redrawEditor()
 })
@@ -436,7 +481,7 @@ const redrawEditor = () => {
 }
 
 // Tag modal
-const editorTagModal = new bootstrap.Modal(document.getElementById('editor-tag-modal'))
+const editorTagModal = new bootstrap.Modal(mustGetElementById('editor-tag-modal'))
 let _pendingTagCoords = null
 
 const openNewTagModal = (coords) => {
@@ -471,7 +516,7 @@ const deleteTag = async (tagId, tagName) => {
     }
 }
 
-document.getElementById('editor-tag-save-btn').addEventListener('click', async () => {
+mustGetElementById('editor-tag-save-btn').addEventListener('click', async () => {
     const name     = document.getElementById('editor-tag-name').value.trim()
     const category = document.getElementById('editor-tag-category').value
 
@@ -499,13 +544,13 @@ const renderTagList = () => {
     count.textContent = keys.length.toString()
 
     if (keys.length === 0) {
-        list.appendChild(cloneTemplate(LIBRARY_TEMPLATES.noTagsEmpty))
+        list.appendChild(cloneTemplate(TEMPLATES.noTagsEmpty))
         return
     }
 
     keys.forEach(id => {
         const tagName = tags[id]['name']
-        const li      = cloneTemplate(LIBRARY_TEMPLATES.tagListItem)
+        const li      = cloneTemplate(TEMPLATES.tagListItem)
 
         li.dataset.id = id
         li.dataset.name = tagName
@@ -516,7 +561,7 @@ const renderTagList = () => {
 }
 
 // Save body part
-document.getElementById('editor-save-btn').addEventListener('click', async () => {
+mustGetElementById('editor-save-btn').addEventListener('click', async () => {
     const name    = document.getElementById('editor-name').value.trim()
 
     if (!name) {
@@ -541,13 +586,13 @@ document.getElementById('editor-save-btn').addEventListener('click', async () =>
         bodyPart.image = editorState.pendingImageDataUrl
     }
 
-    const bpId = window.AppState.currentBodyPartId || crypto.randomUUID()
-    await window.api.addOrEditBodyPartById(bpId, window.AppState.currentChecklistId, bodyPart)
+    const bpId = AppState.currentBodyPartId || crypto.randomUUID()
+    await window.api.addOrEditBodyPartById(bpId, AppState.currentChecklistId, bodyPart)
     navigate('checklist-detail')
 })
 
 // ── Categories modal ──────────────────────────────────────────────────────────
-const categoriesModal = new bootstrap.Modal(document.getElementById('categories-modal'))
+const categoriesModal = new bootstrap.Modal(mustGetElementById('categories-modal'))
 
 const openCategoriesModal = async () => {
     await renderCategoryList()
@@ -566,7 +611,7 @@ const renderCategoryList = async () => {
 }
 
 const createCategoryItem = (id, name) => {
-    const li = cloneTemplate(LIBRARY_TEMPLATES.categoryItem)
+    const li = cloneTemplate(TEMPLATES.categoryItem)
 
     li.dataset.id   = id
     li.dataset.name = name
@@ -584,7 +629,7 @@ const deleteCategory = async (id, name, rowElement) => {
     }
 }
 
-document.getElementById('add-category-btn').addEventListener('click', async () => {
+mustGetElementById('add-category-btn').addEventListener('click', async () => {
     const input = document.getElementById('new-category-input')
     const name  = input.value.trim()
 
