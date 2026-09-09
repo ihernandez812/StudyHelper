@@ -27,16 +27,12 @@ const saveBodyPartImage = async (parentId, bodyPartId, dataUrl) => {
 
 const deleteBodyPartImage = (parentId, bodyPartId) => {
     const bodyPartPath = path.join(baseDir, parentId, bodyPartId)
-    rm(bodyPartPath, {recursive: true, force: true}).catch(err => {
-        console.error(err)
-    })
+    return rm(bodyPartPath, {recursive: true, force: true})
 }
 
 const deleteImages = (parentId) => {
     const checklistPath = path.join(baseDir, parentId);
-    rm(checklistPath, {recursive: true, force: true}).catch(err => {
-        console.error(err)
-    })
+    return rm(checklistPath, {recursive: true, force: true})
 }
 
 

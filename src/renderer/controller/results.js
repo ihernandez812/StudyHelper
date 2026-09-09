@@ -1,6 +1,6 @@
 // ── Results screen ────────────────────────────────────────────────────────────
 
-import {registerScreen, navigate} from "./router.js";
+import {registerScreen, navigate, refreshCurrentScreen} from "./router.js";
 import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
 
 
@@ -25,7 +25,6 @@ mustGetElementById('results-list').addEventListener('click', async (e) => {
 
     const { id, date } = target.data;
     const action = target.action;
-    const parentElement = target.parentElement;
 
     try {
         switch (action) {
@@ -33,7 +32,7 @@ mustGetElementById('results-list').addEventListener('click', async (e) => {
                 //TODO create view practical results
                 break;
             case 'delete':
-                await deleteResultRow(id, date, parentElement);
+                await deleteResultRow(id, date);
                 break;
             default:
                 console.error(`Unknown action "${action}" on result row ${id}`);
@@ -85,17 +84,12 @@ const createResultRow = (id, practical) => {
     return li
 }
 
-const deleteResultRow = async (id, dateStr, rowElement) => {
+const deleteResultRow = async (id, dateStr) => {
     const result = await window.api.dialogQuestion(`Are you sure you want to delete the practical take on ${dateStr}?`)
 
     if (result.response === 0) {
         await window.api.deletePracticalById(id)
-        rowElement.remove()
-        const remaining = document.querySelectorAll('#results-list .result-row')
-
-        if (remaining.length === 0) {
-            document.getElementById('results-empty').classList.remove('hide')
-        }
+        await refreshCurrentScreen()
     }
 }
 

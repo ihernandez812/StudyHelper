@@ -7,19 +7,29 @@ ipcMain.handle('getBodyPartById', async (event, bodyPartId, checklistId) => {
 })
 
 ipcMain.handle('addOrEditBodyPartById', async (event, bodyPartId, checklistId, bodyPart) => {
-    const image = bodyPart.image
+    try {
+        const image = bodyPart.image
 
-    if (typeof image === 'string' && image.startsWith('data:image/')) {
-        bodyPart.image = await FileHelper.saveBodyPartImage(checklistId, bodyPartId, image)
-    } else {
-        //No new image was supplied, so keep the one already on disk
-        bodyPart.image = lightStorage.getBodyPartById(bodyPartId, checklistId)['image']
+        if (typeof image === 'string' && image.startsWith('data:image/')) {
+            bodyPart.image = await FileHelper.saveBodyPartImage(checklistId, bodyPartId, image)
+        } else {
+            //No new image was supplied, so keep the one already on disk
+            bodyPart.image = lightStorage.getBodyPartById(bodyPartId, checklistId)['image']
+        }
+
+        return lightStorage.addOrEditBodyPartById(bodyPartId, checklistId, bodyPart)
+    } catch (error) {
+        console.error(error);
+        throw error;
     }
-
-    return lightStorage.addOrEditBodyPartById(bodyPartId, checklistId, bodyPart)
 })
 
-ipcMain.handle('removeBodyPart', (event, bodyPartId, checklistId) => {
-    FileHelper.deleteBodyPartImage(checklistId, bodyPartId)
-    lightStorage.removeBodyPart(bodyPartId, checklistId)
+ipcMain.handle('removeBodyPart', async (event, bodyPartId, checklistId) => {
+    try {
+        await FileHelper.deleteBodyPartImage(checklistId, bodyPartId)
+        lightStorage.removeBodyPart(bodyPartId, checklistId)
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
 })
