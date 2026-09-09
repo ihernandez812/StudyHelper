@@ -1,7 +1,9 @@
 import {navigate, registerScreen} from "./router.js";
+import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {AppState} from "./state.js"
 
-const HOME_TEMPLATES = {
-    checklistRow: document.getElementById('tpl-home-checklist-row'),
+const TEMPLATES = {
+    checklistRow: mustGetElementById('tpl-home-checklist-row'),
 }
 
 registerScreen('home', {
@@ -10,11 +12,11 @@ registerScreen('home', {
     topbar: { title: 'Home' },
 })
 
-document.getElementById('home-add-checklist-btn').addEventListener('click', () => {
+mustGetElementById('home-add-checklist-btn').addEventListener('click', () => {
     navigate('library')
 })
 
-document.getElementById('home-checklist-list').addEventListener('click', async (e) => {
+mustGetElementById('home-checklist-list').addEventListener('click', async (e) => {
     const target = getActionTarget(e.target, '.checklist-row');
 
     if (!target) {
@@ -75,7 +77,7 @@ const loadHomeScreen = async () => {
 }
 
 const createHomeChecklistRow = (id, name, partCount) => {
-    const row = cloneTemplate(HOME_TEMPLATES.checklistRow)
+    const row = cloneTemplate(TEMPLATES.checklistRow)
 
     row.dataset.id   = id
     row.dataset.name = name
@@ -86,26 +88,9 @@ const createHomeChecklistRow = (id, name, partCount) => {
 }
 
 const navigateToStudy = (id, name) => {
-    window.AppState.currentChecklistId   = id
-    window.AppState.currentChecklistName = name
+    AppState.currentChecklistId   = id
+    AppState.currentChecklistName = name
     navigate('study')
 }
 
-// ── Dark mode ─────────────────────────────────────────────────────────────────
 
-const applyTheme = (isDark) => {
-    document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light')
-    const icon = document.querySelector('.sidebar-icon')
-    if (icon) icon.src = isDark ? '../images/AnatoMeIconDark.png' : '../images/AnatoMeIcon.png'
-}
-
-window.addEventListener('load', async () => {
-    // Restore saved preference before first paint
-    const savedDark = await window.api.getDarkMode()
-    applyTheme(savedDark)
-
-    // Listen for menu-triggered toggles
-    window.api.onDarkModeChanged((isDark) => applyTheme(isDark))
-
-    navigate('home')
-})

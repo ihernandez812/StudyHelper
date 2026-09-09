@@ -70,7 +70,7 @@ const buildTopbarButton = ({ label, icon, className, onClick }) => {
 }
 
 // topbar.js — no registry, no imports, a leaf
-export const renderTopbar = (topbarConfig, onNavigate) => {
+const renderTopbar = (topbarConfig, onNavigate) => {
     const left  = document.getElementById('topbar-left')
     const right = document.getElementById('topbar-right')
 
@@ -90,4 +90,8 @@ export const renderTopbar = (topbarConfig, onNavigate) => {
     if (topbarConfig.actions) {
         topbarConfig.actions().forEach(action => right.appendChild(buildTopbarButton(action)))
     }
+}
+
+export {
+    renderTopbar
 }

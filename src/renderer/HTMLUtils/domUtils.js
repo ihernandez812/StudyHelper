@@ -30,3 +30,19 @@ const getActionTarget = (element, rowSelector) => {
         data: parentElement.dataset,
     }
 }
+
+const mustGetElementById = (id) => {
+    const element = document.getElementById(id)
+
+    if (!element) {
+        throw new Error(`Missing required element #${id}`)
+    }
+
+    return element
+}
+
+export {
+    cloneTemplate,
+    getActionTarget,
+    mustGetElementById
+}

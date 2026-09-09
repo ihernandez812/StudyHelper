@@ -1,5 +1,9 @@
 
 import { registerScreen, navigate } from "./router.js";
+import {drawNewImage, drawNewText, drawNewQuestionMark,
+    checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
+import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {AppState} from "./state.js"
 
 // ── Study screen ──────────────────────────────────────────────────────────────
 
@@ -10,9 +14,9 @@ registerScreen('study', {
     load: () => loadStudyPicker(),
     topbar: { title: 'Study' },
 })
-const STUDY_TEMPLATES = {
-    pickerItem:        document.getElementById('tpl-study-picker-item'),
-    noChecklistsEmpty: document.getElementById('tpl-no-checklists-empty'),
+const TEMPLATES = {
+    pickerItem:        mustGetElementById('tpl-study-picker-item'),
+    noChecklistsEmpty: mustGetElementById('tpl-no-checklists-empty'),
 }
 
 const studyState = {
@@ -48,7 +52,7 @@ const STUDY_TYPES = {
     RANDOM:   1,
 }
 
-document.getElementById('study-picker-list').addEventListener('click', async (e) => {
+mustGetElementById('study-picker-list').addEventListener('click', async (e) => {
     //If there are no body parts to study if it is empty and the only thing to be clicked is a navigate to library
     if (e.target.closest('[data-action="go-to-library"]')) {
         navigate('library')
@@ -98,14 +102,14 @@ const loadStudyPicker = async () => {
     const keys = Object.keys(checklists)
 
     if (keys.length === 0) {
-        const emptyState = cloneTemplate(STUDY_TEMPLATES.noChecklistsEmpty)
+        const emptyState = cloneTemplate(TEMPLATES.noChecklistsEmpty)
         pickerList.appendChild(emptyState)
         return
     }
 
     // If a checklist was already chosen (e.g. "Study this" from home), open settings
-    if (window.AppState.currentChecklistId) {
-        await openStudySettings(window.AppState.currentChecklistId, STUDY_TYPES.ALL)
+    if (AppState.currentChecklistId) {
+        await openStudySettings(AppState.currentChecklistId, STUDY_TYPES.ALL)
         return
     }
 
@@ -114,7 +118,7 @@ const loadStudyPicker = async () => {
         const bodyParts = checklist['bodyParts'] || {}
         const bpKeys    = Object.keys(bodyParts)
 
-        const item       = cloneTemplate(STUDY_TEMPLATES.pickerItem)
+        const item       = cloneTemplate(TEMPLATES.pickerItem)
         const randomBtn  = item.querySelector('[data-action="random"]')
         const studyAllBtn = item.querySelector('[data-action="all"]')
 
@@ -174,7 +178,7 @@ const loadRandomBodyStudySession = async (checklistId) => {
 
 // ── Study settings modal ──────────────────────────────────────────────────────
 
-const studySettingsModal = new bootstrap.Modal(document.getElementById('study-settings-modal'))
+const studySettingsModal = new bootstrap.Modal(mustGetElementById('study-settings-modal'))
 let _pendingBpIds = []
 
 const openStudySettings = async (checklistId, studyType) => {
@@ -198,12 +202,12 @@ const openStudySettings = async (checklistId, studyType) => {
             return;
     }
 
-    window.AppState.currentChecklistId = checklistId;
+    AppState.currentChecklistId = checklistId;
     _pendingBpIds = shuffle(bodyPartIdList)
     studySettingsModal.show()
 }
 
-document.getElementById('study-settings-save-btn').addEventListener('click', () => {
+mustGetElementById('study-settings-save-btn').addEventListener('click', () => {
     studyState.difficulty     = parseInt(document.getElementById('study-difficulty').value)
     studyState.hintsRemaining = studyState.difficulty === DIFFICULTY.EASY ? 3 : 0;
     studySettingsModal.hide()
@@ -215,7 +219,7 @@ document.getElementById('study-settings-save-btn').addEventListener('click', () 
 const beginStudySession = (bpIds) => {
     studyState.bodyPartIdList = bpIds
     studyState.usedIds        = []
-    studyState.checklistId    = window.AppState.currentChecklistId
+    studyState.checklistId    = AppState.currentChecklistId
     studyState.correctTags    = {}
     studyState.hintText       = ''
     studyState.answeredTags   = {}
@@ -366,7 +370,7 @@ const updateHintButton = () => {
         : 'No hints available'
 }
 
-document.getElementById('study-hint-btn').addEventListener('click', () => {
+mustGetElementById('study-hint-btn').addEventListener('click', () => {
     const answer  = Object.values(studyState.answerTag)[0]
 
     if (!answer) {
@@ -381,7 +385,7 @@ document.getElementById('study-hint-btn').addEventListener('click', () => {
 })
 
 // Click on canvas to answer a tag
-document.getElementById('study-canvas').addEventListener('click', async (e) => {
+mustGetElementById('study-canvas').addEventListener('click', async (e) => {
     const canvas  = document.getElementById('study-canvas')
     const coords  = getClickCoordinates(e, studyState.scale)
     const key     = checkCoordinatesExist(canvas, coords.x, coords.y, studyState.coordinates, studyState.scale, studyState.fontSize,false)
@@ -395,7 +399,7 @@ document.getElementById('study-canvas').addEventListener('click', async (e) => {
     }
 })
 
-const studyAnswerModal = new bootstrap.Modal(document.getElementById('study-answer-modal'))
+const studyAnswerModal = new bootstrap.Modal(mustGetElementById('study-answer-modal'))
 
 const openStudyAnswerModal = async (tagId) => {
     const tag       = studyState.coordinates[tagId]
@@ -416,7 +420,16 @@ const openStudyAnswerModal = async (tagId) => {
     studyAnswerModal.show()
 }
 
-document.getElementById('study-answer-submit-btn').addEventListener('click', async () => {
+const shuffle = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+
+    return arr
+}
+
+mustGetElementById('study-answer-submit-btn').addEventListener('click', async () => {
     const input   = document.getElementById('study-answer-input')
     const txt     = input.value.trim()
 
@@ -448,27 +461,28 @@ const updateTagsProgress = () => {
     document.getElementById('study-tags-progress').textContent = `${correct} / ${total} tags labeled`
 }
 
-document.getElementById('study-next-btn').addEventListener('click', () => {
+mustGetElementById('study-next-btn').addEventListener('click', () => {
     loadNextBodyPart().catch(err => {
         console.error(err)
     })
 })
 
-document.getElementById('study-prev-btn').addEventListener('click', () => {
+mustGetElementById('study-prev-btn').addEventListener('click', () => {
     loadPrevBodyPart().catch(err => {
         console.error(err)
     })
 })
 
-document.getElementById('study-end-btn').addEventListener('click', async () => {
+mustGetElementById('study-end-btn').addEventListener('click', async () => {
     try {
         const result = await window.api.dialogQuestion("Are you sure you want to end the current study session?")
 
         if (result.response === 0) {
-            window.AppState.currentChecklistId = null
+            AppState.currentChecklistId = null
             await loadStudyPicker()
         }
     } catch (err) {
         console.error(err)
     }
 })
+

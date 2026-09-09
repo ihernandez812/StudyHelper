@@ -1,6 +1,8 @@
 // ── Results screen ────────────────────────────────────────────────────────────
 
 import {registerScreen, navigate} from "./router.js";
+import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
+
 
 // study.js
 registerScreen('results', {
@@ -10,11 +12,11 @@ registerScreen('results', {
 })
 
 
-const RESULTS_TEMPLATES = {
-    resultRow: document.getElementById('tpl-result-row'),
+const TEMPLATES = {
+    resultRow: mustGetElementById('tpl-result-row'),
 }
 
-document.getElementById('results-list').addEventListener('click', async (e) => {
+mustGetElementById('results-list').addEventListener('click', async (e) => {
     const target = getActionTarget(e.target, '.result-row');
 
     if (!target) {
@@ -72,7 +74,7 @@ const createResultRow = (id, practical) => {
     const correctTags = practical['numCorrect'] || 0
     const stationCount = queue.length
 
-    const li = cloneTemplate(RESULTS_TEMPLATES.resultRow)
+    const li = cloneTemplate(TEMPLATES.resultRow)
 
     li.dataset.id = id
     li.dataset.date = dateStr
@@ -98,6 +100,6 @@ const deleteResultRow = async (id, dateStr, rowElement) => {
 }
 
 
-document.getElementById('results-start-practical-btn').addEventListener('click', () => {
+mustGetElementById('results-start-practical-btn').addEventListener('click', () => {
     navigate('practical')
 })

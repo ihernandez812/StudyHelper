@@ -1,6 +1,10 @@
 // ── Practical screen ──────────────────────────────────────────────────────────
 
 import {registerScreen, navigate} from "./router.js";
+import {drawNewImage, drawNewText, drawNewQuestionMark,
+    checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
+import {cloneTemplate, mustGetElementById} from "../HTMLUtils/domUtils.js"
+
 
 registerScreen('practical', {
     sidebar: 'practical',
@@ -10,9 +14,9 @@ registerScreen('practical', {
 })
 
 
-const PRACTICAL_TEMPLATES = {
-    checklistOption:   document.getElementById('tpl-practical-checklist-option'),
-    noChecklistsEmpty: document.getElementById('tpl-no-checklists-empty'),
+const TEMPLATES = {
+    checklistOption:   mustGetElementById('tpl-practical-checklist-option'),
+    noChecklistsEmpty: mustGetElementById('tpl-no-checklists-empty'),
 }
 
 const practicalState = {
@@ -26,7 +30,7 @@ const practicalState = {
     fontSize:             16,
 }
 
-document.getElementById('practical-checklist-select').addEventListener('change', async (e) => {
+mustGetElementById('practical-checklist-select').addEventListener('change', async (e) => {
     const checkbox= e.target;
 
     if ((checkbox instanceof HTMLInputElement) && checkbox.type === 'checkbox') {
@@ -42,7 +46,7 @@ document.getElementById('practical-checklist-select').addEventListener('change',
     }
 })
 
-document.getElementById('practical-checklist-select').addEventListener('click', async (e) => {
+mustGetElementById('practical-checklist-select').addEventListener('click', async (e) => {
     const element = e.target;
 
     if ((element instanceof HTMLInputElement) && element.closest('[data-action="go-to-library"]')) {
@@ -77,7 +81,7 @@ const loadPracticalSetup = async () => {
     const keys = Object.keys(checklists)
 
     if (keys.length === 0) {
-        const emptyState = cloneTemplate(PRACTICAL_TEMPLATES.noChecklistsEmpty)
+        const emptyState = cloneTemplate(TEMPLATES.noChecklistsEmpty)
         container.appendChild(emptyState)
         return
     }
@@ -86,7 +90,7 @@ const loadPracticalSetup = async () => {
         const checklist = checklists[id]
         const bpCount   = Object.keys(checklist['bodyParts'] || {}).length
 
-        const label    = cloneTemplate(PRACTICAL_TEMPLATES.checklistOption)
+        const label    = cloneTemplate(TEMPLATES.checklistOption)
         const checkbox = label.querySelector('input')
 
         label.dataset.id = id
@@ -122,7 +126,7 @@ const updatePracticalSummary = async () => {
     startBtn.disabled = totalBodyParts === 0
 }
 
-document.getElementById('practical-start-btn').addEventListener('click', async () => {
+mustGetElementById('practical-start-btn').addEventListener('click', async () => {
     try {
         await buildBodyPartQueue(),
         await startPractical()
@@ -244,7 +248,7 @@ const drawPracticalQuestionMarks = () => {
 }
 
 // Click a tag to answer it
-document.getElementById('practical-canvas').addEventListener('click', async (e) => {
+mustGetElementById('practical-canvas').addEventListener('click', async (e) => {
     const canvas = document.getElementById('practical-canvas')
     const coords = getClickCoordinates(e, practicalState.scale)
     const key    = checkCoordinatesExist(canvas, coords.x, coords.y, practicalState.currentCoordinates, practicalState.scale, practicalState.fontSize, false)
@@ -258,7 +262,7 @@ document.getElementById('practical-canvas').addEventListener('click', async (e) 
     }
 })
 
-const practicalTagModal    = new bootstrap.Modal(document.getElementById('practical-tag-modal'))
+const practicalTagModal    = new bootstrap.Modal(mustGetElementById('practical-tag-modal'))
 let _practicalCurrentTagId = null
 
 const openPracticalTagModal = async (tagId) => {
@@ -279,7 +283,7 @@ const openPracticalTagModal = async (tagId) => {
     practicalTagModal.show()
 }
 
-document.getElementById('practical-tag-save-btn').addEventListener('click', async () => {
+mustGetElementById('practical-tag-save-btn').addEventListener('click', async () => {
     const txt      = document.getElementById('practical-tag-input').value.trim()
 
     if (txt) {
@@ -304,7 +308,7 @@ document.getElementById('practical-tag-save-btn').addEventListener('click', asyn
     }
 })
 
-document.getElementById('practical-next-btn').addEventListener('click', async () => {
+mustGetElementById('practical-next-btn').addEventListener('click', async () => {
     practicalState.currentStationIdx++
 
     try {

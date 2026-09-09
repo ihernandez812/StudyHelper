@@ -1,6 +1,8 @@
 import {navigate} from "./router.js";
+import {AppState} from "./state.js"
+import {mustGetElementById} from "../HTMLUtils/domUtils.js"
 
-document.getElementById('sidebar').addEventListener('click', async (e) => {
+mustGetElementById('sidebar').addEventListener('click', async (e) => {
     let navItem = e.target
 
     if (navItem) {
@@ -14,14 +16,14 @@ document.getElementById('sidebar').addEventListener('click', async (e) => {
         if (dataTarget) {
             let doNavigate = true
 
-            if (window.AppState.currentPage === 'study' && window.AppState.currentChecklistId) {
+            if (AppState.currentPage === 'study' && AppState.currentChecklistId) {
                 const res = await window.api.dialogQuestion("Are you sure?\nLeaving this page will reset the current study session.")
                 doNavigate = res.response === 0
             }
 
             if (doNavigate) {
                 //Reset current checklist; navigate() owns currentPage
-                window.AppState.currentChecklistId = null
+                AppState.currentChecklistId = null
                 navigate(dataTarget)
             }
         }
@@ -29,11 +31,3 @@ document.getElementById('sidebar').addEventListener('click', async (e) => {
 })
 
 
-const shuffle = (arr) => {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]]
-    }
-
-    return arr
-}

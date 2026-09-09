@@ -181,12 +181,13 @@ const drawBodyPartWithTags = async (canvas, imgElement, coordinatesMap, fontSize
     })
 }
 
-const drawBodyPartWithQuestionMark = async (canvas, imgElement, coordinatesMap, fontSize, scale = 1) => {
-    await drawNewImage(canvas, imgElement, 0, 0, scale)
-    requestAnimationFrame(() => {
-        for (const key in coordinatesMap) {
-            const coordinates = coordinatesMap[key]
-            drawNewQuestionMark(canvas, coordinates, scale, fontSize)
-        }
-    })
+export {
+    drawNewImage,
+    drawNewText,
+    drawNewQuestionMark,
+    checkCoordinatesExist,
+    getClickCoordinates,
+    clearCanvas,
+    redrawEverything,
+    drawBodyPartWithTags
 }

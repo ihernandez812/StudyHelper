@@ -141,12 +141,4 @@ interface StudyHelperApi {
 
 interface Window {
     api: StudyHelperApi
-    AppState: {
-        currentChecklistId: string | null
-        currentChecklistName: string | null
-        currentBodyPartId: string | null
-        currentBodyPartName: string | null
-        currentBodyPartIds: string[]
-        currentPage: string
-    }
 }
