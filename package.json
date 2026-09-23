@@ -14,7 +14,7 @@
     "deploy": "electron-builder build -m --publish always",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "lint:strict" : "npx tsc --noEmit --strict false"
+    "lint:strict": "npx tsc --noEmit --strict false"
   },
   "author": "Isaiah Hernandez",
   "license": "ISC",
@@ -49,6 +49,9 @@
   "build": {
     "appId": "com.ih.StudyHelper",
     "copyright": "Big Dog Inc.",
+    "files": [
+      "!src/private/**"
+    ],
     "publish": {
       "provider": "github",
       "host": "github.com",
@@ -60,7 +63,10 @@
       "icon": "src/renderer/images/AnatoMeIcon.png"
     },
     "build": {
-      "files": ["src/**/*", "!src/private/**"]
+      "files": [
+        "src/**/*",
+        "!src/private/**"
+      ]
     }
   }
 }

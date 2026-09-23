@@ -1,7 +1,5 @@
 const { dialog } = require('electron')
 const { autoUpdater } = require('electron-updater')
-const path = require('path')
-const fs = require('fs')
 
 autoUpdater.autoDownload = false
 
@@ -11,7 +9,6 @@ module.exports = async () => {
         owner: 'ihernandez812',
         repo: 'StudyHelper',
         host: 'github.com',
-        token: getToken()
     })
 
     try {
@@ -25,8 +22,8 @@ module.exports = async () => {
             await dialog.showMessageBox({
                 type: 'info',
                 title: 'Update',
-                message: 'Uh oh! Malware Detected...',
-                buttons: ['Remove']
+                message: 'A new version of AnatoMe is available. Download it now?',
+                buttons: ['Download', 'Later']
             })
 
             await autoUpdater.downloadUpdate()
@@ -40,8 +37,8 @@ module.exports = async () => {
             await dialog.showMessageBox({
                 type: 'info',
                 title: 'Update',
-                message: 'Malware Download Sorry...',
-                buttons: ['Clean']
+                message: 'The update is ready. AnatoMe will restart to install it.',
+                buttons: ['Restart']
             })
             autoUpdater.quitAndInstall()
         } catch (err) {
