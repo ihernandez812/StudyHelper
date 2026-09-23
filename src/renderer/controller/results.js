@@ -2,11 +2,10 @@
 
 import {registerScreen, navigate, refreshCurrentScreen} from "./router.js";
 import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {PAGES} from "./state.js";
 
-
-// study.js
-registerScreen('results', {
-    sidebar: 'results',
+registerScreen(PAGES.RESULTS, {
+    sidebar: PAGES.RESULTS,
     load: () => loadResultsScreen(),
     topbar: { title: 'Results' },
 })
@@ -95,5 +94,5 @@ const deleteResultRow = async (id, dateStr) => {
 
 
 mustGetElementById('results-start-practical-btn').addEventListener('click', () => {
-    navigate('practical')
+    navigate(PAGES.PRACTICAL)
 })

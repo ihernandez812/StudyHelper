@@ -8,6 +8,7 @@ import './results.js'
 import './sidebar.js'
 
 import { navigate } from './router.js'
+import {PAGES} from "./state.js";
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 
@@ -25,5 +26,5 @@ window.addEventListener('load', async () => {
     // Listen for menu-triggered toggles
     window.api.onDarkModeChanged((isDark) => applyTheme(isDark))
 
-    navigate('home')
+    navigate(PAGES.HOME)
 })

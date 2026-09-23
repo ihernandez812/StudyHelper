@@ -3,15 +3,16 @@ import { registerScreen, navigate } from "./router.js";
 import {drawNewImage, drawNewText, drawNewQuestionMark,
     checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
 import {cloneTemplate, getActionTarget, mustGetElementById, createImageUrl} from "../HTMLUtils/domUtils.js"
-import {AppState} from "./state.js"
+import {PAGES} from "./state.js";
 
 // ── Study screen ──────────────────────────────────────────────────────────────
 
 
 // study.js
-registerScreen('study', {
-    sidebar: 'study',
+registerScreen(PAGES.STUDY, {
+    sidebar: PAGES.STUDY,
     load: () => loadStudyPicker(),
+    teardown: () => clearStudySession(),
     topbar: { title: 'Study' },
 })
 const TEMPLATES = {
@@ -22,7 +23,6 @@ const TEMPLATES = {
 const studyState = {
     checklistId:    null,
     bodyPartIdList: [],
-    usedIds:        [],
     currentBpId:    null,
     coordinates:    {},
     correctTags:    {},
@@ -55,7 +55,7 @@ const STUDY_TYPES = {
 mustGetElementById('study-picker-list').addEventListener('click', async (e) => {
     //If there are no body parts to study if it is empty and the only thing to be clicked is a navigate to library
     if (e.target.closest('[data-action="go-to-library"]')) {
-        navigate('library')
+        navigate(PAGES.LIBRARY)
         return
     }
 
@@ -104,12 +104,6 @@ const loadStudyPicker = async () => {
     if (keys.length === 0) {
         const emptyState = cloneTemplate(TEMPLATES.noChecklistsEmpty)
         pickerList.appendChild(emptyState)
-        return
-    }
-
-    // If a checklist was already chosen (e.g. "Study this" from home), open settings
-    if (AppState.currentChecklistId) {
-        await openStudySettings(AppState.currentChecklistId, STUDY_TYPES.ALL)
         return
     }
 
@@ -180,6 +174,7 @@ const loadRandomBodyStudySession = async (checklistId) => {
 
 const studySettingsModal = new bootstrap.Modal(mustGetElementById('study-settings-modal'))
 let _pendingBpIds = []
+let _pendingChecklistId = null
 
 const openStudySettings = async (checklistId, studyType) => {
     let bodyPartIdList = [];
@@ -202,7 +197,7 @@ const openStudySettings = async (checklistId, studyType) => {
             return;
     }
 
-    AppState.currentChecklistId = checklistId;
+    _pendingChecklistId = checklistId;
     _pendingBpIds = shuffle(bodyPartIdList)
     studySettingsModal.show()
 }
@@ -211,15 +206,14 @@ mustGetElementById('study-settings-save-btn').addEventListener('click', () => {
     studyState.difficulty     = parseInt(document.getElementById('study-difficulty').value)
     studyState.hintsRemaining = studyState.difficulty === DIFFICULTY.EASY ? 3 : 0;
     studySettingsModal.hide()
-    beginStudySession(_pendingBpIds)
+    beginStudySession(_pendingBpIds, _pendingChecklistId)
 })
 
 // ── Active study session ──────────────────────────────────────────────────────
 
-const beginStudySession = (bpIds) => {
+const beginStudySession = (bpIds, checklistId) => {
     studyState.bodyPartIdList = bpIds
-    studyState.usedIds        = []
-    studyState.checklistId    = AppState.currentChecklistId
+    studyState.checklistId    = checklistId
     studyState.correctTags    = {}
     studyState.hintText       = ''
     studyState.answeredTags   = {}
@@ -459,6 +453,14 @@ const updateTagsProgress = () => {
     document.getElementById('study-tags-progress').textContent = `${correct} / ${total} tags labeled`
 }
 
+const isStudySessionActive = () => {
+    return studyState.checklistId !== null;
+}
+
+const clearStudySession = () => {
+    studyState.checklistId = null;
+}
+
 mustGetElementById('study-next-btn').addEventListener('click', () => {
     loadNextBodyPart().catch(err => {
         console.error(err)
@@ -476,7 +478,7 @@ mustGetElementById('study-end-btn').addEventListener('click', async () => {
         const result = await window.api.dialogQuestion("Are you sure you want to end the current study session?")
 
         if (result.response === 0) {
-            AppState.currentChecklistId = null
+            clearStudySession()
             await loadStudyPicker()
         }
     } catch (err) {
@@ -484,3 +486,7 @@ mustGetElementById('study-end-btn').addEventListener('click', async () => {
     }
 })
 
+
+export {
+    isStudySessionActive,
+}

@@ -1,5 +1,6 @@
 import {navigate} from "./router.js";
-import {AppState} from "./state.js"
+import {AppState, PAGES} from "./state.js"
+import {clearStudySession, isStudySessionActive} from "./study.js";
 import {mustGetElementById} from "../HTMLUtils/domUtils.js"
 
 mustGetElementById('sidebar').addEventListener('click', async (e) => {
@@ -17,14 +18,12 @@ mustGetElementById('sidebar').addEventListener('click', async (e) => {
             e.preventDefault()
             let doNavigate = true
 
-            if (AppState.currentPage === 'study' && AppState.currentChecklistId) {
+            if (AppState.currentPage === PAGES.STUDY && isStudySessionActive()) {
                 const res = await window.api.dialogQuestion("Are you sure?\nLeaving this page will reset the current study session.")
                 doNavigate = res.response === 0
             }
 
             if (doNavigate) {
-                //Reset current checklist; navigate() owns currentPage
-                AppState.currentChecklistId = null
                 navigate(dataTarget)
             }
         }
