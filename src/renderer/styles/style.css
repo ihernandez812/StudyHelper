@@ -10,6 +10,11 @@
     --accent:        #C75B7A;
     --accent-light:  #FDEDF2;
     --accent-text:   #8B2045;
+    /* logo mark — sampled from the designed renders, independent of the UI accent */
+    --logo-outline:  #56192a;
+    --logo-brain:    #b74d64;
+    --logo-bone:     #fde9f0;
+    --logo-accent:   #7d223b;
 
     --bg-page:       #fdf9fb;
     --bg-surface:    #ffffff;
@@ -36,6 +41,10 @@
     --accent:        #E8789A;
     --accent-light:  #3d1826;
     --accent-text:   #f5b8cc;
+    --logo-outline:  #5b1b2e;
+    --logo-brain:    #f4b6c9;
+    --logo-bone:     #f5e9ec;
+    --logo-accent:   #782139;
 
     --bg-page:       #18100f;
     --bg-surface:    #21151a;
@@ -89,7 +98,7 @@ html, body {
     margin-bottom: 8px;
 }
 
-.sidebar-icon {
+.sidebar-mark {
     width: 72px;
     height: 72px;
 }
@@ -101,7 +110,11 @@ html, body {
     margin: 0;
 }
 
-.sidebar-logo span {
+.sidebar-logo h1 .brand-accent {
+    color: var(--accent);
+}
+
+.sidebar-tagline {
     font-size: 11px;
     color: var(--text-muted);
     display: block;

@@ -25,8 +25,6 @@ const getActionTarget = (element, rowSelector) => {
 
     return {
         action: actionElement.dataset.action,
-        actionElement,
-        parentElement,
         data: parentElement.dataset,
     }
 }
@@ -41,8 +39,12 @@ const mustGetElementById = (id) => {
     return element
 }
 
+// domUtils.js
+const createImageUrl = (key) => `media://images/${key}`
+
 export {
     cloneTemplate,
     getActionTarget,
-    mustGetElementById
+    mustGetElementById,
+    createImageUrl,
 }

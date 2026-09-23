@@ -1,24 +1,19 @@
 
 
 const drawNewImage = async (canvas, imgElement, x, y, scale) => {
-    return new Promise((resolve) => {
-        const ctx = canvas.getContext("2d");
+    //decode() resolves once the image is loaded and ready to paint, and
+    //rejects if it can't be. The old complete/onload check got both cases
+    //wrong: a broken image (complete:true, naturalWidth:0) hung forever, and
+    //assigning the same src twice never fired onload at all.
+    await imgElement.decode()
 
-        const draw = () => {
-            const width  = imgElement.naturalWidth;
-            const height = imgElement.naturalHeight;
-            ctx.canvas.width  = width  * scale;
-            ctx.canvas.height = height * scale;
-            ctx.drawImage(imgElement, x, y, width * scale, height * scale);
-            resolve();
-        }
+    const ctx    = canvas.getContext('2d')
+    const width  = imgElement.naturalWidth
+    const height = imgElement.naturalHeight
 
-        if (imgElement.complete && imgElement.naturalWidth > 0) {
-            draw()  // already loaded — draw immediately
-        } else {
-            imgElement.onload = draw  // not yet loaded — wait
-        }
-    })
+    ctx.canvas.width  = width  * scale
+    ctx.canvas.height = height * scale
+    ctx.drawImage(imgElement, x, y, width * scale, height * scale)
     
 }
 

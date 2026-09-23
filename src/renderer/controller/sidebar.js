@@ -14,6 +14,7 @@ mustGetElementById('sidebar').addEventListener('click', async (e) => {
         const dataTarget = navItem.getAttribute('data-screen')
 
         if (dataTarget) {
+            e.preventDefault()
             let doNavigate = true
 
             if (AppState.currentPage === 'study' && AppState.currentChecklistId) {

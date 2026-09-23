@@ -2,7 +2,7 @@
 import { registerScreen, navigate } from "./router.js";
 import {drawNewImage, drawNewText, drawNewQuestionMark,
     checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
-import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {cloneTemplate, getActionTarget, mustGetElementById, createImageUrl} from "../HTMLUtils/domUtils.js"
 import {AppState} from "./state.js"
 
 // ── Study screen ──────────────────────────────────────────────────────────────
@@ -299,16 +299,13 @@ const loadBodyPart = async (offset) => {
 
     const image  = document.getElementById('study-image')
     const canvas = document.getElementById('study-canvas')
-    image.src    = bp['image']
+    image.src = createImageUrl(bp['image'])
 
-    image.onload = async () => {
+    try {
         await drawNewImage(canvas, image, 0, 0, studyState.scale)
         drawAllQuestionMarks()
-    }
-
-
-    if (image.complete) {
-        image.onload()
+    } catch (err) {
+        console.error(err)
     }
 
     // Word bank
@@ -406,10 +403,11 @@ const openStudyAnswerModal = async (tagId) => {
     const categoryId = tag['category']
     let prompt      = 'What is this?'
 
-    if (categoryId && categoryId !== 'null') {
+    if (categoryId) {
         const category = await window.api.getCategoryById(categoryId)
-        if (category) {
-            prompt = `What is this ${category}?`
+
+        if (category?.name) {
+            prompt = `What is this ${category.name}?`
         }
     }
 

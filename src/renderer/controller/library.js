@@ -1,8 +1,8 @@
 // ── Library screen ────────────────────────────────────────────────────────────
 
-import {navigate, refreshTopbar, registerScreen} from "./router.js";
+import {navigate, refreshTopbar, registerScreen, refreshCurrentScreen} from "./router.js";
 import {checkCoordinatesExist, getClickCoordinates, redrawEverything, drawBodyPartWithTags} from "../HTMLUtils/canvasUtils.js"
-import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {cloneTemplate, createImageUrl, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
 import {AppState} from "./state.js"
 
 const TEMPLATES = {
@@ -64,7 +64,6 @@ mustGetElementById('library-checklist-list').addEventListener('click', async (e)
 
     const { id, name } = target.data;
     const action = target.action;
-    const parentElement = target.parentElement;
 
 
     try {
@@ -76,7 +75,7 @@ mustGetElementById('library-checklist-list').addEventListener('click', async (e)
                 openEditChecklistModal(id, name);
                 break
             case 'delete':
-                await deleteChecklist(id, parentElement);
+                await deleteChecklist(id);
                 break;
             default:
                 console.error(`Unknown action "${target.action}" on checklist row ${id}`);
@@ -95,7 +94,6 @@ mustGetElementById('body-part-grid').addEventListener('click', async (e) => {
 
     const { id } = target.data;
     const action = target.action;
-    const parentElement = target.parentElement;
 
     try {
         switch (action) {
@@ -103,7 +101,7 @@ mustGetElementById('body-part-grid').addEventListener('click', async (e) => {
                 openBodyPartEditor(id)
                 break;
             case 'delete':
-                await  deleteBodyPart(id, parentElement);
+                await  deleteBodyPart(id);
                 break;
             case 'add':
                 openBodyPartEditor(null)
@@ -151,12 +149,11 @@ mustGetElementById('category-list').addEventListener('click', async (e) => {
 
     const { id, name } = target.data;
     const action = target.action;
-    const parentElement = target.parentElement;
 
     try {
         switch (action) {
             case 'delete':
-                await  deleteCategory(id, name, parentElement);
+                await  deleteCategory(id, name);
                 break;
             default:
                 console.error(`Unknown action "${action}" on category item ${id}`);
@@ -246,19 +243,12 @@ mustGetElementById('checklist-save-btn').addEventListener('click', async () => {
     await loadLibraryScreen()
 })
 
-const deleteChecklist = async (id, rowElement) => {
+const deleteChecklist = async (id) => {
     const result = await window.api.dialogQuestion('Delete this checklist and all its body parts?')
 
     if (result.response === 0) {
         await window.api.deleteChecklistById(id)
-        rowElement.remove()
-
-        // Refresh stats on home if empty now
-        const remaining = Object.keys(await window.api.getChecklists())
-
-        if (remaining.length === 0) {
-            document.getElementById('library-empty').classList.remove('hide')
-        }
+        await refreshCurrentScreen()
     }
 }
 
@@ -307,17 +297,12 @@ const createBodyPartCard = (id, name, tagCount) => {
     return card
 }
 
-const deleteBodyPart = async (id, cardElement) => {
+const deleteBodyPart = async (id) => {
     const result = await window.api.dialogQuestion('Delete this body part?')
 
     if (result.response === 0) {
         await window.api.removeBodyPart(id, AppState.currentChecklistId)
-        cardElement.remove()
-        const grid = document.getElementById('body-part-grid')
-        const cards = grid.querySelectorAll('.body-part-card:not(.body-part-card--add)')
-        if (cards.length === 0) {
-            document.getElementById('body-part-empty').classList.remove('hide')
-        }
+        await refreshCurrentScreen()
     }
 }
 
@@ -373,17 +358,12 @@ const initBodyPartEditor = async () => {
         dropHint.style.display = 'none'
         canvas.style.display = 'block'
 
-        image.onload = async () => {
-            try {
-                await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
-            } catch (err) {
-                console.error(err)
-            }
-        }
-        image.src = bp['image']
+        image.src = createImageUrl(bp['image'])
 
-        if (image.complete && image.naturalWidth > 0) {
-            image.onload()
+        try {
+            await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
+        } catch (err) {
+            console.error(err)
         }
 
         updateScaleLabel()
@@ -420,17 +400,13 @@ dropZone.addEventListener('drop', e => {
         image.style.display = 'none'
         dropHint.style.display = 'none'
         canvas.style.display = 'block'
-
-        image.onload = async () => {
-            try {
-                await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
-            } catch (err) {
-                console.error(err)
-            }
-        }
-
         image.src = evt.target.result
 
+        try {
+            await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
+        } catch (err) {
+            console.error(err)
+        }
     }
 
     reader.readAsDataURL(file)
@@ -490,7 +466,7 @@ const openNewTagModal = (coords) => {
     document.getElementById('editor-tag-modal-label').textContent = 'New tag'
     document.getElementById('editor-tag-name').value = ''
     const catSelect = document.getElementById('editor-tag-category')
-    catSelect.value = 'null'
+    catSelect.value = ''
     editorTagModal.show()
 }
 
@@ -500,7 +476,7 @@ const openEditTagModal = (tagId) => {
     document.getElementById('editor-tag-modal-label').textContent = 'Edit tag'
     document.getElementById('editor-tag-name').value = tag['name']
     const catSelect = document.getElementById('editor-tag-category')
-    catSelect.value = tag['category'] || 'null'
+    catSelect.value = tag['category'] || ''
     editorTagModal.show()
 }
 
@@ -529,7 +505,7 @@ mustGetElementById('editor-tag-save-btn').addEventListener('click', async () => 
         ? editorState.coordinatesMap[editorState.currentTagId]
         : _pendingTagCoords
 
-    editorState.coordinatesMap[tagId] = { ...coords, name, category }
+    editorState.coordinatesMap[tagId] = { ...coords, name, category: category || undefined }
     editorTagModal.hide()
     redrawEditor()
     renderTagList()
@@ -620,12 +596,12 @@ const createCategoryItem = (id, name) => {
     return li
 }
 
-const deleteCategory = async (id, name, rowElement) => {
-    const result = await window.api.dialogQuestion(`Delete category "${name}"?`)
+const deleteCategory = async (id, name) => {
+    const result = await window.api.dialogQuestion(`Are you sure you want to delete category "${name}"?\nThis will remove all references to the category.`)
 
     if (result.response === 0) {
         await window.api.removeCategory(id)
-        rowElement.remove()
+        await renderCategoryList()
     }
 }
 
@@ -657,7 +633,7 @@ const populateCategorySelect = async (selectId) => {
     const categories = await window.api.getCategories()
 
     // Remove all except the "None" option
-    Array.from(select.options).forEach(o => { if (o.value !== 'null') o.remove() })
+    Array.from(select.options).forEach(o => { if (o.value) o.remove() })
 
     for (const id in categories) {
         const option   = document.createElement('option')

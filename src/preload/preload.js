@@ -56,12 +56,6 @@ contextBridge.exposeInMainWorld(
         deletePracticalById: (id) => {
            return ipcRenderer.invoke('deletePracticalById', id)
         },
-        reloadHome: () => {
-            return ipcRenderer.invoke('reloadHome')
-        },
-        search: (isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
-            return ipcRenderer.invoke('search', isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)
-        },
         getDarkMode: () => {
             return ipcRenderer.invoke('getDarkMode')
         },

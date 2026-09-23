@@ -6,6 +6,8 @@ const SCREENS = {}
 
 const registerScreen = (name, config) => { SCREENS[name] = config }
 
+const refreshCurrentScreen = () => SCREENS[AppState.currentPage]?.load()
+
 const refreshTopbar = () => {
     const config = SCREENS[AppState.currentPage]
     renderTopbar(config?.topbar, navigate)
@@ -41,5 +43,7 @@ const navigate = (screenName) => {
 export {
     navigate,
     renderTopbar,
-    registerScreen
+    registerScreen,
+    refreshCurrentScreen,
+    refreshTopbar,
 }
