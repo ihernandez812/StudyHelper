@@ -39,8 +39,12 @@ const mustGetElementById = (id) => {
     return element
 }
 
+// domUtils.js
+const createImageUrl = (key) => `media://images/${key}`
+
 export {
     cloneTemplate,
     getActionTarget,
-    mustGetElementById
+    mustGetElementById,
+    createImageUrl,
 }

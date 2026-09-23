@@ -3,7 +3,7 @@
 import {registerScreen, navigate} from "./router.js";
 import {drawNewImage, drawNewText, drawNewQuestionMark,
     checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
-import {cloneTemplate, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {cloneTemplate, createImageUrl, mustGetElementById} from "../HTMLUtils/domUtils.js"
 
 
 registerScreen('practical', {
@@ -215,15 +215,13 @@ const loadCurrentStation = async () => {
 
     const image  = document.getElementById('practical-image')
     const canvas = document.getElementById('practical-canvas')
-    image.src    = bp['image']
+    image.src    = createImageUrl(bp['image'])
 
-    image.onload = async () => {
+    try {
         await drawNewImage(canvas, image, 0, 0, practicalState.scale)
         drawPracticalQuestionMarks()
-    }
-
-    if (image.complete) {
-        image.onload()
+    } catch (err) {
+        console.error(err)
     }
 }
 
@@ -271,9 +269,12 @@ const openPracticalTagModal = async (tagId) => {
     const categoryId = tag['category']
     let prompt       = 'Enter tag'
 
-    if (categoryId && categoryId !== 'null') {
+    if (categoryId) {
         const category = await window.api.getCategoryById(categoryId)
-        if (category) prompt = `What is this ${category}?`
+
+        if (category?.name) {
+            prompt = `What is this ${category.name}?`
+        }
     }
 
     document.getElementById('practical-tag-prompt').textContent = prompt

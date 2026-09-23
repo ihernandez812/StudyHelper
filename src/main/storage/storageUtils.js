@@ -53,6 +53,21 @@ const getCategoryById = (id) => {
 }
 
 const removeCategory = (id) => {
+    //Cascade: clear the reference from every tag that used this category,
+    //otherwise study/practical prompts look up an id that no longer exists.
+    const checklists = lightStorage.get('checklists', {})
+
+    for (const checklist of Object.values(checklists)) {
+        for (const bodyPart of Object.values(checklist.bodyParts ?? {})) {
+            for (const tag of Object.values(bodyPart.coordinates ?? {})) {
+                if (tag.category === id) {
+                    delete tag.category
+                }
+            }
+        }
+    }
+
+    lightStorage.set('checklists', checklists)
     lightStorage.delete(`categories.${id}`)
 }
 

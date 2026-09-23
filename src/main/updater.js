@@ -50,9 +50,3 @@ module.exports = async () => {
     })
 
 }
-
-const getToken = () => {
-    const tokenFile = path.join(__dirname, '../private/GH_TOKEN.txt')
-    return fs.readFileSync(tokenFile, 'utf8')
-
-}

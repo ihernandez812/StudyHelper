@@ -58,6 +58,9 @@
     "mac": {
       "category": "public.app-category.utilities",
       "icon": "src/renderer/images/AnatoMeIcon.png"
+    },
+    "build": {
+      "files": ["src/**/*", "!src/private/**"]
     }
   }
 }

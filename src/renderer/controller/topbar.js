@@ -38,9 +38,12 @@ const buildBreadcrumb = (segments, onNavigate) => {
         if (segment.screen) {
             const link = document.createElement('a')
             link.className   = 'breadcrumb-link'
+            link.href = `#screen-${segment.screen}`
             link.textContent = segment.label
-            link.addEventListener('click', () => onNavigate(segment.screen))
-            nav.appendChild(link)
+            link.addEventListener('click', (e) => {
+                e.preventDefault()
+                onNavigate(segment.screen)
+            })
         } else {
             const current = document.createElement('span')
             current.className   = 'breadcrumb-current'

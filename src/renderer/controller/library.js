@@ -2,7 +2,7 @@
 
 import {navigate, refreshTopbar, registerScreen, refreshCurrentScreen} from "./router.js";
 import {checkCoordinatesExist, getClickCoordinates, redrawEverything, drawBodyPartWithTags} from "../HTMLUtils/canvasUtils.js"
-import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {cloneTemplate, createImageUrl, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
 import {AppState} from "./state.js"
 
 const TEMPLATES = {
@@ -358,17 +358,12 @@ const initBodyPartEditor = async () => {
         dropHint.style.display = 'none'
         canvas.style.display = 'block'
 
-        image.onload = async () => {
-            try {
-                await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
-            } catch (err) {
-                console.error(err)
-            }
-        }
-        image.src = bp['image']
+        image.src = createImageUrl(bp['image'])
 
-        if (image.complete && image.naturalWidth > 0) {
-            image.onload()
+        try {
+            await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
+        } catch (err) {
+            console.error(err)
         }
 
         updateScaleLabel()
@@ -405,17 +400,13 @@ dropZone.addEventListener('drop', e => {
         image.style.display = 'none'
         dropHint.style.display = 'none'
         canvas.style.display = 'block'
-
-        image.onload = async () => {
-            try {
-                await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
-            } catch (err) {
-                console.error(err)
-            }
-        }
-
         image.src = evt.target.result
 
+        try {
+            await drawBodyPartWithTags(canvas, image, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale)
+        } catch (err) {
+            console.error(err)
+        }
     }
 
     reader.readAsDataURL(file)
@@ -475,7 +466,7 @@ const openNewTagModal = (coords) => {
     document.getElementById('editor-tag-modal-label').textContent = 'New tag'
     document.getElementById('editor-tag-name').value = ''
     const catSelect = document.getElementById('editor-tag-category')
-    catSelect.value = 'null'
+    catSelect.value = ''
     editorTagModal.show()
 }
 
@@ -485,7 +476,7 @@ const openEditTagModal = (tagId) => {
     document.getElementById('editor-tag-modal-label').textContent = 'Edit tag'
     document.getElementById('editor-tag-name').value = tag['name']
     const catSelect = document.getElementById('editor-tag-category')
-    catSelect.value = tag['category'] || 'null'
+    catSelect.value = tag['category'] || ''
     editorTagModal.show()
 }
 
@@ -514,7 +505,7 @@ mustGetElementById('editor-tag-save-btn').addEventListener('click', async () => 
         ? editorState.coordinatesMap[editorState.currentTagId]
         : _pendingTagCoords
 
-    editorState.coordinatesMap[tagId] = { ...coords, name, category }
+    editorState.coordinatesMap[tagId] = { ...coords, name, category: category || undefined }
     editorTagModal.hide()
     redrawEditor()
     renderTagList()
@@ -606,7 +597,7 @@ const createCategoryItem = (id, name) => {
 }
 
 const deleteCategory = async (id, name) => {
-    const result = await window.api.dialogQuestion(`Delete category "${name}"?`)
+    const result = await window.api.dialogQuestion(`Are you sure you want to delete category "${name}"?\nThis will remove all references to the category.`)
 
     if (result.response === 0) {
         await window.api.removeCategory(id)
@@ -642,7 +633,7 @@ const populateCategorySelect = async (selectId) => {
     const categories = await window.api.getCategories()
 
     // Remove all except the "None" option
-    Array.from(select.options).forEach(o => { if (o.value !== 'null') o.remove() })
+    Array.from(select.options).forEach(o => { if (o.value) o.remove() })
 
     for (const id in categories) {
         const option   = document.createElement('option')

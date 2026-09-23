@@ -11,10 +11,10 @@ import { navigate } from './router.js'
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 
+//The logo is an inline SVG whose fills read the theme variables, so flipping
+//the attribute is all it takes to retheme it along with everything else.
 const applyTheme = (isDark) => {
     document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light')
-    const icon = document.querySelector('.sidebar-icon')
-    if (icon) icon.src = isDark ? '../images/AnatoMeIconDark.png' : '../images/AnatoMeIcon.png'
 }
 
 window.addEventListener('load', async () => {
