@@ -18,6 +18,7 @@ registerScreen(PAGES.STUDY, {
 const TEMPLATES = {
     pickerItem:        mustGetElementById('tpl-study-picker-item'),
     noChecklistsEmpty: mustGetElementById('tpl-no-checklists-empty'),
+    bodyPartListItem: mustGetElementById('tpl-study-browse-item'),
 }
 
 const studyState = {
@@ -68,6 +69,7 @@ mustGetElementById('study-picker-list').addEventListener('click', async (e) => {
 
     const { id } = target.data;
     const action = target.action;
+    const element = target.element;
 
     try {
         switch (action) {
@@ -76,6 +78,9 @@ mustGetElementById('study-picker-list').addEventListener('click', async (e) => {
                 break;
             case 'random':
                 await loadRandomBodyStudySession(id);
+                break;
+            case 'toggle-browse':
+                await toggleChecklistRow(id, element);
                 break;
             default:
                 console.error(`Unknown action "${action}" on checklist row ${id}`);
@@ -459,6 +464,61 @@ const isStudySessionActive = () => {
 
 const clearStudySession = () => {
     studyState.checklistId = null;
+}
+
+const toggleChecklistRow = async (id, row) => {
+    const toggle = row.querySelector('.study-picker-toggle')
+    const isExpanded = toggle.getAttribute('aria-expanded');
+
+    if (isExpanded === 'true') {
+        collapseChecklistRow(row, toggle);
+    } else {
+        await expandChecklistRow(id, row, toggle)
+    }
+}
+
+const collapseChecklistRow = (row, toggle) => {
+    toggle.setAttribute('aria-expanded', 'false')
+    row.querySelector('.js-browse-list').replaceChildren()
+    row.querySelector('.js-browse').classList.add('hide')
+
+}
+
+const expandChecklistRow = async (id, row, toggle) => {
+
+    const bodyPartList = row.querySelector('ul.js-browse-list');
+    const bodyPartContainer = row.querySelector('.js-browse');
+    const checklist = await window.api.getChecklistById(id)
+
+    if (checklist) {
+        bodyPartList.replaceChildren()
+        const bodyPartMap = checklist.bodyParts;
+
+        //TODO sort by alphabetical order
+        for (const bodyPartId in bodyPartMap) {
+            const bodyPart = bodyPartMap[bodyPartId];
+            const coordinatesMap = bodyPart['coordinates'] || {}
+            const tagKeyList  = Object.keys(coordinatesMap);
+            const  bodyPartBrowseItem = cloneTemplate(TEMPLATES.bodyPartListItem);
+
+            bodyPartBrowseItem.dataset.checklistId = id
+            bodyPartBrowseItem.dataset.bodyPartId = bodyPartId
+            bodyPartBrowseItem.querySelector('.js-bp-name').textContent = bodyPart['name']
+            bodyPartBrowseItem.querySelector('.js-checkbox').disabled = tagKeyList.length === 0
+
+            let tagCountText = 'No tags yet';
+
+            if (tagKeyList.length > 0) {
+                tagCountText = `${tagKeyList.length} tag${tagKeyList.length > 1 ? 's' : ''}`;
+            }
+
+            bodyPartBrowseItem.querySelector('.js-tag-count').textContent = tagCountText;
+            bodyPartList.appendChild(bodyPartBrowseItem);
+        }
+
+        bodyPartContainer.classList.remove('hide');
+        toggle.setAttribute('aria-expanded', 'true');
+    }
 }
 
 mustGetElementById('study-next-btn').addEventListener('click', () => {

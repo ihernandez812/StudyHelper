@@ -1,6 +1,6 @@
 import {navigate} from "./router.js";
 import {AppState, PAGES} from "./state.js"
-import {clearStudySession, isStudySessionActive} from "./study.js";
+import {isStudySessionActive} from "./study.js";
 import {mustGetElementById} from "../HTMLUtils/domUtils.js"
 
 mustGetElementById('sidebar').addEventListener('click', async (e) => {

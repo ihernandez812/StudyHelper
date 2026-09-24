@@ -205,6 +205,35 @@
             <div id="study-picker" class="screen-content">
                 <div class="card" id="study-checklist-picker">
                     <div class="card-title">Choose what to study</div>
+
+                    <!-- Body part search: rows come from tpl-study-search-result -->
+                    <div class="study-search" id="study-search">
+                        <i class="fas fa-search study-search-icon" aria-hidden="true"></i>
+                        <input type="text" id="study-search-input" class="form-control"
+                               placeholder="Search body parts, like femur" autocomplete="off"
+                               role="combobox" aria-expanded="false" aria-controls="study-search-results"
+                               aria-label="Search body parts">
+
+                        <div class="study-search-dropdown hide" id="study-search-dropdown">
+                            <ul class="study-search-results" id="study-search-results"
+                                role="listbox" aria-multiselectable="true"></ul>
+                            <div class="study-search-empty hide" id="study-search-empty">No body parts match that search</div>
+                            <div class="study-search-footer hide" id="study-search-footer"></div>
+                        </div>
+                    </div>
+
+                    <!-- Selection tray: hidden until something is selected; chips come from tpl-study-selection-chip -->
+                    <div class="study-selection hide" id="study-selection">
+                        <div class="study-selection-header">
+                            <span class="study-selection-count" id="study-selection-count"></span>
+                            <button type="button" class="btn btn-ghost btn-sm" id="study-selection-clear-btn">Clear</button>
+                            <button type="button" class="btn btn-primary btn-sm" id="study-selection-study-btn">
+                                <i class="fas fa-book-open"></i> Study selected
+                            </button>
+                        </div>
+                        <ul class="study-selection-chips" id="study-selection-chips"></ul>
+                    </div>
+
                     <!-- Filled by loadStudyPicker(); empty state comes from tpl-no-checklists-empty -->
                     <div id="study-picker-list"></div>
                 </div>
@@ -227,6 +256,7 @@
                         <div class="card" style="margin-bottom: 12px;">
                             <div class="card-title">
                                 <span id="study-body-part-name">—</span>
+                                <span class="study-body-part-checklist" id="study-body-part-checklist"></span>
                             </div>
                             <div id="study-wordbank-wrap">
                                 <div class="field-label" style="margin-bottom: 6px;">Word bank</div>
@@ -435,11 +465,19 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="study-settings-modal-label">Study settings</h5>
+                <div>
+                    <h5 class="modal-title" id="study-settings-modal-label">Study settings</h5>
+                    <div class="study-settings-summary" id="study-settings-summary"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- One row per checklist from tpl-study-settings-group, plus an optional "and N more" -->
+                <div class="study-settings-list" id="study-settings-list"></div>
+                <div class="study-settings-more hide" id="study-settings-more"></div>
+
                 <div class="mb-3">
-                    <label class="form-label field-label">Difficulty</label>
+                    <label class="form-label field-label" for="study-difficulty">Difficulty</label>
                     <select class="form-select" id="study-difficulty">
                         <option value="0">Easy — word bank, hints</option>
                         <option value="1">Medium — word bank, no hints</option>
@@ -448,11 +486,19 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="study-settings-save-btn">Start studying</button>
             </div>
         </div>
     </div>
 </div>
+
+<template id="tpl-study-settings-group">
+    <div class="study-settings-group">
+        <span class="study-settings-checklist js-checklist-name"></span>
+        <span class="js-bp-names"></span>
+    </div>
+</template>
 
 <!-- Practical tag answer modal -->
 <div class="modal fade" id="practical-tag-modal" tabindex="-1" aria-hidden="true">
@@ -597,17 +643,59 @@
 <!-- study.js -->
 <template id="tpl-study-picker-item">
     <div class="study-picker-item">
-        <div>
-            <div class="study-picker-name js-name"></div>
-            <div class="study-picker-meta js-meta"></div>
-        </div>
-        <div class="study-picker-actions">
-            <button class="btn btn-secondary" data-action="random">Random body part</button>
-            <button class="btn btn-primary" data-action="all">
-                <i class="fas fa-book-open"></i> Study all
+        <div class="study-picker-header">
+            <button type="button" class="study-picker-toggle" data-action="toggle-browse" aria-expanded="false"
+                    title="Choose body parts">
+                <i class="fas fa-chevron-right study-picker-chevron" aria-hidden="true"></i>
+                <span>
+                    <span class="study-picker-name js-name"></span>
+                    <span class="study-picker-meta js-meta"></span>
+                </span>
             </button>
+            <div class="study-picker-actions">
+                <button type="button" class="btn btn-secondary" data-action="random">Random</button>
+                <button type="button" class="btn btn-primary" data-action="all">
+                    <i class="fas fa-book-open"></i> Study all
+                </button>
+            </div>
+        </div>
+
+        <!-- Browse list: rows come from tpl-study-browse-item -->
+        <div class="study-browse hide js-browse">
+            <label class="study-browse-item study-browse-select-all">
+                <input type="checkbox" class="form-check-input js-select-all">
+                <span>Select all</span>
+            </label>
+            <ul class="study-browse-list js-browse-list"></ul>
         </div>
     </div>
+</template>
+
+<template id="tpl-study-browse-item">
+    <li>
+        <label class="study-browse-item">
+            <input type="checkbox" class="form-check-input js-checkbox">
+            <span class="study-browse-name js-bp-name"></span>
+            <span class="study-browse-meta js-tag-count"></span>
+        </label>
+    </li>
+</template>
+
+<template id="tpl-study-search-result">
+    <li class="study-search-result" role="option" aria-selected="false">
+        <i class="fas fa-check study-search-check" aria-hidden="true"></i>
+        <span class="study-search-bp js-bp-name"></span>
+        <span class="study-search-meta js-meta"></span>
+    </li>
+</template>
+
+<template id="tpl-study-selection-chip">
+    <li class="study-selection-chip">
+        <span class="js-label"></span>
+        <button type="button" class="study-selection-chip-remove" data-action="remove-selection">
+            <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+    </li>
 </template>
 
 <!-- practical.js -->
