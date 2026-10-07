@@ -4,10 +4,11 @@ import {registerScreen, navigate} from "./router.js";
 import {drawNewImage, drawNewText, drawNewQuestionMark,
     checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
 import {cloneTemplate, createImageUrl, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {PAGES} from "./state.js";
 
 
-registerScreen('practical', {
-    sidebar: 'practical',
+registerScreen(PAGES.PRACTICAL, {
+    sidebar: PAGES.PRACTICAL,
     load: () => loadPracticalSetup(),
     teardown: () => stopPracticalTimer(),
     topbar: { title: 'Practical' },
@@ -50,7 +51,7 @@ mustGetElementById('practical-checklist-select').addEventListener('click', async
     const element = e.target;
 
     if ((element instanceof HTMLInputElement) && element.closest('[data-action="go-to-library"]')) {
-        navigate('library')
+        navigate(PAGES.LIBRARY)
     }
 })
 
@@ -370,7 +371,7 @@ const endPractical = async () => {
 
     try {
         await window.api.addPractical(id, practical)
-        navigate('results')
+        navigate(PAGES.RESULTS)
     } catch (err) {
         console.error(err)
         await window.api.popup('Could not save this practical.')

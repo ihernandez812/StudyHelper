@@ -3,7 +3,7 @@
 import {navigate, refreshTopbar, registerScreen, refreshCurrentScreen} from "./router.js";
 import {checkCoordinatesExist, getClickCoordinates, redrawEverything, drawBodyPartWithTags} from "../HTMLUtils/canvasUtils.js"
 import {cloneTemplate, createImageUrl, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
-import {AppState} from "./state.js"
+import {AppState, PAGES} from "./state.js"
 
 const TEMPLATES = {
     checklistRow:    mustGetElementById('tpl-checklist-row'),
@@ -15,8 +15,8 @@ const TEMPLATES = {
 }
 
 // library.js
-registerScreen('library', {
-    sidebar: 'library',
+registerScreen(PAGES.LIBRARY, {
+    sidebar: PAGES.LIBRARY,
     load: () => loadLibraryScreen(),
     topbar: {
         title: 'Library',
@@ -28,8 +28,8 @@ registerScreen('library', {
 })
 
 // library.js, after the 'library' one
-registerScreen('checklist-detail', {
-    sidebar: 'library',
+registerScreen(PAGES.CHECKLIST_DETAIL, {
+    sidebar: PAGES.LIBRARY,
     load: () => loadChecklistDetail(),
     topbar: {
         breadcrumb: () => [
@@ -37,14 +37,13 @@ registerScreen('checklist-detail', {
             { label: AppState.currentChecklistName || '' },
         ],
         actions: () => [
-            { label: 'Study this',    icon: 'fa-book-open', className: 'btn-secondary', onClick: () => navigate('study') },
             { label: 'Add body part', icon: 'fa-plus',      className: 'btn-primary',   onClick: () => openBodyPartEditor(null) },
         ],
     },
 })
 
-registerScreen('bodypart-editor', {
-    sidebar: 'library',
+registerScreen(PAGES.BODYPART_EDITOR, {
+    sidebar: PAGES.LIBRARY,
     load: () => initBodyPartEditor(),
     topbar: {
         breadcrumb: () => [
@@ -201,7 +200,7 @@ const createLibraryRow = (id, name, partCount) => {
 const openChecklistDetail = (id, name) => {
     AppState.currentChecklistId   = id
     AppState.currentChecklistName = name
-    navigate('checklist-detail')
+    navigate(PAGES.CHECKLIST_DETAIL)
 }
 
 // ── Checklist modal (add/edit) ────────────────────────────────────────────────
@@ -321,7 +320,7 @@ let editorState = {
 const openBodyPartEditor = (bodyPartId) => {
     AppState.currentBodyPartId   = bodyPartId
     AppState.currentBodyPartName = bodyPartId ? null : null // set after load
-    navigate('bodypart-editor')
+    navigate(PAGES.BODYPART_EDITOR)
 }
 
 const initBodyPartEditor = async () => {
@@ -564,7 +563,7 @@ mustGetElementById('editor-save-btn').addEventListener('click', async () => {
 
     const bpId = AppState.currentBodyPartId || crypto.randomUUID()
     await window.api.addOrEditBodyPartById(bpId, AppState.currentChecklistId, bodyPart)
-    navigate('checklist-detail')
+    navigate(PAGES.CHECKLIST_DETAIL)
 })
 
 // ── Categories modal ──────────────────────────────────────────────────────────
