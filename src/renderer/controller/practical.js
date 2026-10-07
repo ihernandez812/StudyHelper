@@ -146,6 +146,7 @@ const buildBodyPartQueue = async () => {
             const bodyPart = bodyParts[bpId]
             queue.push({
                 checklistId: clId,
+                checklistName: checklists[clId]['name'],
                 bodyPart: bodyPart
             })
         })
@@ -250,7 +251,8 @@ const drawPracticalQuestionMarks = () => {
 mustGetElementById('practical-canvas').addEventListener('click', async (e) => {
     const canvas = document.getElementById('practical-canvas')
     const coords = getClickCoordinates(e, practicalState.scale)
-    const key    = checkCoordinatesExist(canvas, coords.x, coords.y, practicalState.currentCoordinates, practicalState.scale, practicalState.fontSize, false)
+    const key    = checkCoordinatesExist(canvas, coords.x, coords.y, practicalState.currentCoordinates, practicalState.scale, practicalState.fontSize,
+        tag => tag['given'] || '?')
 
     if (key) {
         try {
@@ -342,8 +344,8 @@ const endPractical = async () => {
 
         for (const key of coordinateIds) {
             const coordinates = coordinatesList[key]
-            const given = coordinates['given'] ? coordinates['given'].toLowerCase() : ''
-            const answer = coordinates['name'].toLowerCase()
+            const given = coordinates['given'] ? coordinates['given'].trim().toLowerCase() : ''
+            const answer = coordinates['name'].trim().toLowerCase()
             let isCorrect = false
 
             if (given === answer) {

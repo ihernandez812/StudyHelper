@@ -2,7 +2,7 @@
 
 import {registerScreen, navigate, refreshCurrentScreen} from "./router.js";
 import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
-import {PAGES} from "./state.js";
+import {AppState, PAGES} from "./state.js";
 
 registerScreen(PAGES.RESULTS, {
     sidebar: PAGES.RESULTS,
@@ -28,7 +28,7 @@ mustGetElementById('results-list').addEventListener('click', async (e) => {
     try {
         switch (action) {
             case 'open' :
-                //TODO create view practical results
+                openPracticalReview(id, date)
                 break;
             case 'delete':
                 await deleteResultRow(id, date);
@@ -81,6 +81,12 @@ const createResultRow = (id, practical) => {
         `${stationCount} station${stationCount !== 1 ? 's' : ''} · ${correctTags}  correct tag${correctTags !== 1 ? 's' : ''} · ${totalTags} total tags`
 
     return li
+}
+
+const openPracticalReview = (id, dateStr) => {
+    AppState.currentPracticalId   = id
+    AppState.currentPracticalDate = dateStr
+    navigate(PAGES.PRACTICAL_REVIEW)
 }
 
 const deleteResultRow = async (id, dateStr) => {
