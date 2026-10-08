@@ -20,10 +20,11 @@ const drawNewImage = async (canvas, imgElement, x, y, scale) => {
 // Pill fills for tags drawn on a canvas. Canvas can't read CSS variables,
 // so these mirror the theme by hand.
 const TAG_COLORS = {
-    DEFAULT:    'rgba(199, 91, 122, 0.88)',   // --accent
-    UNANSWERED: 'rgba(168, 128, 144, 0.88)',  // --text-muted tone
-    CORRECT:    'rgba(46, 140, 87, 0.9)',
-    INCORRECT:  'rgba(196, 64, 64, 0.9)',
+    DEFAULT:     'rgba(199, 91, 122, 0.88)',  // --accent
+    UNANSWERED:  'rgba(168, 128, 144, 0.88)', // --text-muted tone
+    DROP_TARGET: 'rgba(139, 32, 69, 0.92)',   // --accent-text, darker than answered tags
+    CORRECT:     'rgba(46, 140, 87, 0.9)',
+    INCORRECT:   'rgba(196, 64, 64, 0.9)',
 }
 
 const PILL_PADDING_X = 8
@@ -125,6 +126,83 @@ const getClickCoordinates = (event, scale) => {
 const DRAG_THRESHOLD    = 3  // screen px before a press counts as a drag
 const OFF_CANVAS_MARGIN = 24 // screen px past the edge before a drop reverts
 
+// Shared pointer bookkeeping for drags: left button only, pointer capture,
+// a movement threshold so clicks aren't drags, and one pointer at a time.
+// Callbacks get the raw pointer events.
+//   onPress(e)          → return true to track this press, false to ignore it
+//   onStart(e)          → optional, the press moved past the threshold
+//   onMove(e)           → every move after onStart
+//   onEnd(e, cancelled) → release or cancel, only if onStart fired
+//   onHover(e)          → optional, moves while nothing is pressed
+// Returns a function that removes the listeners.
+const trackPointerDrag = (element, { onPress, onStart, onMove, onEnd, onHover, threshold = DRAG_THRESHOLD }) => {
+    let press = null
+
+    const onPointerDown = (e) => {
+        if (e.button !== 0 || press || !onPress(e)) {
+            return
+        }
+
+        press = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, moved: false }
+        element.setPointerCapture(e.pointerId)
+        e.preventDefault()
+    }
+
+    const onPointerMove = (e) => {
+        if (!press) {
+            onHover?.(e)
+            return
+        }
+
+        if (e.pointerId !== press.pointerId) {
+            return
+        }
+
+        if (!press.moved) {
+            if (Math.hypot(e.clientX - press.startX, e.clientY - press.startY) < threshold) {
+                return
+            }
+
+            press.moved = true
+            onStart?.(e)
+        }
+
+        onMove(e)
+    }
+
+    const finish = (e, cancelled) => {
+        if (!press || e.pointerId !== press.pointerId) {
+            return
+        }
+
+        const { moved } = press
+        press = null
+
+        if (moved) {
+            onEnd(e, cancelled)
+        }
+    }
+
+    const onPointerUp = (e) => {
+        finish(e, false)
+        onHover?.(e)
+    }
+
+    const onPointerCancel = (e) => finish(e, true)
+
+    element.addEventListener('pointerdown',   onPointerDown)
+    element.addEventListener('pointermove',   onPointerMove)
+    element.addEventListener('pointerup',     onPointerUp)
+    element.addEventListener('pointercancel', onPointerCancel)
+
+    return () => {
+        element.removeEventListener('pointerdown',   onPointerDown)
+        element.removeEventListener('pointermove',   onPointerMove)
+        element.removeEventListener('pointerup',     onPointerUp)
+        element.removeEventListener('pointercancel', onPointerCancel)
+    }
+}
+
 // Lets the user left-drag items drawn on a canvas. Callbacks describe the
 // items and apply the move; all points are image space. Right-click is
 // left alone. Releasing well outside the canvas puts the item back where
@@ -134,7 +212,7 @@ const OFF_CANVAS_MARGIN = 24 // screen px past the edge before a drop reverts
 //   getSize(key)          → {width, height}, used to keep it inside the image
 //   onDragMove(key, pos)  → pos is offset by the grab point and clamped
 //   onDragEnd(key, pos)   → optional, only fires if the item actually moved
-const enableCanvasDrag = (canvas, { getScale, hitTest, getPosition, getSize, onDragMove, onDragEnd, threshold = DRAG_THRESHOLD }) => {
+const enableCanvasDrag = (canvas, { getScale, hitTest, getPosition, getSize, onDragMove, onDragEnd, threshold }) => {
     let drag = null
 
     const toPoint = (e) => getCanvasPoint(canvas, e.clientX, e.clientY, getScale())
@@ -161,113 +239,148 @@ const enableCanvasDrag = (canvas, { getScale, hitTest, getPosition, getSize, onD
             || e.clientY > rect.bottom + OFF_CANVAS_MARGIN
     }
 
-    const updateHoverCursor = (e) => {
-        canvas.style.cursor = hitTest(toPoint(e)) != null ? 'grab' : ''
-    }
-
-    const onPointerDown = (e) => {
-        if (e.button !== 0) {
-            return
+    // Where the item goes for this pointer position: back to where it
+    // started when well off the canvas, otherwise follow the pointer.
+    const positionFor = (e) => {
+        if (isOffCanvas(e)) {
+            return drag.origin
         }
 
         const point = toPoint(e)
-        const key   = hitTest(point)
-
-        if (key == null) {
-            return
-        }
-
-        const pos    = getPosition(key)
-        const origin = { x: parseFloat(pos.x), y: parseFloat(pos.y) }
-
-        drag = {
-            key,
-            origin,
-            pointerId: e.pointerId,
-            startX:    e.clientX,
-            startY:    e.clientY,
-            // Where inside the item it was grabbed, so it doesn't jump to the cursor
-            offsetX:   point.x - origin.x,
-            offsetY:   point.y - origin.y,
-            moved:     false,
-            last:      origin,
-        }
-
-        canvas.setPointerCapture(e.pointerId)
-        e.preventDefault()
+        return clamp(drag.key, point.x - drag.offsetX, point.y - drag.offsetY)
     }
 
-    const onPointerMove = (e) => {
-        if (!drag) {
-            updateHoverCursor(e)
-            return
-        }
+    return trackPointerDrag(canvas, {
+        threshold,
+        onHover: (e) => {
+            canvas.style.cursor = hitTest(toPoint(e)) != null ? 'grab' : ''
+        },
+        onPress: (e) => {
+            const point = toPoint(e)
+            const key   = hitTest(point)
 
-        if (e.pointerId !== drag.pointerId) {
-            return
-        }
+            if (key == null) {
+                return false
+            }
 
-        if (!drag.moved) {
-            if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < threshold) {
+            const pos    = getPosition(key)
+            const origin = { x: parseFloat(pos.x), y: parseFloat(pos.y) }
+
+            // Where inside the item it was grabbed, so it doesn't jump to the cursor
+            drag = { key, origin, offsetX: point.x - origin.x, offsetY: point.y - origin.y }
+            return true
+        },
+        onMove: (e) => {
+            canvas.style.cursor = isOffCanvas(e) ? 'not-allowed' : 'grabbing'
+            onDragMove(drag.key, positionFor(e))
+        },
+        onEnd: (e, cancelled) => {
+            const { key, origin } = drag
+            const pos = cancelled ? origin : positionFor(e)
+            drag = null
+            canvas.style.cursor = ''
+
+            onDragMove(key, pos)
+            onDragEnd?.(key, pos)
+        },
+    })
+}
+
+// Lets the user drag elements matching `selector` out of `container` and
+// drop them on targets drawn on `canvas`. A copy of the element follows the
+// pointer; the target is whatever hitTest finds under the pointer. Dropping
+// anywhere else does nothing. Returns a function that removes the listeners.
+//   hitTest(point)          → key | null, point is image space
+//   onHoverChange(key|null) → the target under the pointer changed
+//   onDrop(element, key)    → released over a target
+const enableDragOntoCanvas = (container, canvas, { selector, getScale, hitTest, onHoverChange, onDrop, threshold }) => {
+    let drag = null
+
+    const moveGhost = (e) => {
+        drag.ghost.style.transform = `translate(${e.clientX - drag.offsetX}px, ${e.clientY - drag.offsetY}px)`
+    }
+
+    const setHovered = (key) => {
+        if (key !== drag.hovered) {
+            drag.hovered = key
+            onHoverChange?.(key)
+        }
+    }
+
+    return trackPointerDrag(container, {
+        threshold,
+        onPress: (e) => {
+            const source = e.target.closest(selector)
+
+            if (!source || !container.contains(source)) {
+                return false
+            }
+
+            const rect = source.getBoundingClientRect()
+
+            // Where inside the element it was grabbed, so the copy doesn't jump to the cursor
+            drag = { source, ghost: null, hovered: null, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top }
+            return true
+        },
+        onStart: (e) => {
+            drag.ghost = drag.source.cloneNode(true)
+            drag.ghost.classList.add('drag-ghost')
+            document.body.appendChild(drag.ghost)
+            drag.source.classList.add('dragging')
+            container.style.cursor = 'grabbing'
+            moveGhost(e)
+        },
+        onMove: (e) => {
+            moveGhost(e)
+            setHovered(hitTest(getCanvasPoint(canvas, e.clientX, e.clientY, getScale())))
+        },
+        onEnd: (e, cancelled) => {
+            const { source, ghost, hovered } = drag
+
+            ghost.remove()
+            source.classList.remove('dragging')
+            container.style.cursor = ''
+            setHovered(null)
+            drag = null
+
+            if (!cancelled && hovered != null) {
+                onDrop(source, hovered)
+            }
+        },
+    })
+}
+
+const SHAKE_DURATION = 450 // ms
+const SHAKE_DISTANCE = 6   // screen px at the widest swing
+const SHAKE_CYCLES   = 3
+
+// Calls onFrame(progress) once per animation frame for `duration` ms, with
+// progress going 0 → 1; the last call is always exactly 1. onFrame can
+// return false to stop early. Resolves when it finishes or stops.
+const animateFrames = (duration, onFrame) => {
+    return new Promise(resolve => {
+        const start = performance.now()
+
+        const step = (now) => {
+            const progress = Math.min((now - start) / duration, 1)
+
+            if (onFrame(progress) === false || progress === 1) {
+                resolve()
                 return
             }
 
-            drag.moved = true
+            requestAnimationFrame(step)
         }
 
-        if (isOffCanvas(e)) {
-            canvas.style.cursor = 'not-allowed'
-            drag.last = drag.origin
-        } else {
-            canvas.style.cursor = 'grabbing'
-            const point = toPoint(e)
-            drag.last = clamp(drag.key, point.x - drag.offsetX, point.y - drag.offsetY)
-        }
+        requestAnimationFrame(step)
+    })
+}
 
-        onDragMove(drag.key, drag.last)
-    }
-
-    // Shared by pointerup and pointercancel
-    const endDrag = (e, revert) => {
-        if (!drag || e.pointerId !== drag.pointerId) {
-            return
-        }
-
-        const { key, moved, origin } = drag
-        let { last } = drag
-        drag = null
-
-        if (moved && revert) {
-            last = origin
-            onDragMove(key, origin)
-        }
-
-        if (moved && onDragEnd) {
-            onDragEnd(key, last)
-        }
-    }
-
-    const onPointerUp = (e) => {
-        endDrag(e, drag != null && isOffCanvas(e))
-        updateHoverCursor(e)
-    }
-
-    const onPointerCancel = (e) => {
-        endDrag(e, true)
-        canvas.style.cursor = ''
-    }
-
-    canvas.addEventListener('pointerdown',   onPointerDown)
-    canvas.addEventListener('pointermove',   onPointerMove)
-    canvas.addEventListener('pointerup',     onPointerUp)
-    canvas.addEventListener('pointercancel', onPointerCancel)
-
-    return () => {
-        canvas.removeEventListener('pointerdown',   onPointerDown)
-        canvas.removeEventListener('pointermove',   onPointerMove)
-        canvas.removeEventListener('pointerup',     onPointerUp)
-        canvas.removeEventListener('pointercancel', onPointerCancel)
-    }
+// Image-space x offset for a shake at `progress`: a few quick side-to-side
+// swings that die down to 0. Divided by scale so it looks the same size at
+// any zoom.
+const shakeOffset = (progress, scale) => {
+    return Math.sin(progress * SHAKE_CYCLES * 2 * Math.PI) * SHAKE_DISTANCE * (1 - progress) / scale
 }
 
 const clearCanvas = (canvas) => {
@@ -320,6 +433,10 @@ export {
     getCanvasPoint,
     getClickCoordinates,
     enableCanvasDrag,
+    enableDragOntoCanvas,
+    animateFrames,
+    shakeOffset,
+    SHAKE_DURATION,
     redrawSync,
     drawTags,
     clearCanvas,

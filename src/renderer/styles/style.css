@@ -1117,6 +1117,30 @@ canvas {
     background: var(--bg-muted);
 }
 
+/* Unanswered chips can be dragged onto a '?' */
+.word-chip:not(.used) {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+/* Chip left in the word bank while its copy is dragged */
+.word-chip.dragging {
+    opacity: 0.4;
+}
+
+/* Copy that follows the pointer, moved with transform by enableDragOntoCanvas */
+.word-chip.drag-ghost {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0;
+    pointer-events: none;
+    z-index: 1000;
+    border-color: var(--accent);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 /* ─── Practical ──────────────────────────────────────────── */
 .practical-checklist-option {
     display: flex;
