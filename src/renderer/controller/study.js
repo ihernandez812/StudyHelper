@@ -1,7 +1,8 @@
 
 import { registerScreen, navigate } from "./router.js";
 import {drawNewImage, drawNewText, drawNewQuestionMark,
-    checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
+    checkCoordinatesExist, getClickCoordinates, redrawSync,
+    enableDragOntoCanvas, animateFrames, shakeOffset, SHAKE_DURATION, TAG_COLORS} from "../HTMLUtils/canvasUtils.js"
 import {cloneTemplate, getActionTarget, mustGetElementById, createImageUrl} from "../HTMLUtils/domUtils.js"
 import {PAGES} from "./state.js";
 import {createSessionNav} from "../HTMLUtils/sessionNav.js"
@@ -39,7 +40,9 @@ const studyState = {
     scale:          1,
     fontSize:       16,
     difficulty:     1,
-    answeredTags: {}
+    answeredTags: {},
+    dropTarget:     null, // '?' under a dragged chip, drawn highlighted
+    wrongDrop:      null, // { key, offsetX } while a wrong drop is shaking
 }
 
 const bodyPartSelection = new Map()
@@ -392,6 +395,8 @@ const showBodyPart = async (index, previousIndex) => {
     studyState.correctTags = {}
     studyState.hintText    = ''
     studyState.answerTag   = {}
+    studyState.dropTarget  = null
+    studyState.wrongDrop   = null
 
     const item     = studyState.bodyParts[index]
     const bodyPart = await window.api.getBodyPartById(item.bodyPartId, item.checklistId)
@@ -756,16 +761,22 @@ searchResults.addEventListener('mouseover', (e) => {
     }
 })
 
-const drawAllQuestionMarks = () => {
-    const canvas = document.getElementById('study-canvas')
+// Canvas defaults so existing calls work; redrawSync passes it in
+const drawAllQuestionMarks = (canvas = document.getElementById('study-canvas')) => {
+    const { scale, fontSize, wrongDrop, dropTarget } = studyState
 
     for (const id in studyState.coordinates) {
-        const isCorrect = !!studyState.correctTags[id]
+        const coordinates = studyState.coordinates[id]
 
-        if (isCorrect) {
-            drawNewText(canvas, studyState.coordinates[id]['name'], studyState.coordinates[id], studyState.scale, studyState.fontSize)
+        if (studyState.correctTags[id]) {
+            drawNewText(canvas, coordinates['name'], coordinates, scale, fontSize)
+        } else if (wrongDrop?.key === id) {
+            const shifted = { x: parseFloat(coordinates['x']) + wrongDrop.offsetX, y: coordinates['y'] }
+            drawNewText(canvas, '?', shifted, scale, fontSize, TAG_COLORS.INCORRECT)
+        } else if (dropTarget === id) {
+            drawNewText(canvas, '?', coordinates, scale, fontSize, TAG_COLORS.DROP_TARGET)
         } else {
-            drawNewQuestionMark(canvas, studyState.coordinates[id], studyState.scale, studyState.fontSize)
+            drawNewQuestionMark(canvas, coordinates, scale, fontSize)
         }
     }
 }
@@ -782,7 +793,8 @@ const setupWordBank = () => {
         return
     }
 
-    for (const id in studyState.coordinates) {
+    // Shuffled so the order doesn't give away where each word goes
+    for (const id of shuffle(Object.keys(studyState.coordinates))) {
         const span = document.createElement('span')
         span.classList.add('word-chip')
         span.dataset.tagId = id
@@ -823,14 +835,23 @@ mustGetElementById('study-hint-btn').addEventListener('click', () => {
         .catch(err => console.error(err))
 })
 
+// Label drawn for each tag, so hit areas match the pills on screen
+const studyLabel = (tag, id) => studyState.correctTags[id] ? tag['name'] : '?'
+
+// Unanswered tag under an image-space point, or null
+const hitUnansweredTag = (point) => {
+    const canvas = document.getElementById('study-canvas')
+    const key    = checkCoordinatesExist(canvas, point.x, point.y, studyState.coordinates,
+        studyState.scale, studyState.fontSize, studyLabel)
+
+    return key && !studyState.correctTags[key] ? key : null
+}
+
 // Click on canvas to answer a tag
 mustGetElementById('study-canvas').addEventListener('click', async (e) => {
-    const canvas  = document.getElementById('study-canvas')
-    const coords  = getClickCoordinates(e, studyState.scale)
-    const key     = checkCoordinatesExist(canvas, coords.x, coords.y, studyState.coordinates, studyState.scale, studyState.fontSize,
-        (tag, id) => studyState.correctTags[id] ? tag['name'] : '?')
+    const key = hitUnansweredTag(getClickCoordinates(e, studyState.scale))
 
-    if (key && !studyState.correctTags[key]) {
+    if (key) {
         try {
             await openStudyAnswerModal(key)
         } catch (err) {
@@ -870,30 +891,81 @@ const shuffle = (arr) => {
     return arr
 }
 
+// Checks text against the tag's name and, if it's right, records it and
+// redraws. Returns whether it was right; feedback is up to the caller.
+const submitAnswer = (tagId, text) => {
+    const answer = studyState.coordinates[tagId]['name']
+
+    if (text.trim().toLowerCase() !== answer.toLowerCase()) {
+        return false
+    }
+
+    studyState.correctTags[tagId] = answer
+    updateTagsProgress()
+    updateWordBank()
+    redrawStudy()
+
+    return true
+}
+
+const redrawStudy = () => {
+    const canvas = document.getElementById('study-canvas')
+    const image  = document.getElementById('study-image')
+    redrawSync(canvas, image, drawAllQuestionMarks, studyState.scale)
+}
+
 mustGetElementById('study-answer-submit-btn').addEventListener('click', async () => {
-    const input   = document.getElementById('study-answer-input')
-    const txt     = input.value.trim()
+    const txt = document.getElementById('study-answer-input').value.trim()
 
     if (!txt) {
         return
     }
 
-    const [tagId, answer] = Object.entries(studyState.answerTag)[0]
+    const tagId = Object.keys(studyState.answerTag)[0]
 
-    if (txt.toLowerCase() === answer.toLowerCase()) {
+    if (submitAnswer(tagId, txt)) {
         studyAnswerModal.hide()
-        studyState.correctTags[tagId] = answer
-        updateTagsProgress()
-        updateWordBank()
-        const canvas = document.getElementById('study-canvas')
-        clearCanvas(canvas)
-        const image  = document.getElementById('study-image')
-        await drawNewImage(canvas, image, 0, 0, studyState.scale)
-        drawAllQuestionMarks()
         await window.api.popup('Correct!')
     } else {
         await window.api.popup('Not quite — try again.')
     }
+})
+
+// Flashes the '?' red and shakes it. A newer wrong drop or a body part
+// change replaces studyState.wrongDrop, which stops this one.
+const shakeWrongDrop = async (key) => {
+    const shake = { key, offsetX: 0 }
+    studyState.wrongDrop = shake
+
+    await animateFrames(SHAKE_DURATION, (progress) => {
+        if (studyState.wrongDrop !== shake) {
+            return false
+        }
+
+        shake.offsetX = shakeOffset(progress, studyState.scale)
+        redrawStudy()
+    })
+
+    if (studyState.wrongDrop === shake) {
+        studyState.wrongDrop = null
+        redrawStudy()
+    }
+}
+
+// Drag a word bank chip onto a '?' to answer it
+enableDragOntoCanvas(mustGetElementById('study-wordbank'), mustGetElementById('study-canvas'), {
+    selector:      '.word-chip:not(.used)',
+    getScale:      () => studyState.scale,
+    hitTest:       hitUnansweredTag,
+    onHoverChange: (key) => {
+        studyState.dropTarget = key
+        redrawStudy()
+    },
+    onDrop: (chip, key) => {
+        if (!submitAnswer(key, chip.textContent)) {
+            shakeWrongDrop(key).catch(err => console.error(err))
+        }
+    },
 })
 
 const updateTagsProgress = () => {
