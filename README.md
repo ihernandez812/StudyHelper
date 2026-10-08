@@ -3,10 +3,20 @@
 
 ## Installation
 
-Study helper is not code signed as it was written to help my girlfriend pass Anatomy.
+Study helper is signed with a development certificate but not notarized, as it was written to help my girlfriend pass Anatomy.
 To install download the latest release from gitHub and run the installer. Currently only supported on Mac.
 
-When running for the first time you will have to allow the app to be opened from your System Settings.
+When running for the first time you will have to allow the app to be opened from System Settings → Privacy & Security → Open Anyway.
+After that the app checks for updates on launch and installs them itself.
+
+## Releasing
+1. One time: `gh auth login` (the token lives in the macOS Keychain, never in this repo)
+2. Bump `version` in package.json
+3. `npm run deploy`. Builds a universal dmg + zip and publishes a GitHub release with latest-mac.yml
+4. Installed copies see the update on their next launch
+
+To test the updater from source: `UPDATER_DEV=1 npm start` (set the package.json version below the latest release first).
+Updater logs are in `~/Library/Logs/Study Helper/main.log`.
 
 ## Structure
 - Checklist

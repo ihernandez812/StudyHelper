@@ -5,7 +5,6 @@ const lightStorage = require("./storage/storageUtils");
 const windows = {};
 
 const createWindow = (guiFilePath, options) => {
-    //setTimeout(updater, 3000)
     let win = windows[guiFilePath];
 
     if (win != null) {
