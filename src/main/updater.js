@@ -26,7 +26,26 @@ const onUpdateAvailable = async (info) => {
     }
 }
 
+//Dock icon progress bar while the update downloads
+const onDownloadProgress = (progress) => {
+    const win = getWindow(filePaths.home)
+
+    if (win) {
+        win.setProgressBar(progress.percent / 100)
+    }
+}
+
+const clearDownloadProgress = () => {
+    const win = getWindow(filePaths.home)
+
+    if (win) {
+        win.setProgressBar(-1)
+    }
+}
+
 const onUpdateDownloaded = async () => {
+    clearDownloadProgress()
+
     const { response } = await dialog.showMessageBox(getWindow(filePaths.home), {
         type: 'info',
         title: 'Update',
@@ -43,6 +62,7 @@ const onUpdateDownloaded = async () => {
 }
 
 const onUpdateError = (err) => {
+    clearDownloadProgress()
     log.error('Auto update failed', err)
 }
 
@@ -57,6 +77,7 @@ const checkForUpdates = async () => {
 
     //Listeners go first, they fire during checkForUpdates
     autoUpdater.on('update-available', onUpdateAvailable)
+    autoUpdater.on('download-progress', onDownloadProgress)
     autoUpdater.on('update-downloaded', onUpdateDownloaded)
     autoUpdater.on('error', onUpdateError)
 
