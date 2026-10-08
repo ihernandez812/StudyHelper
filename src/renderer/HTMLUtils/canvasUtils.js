@@ -45,6 +45,19 @@ const measurePill = (ctx, txt, size) => {
     }
 }
 
+// Size of a pill in image space, so it can be compared with stored
+// tag coordinates. The font isn't scaled when drawing, so a pill
+// covers more image space as scale goes down.
+const getPillSize = (canvas, label, fontSize, scale) => {
+    const ctx = canvas.getContext('2d')
+    const { width, height } = measurePill(ctx, label, parseInt(fontSize))
+
+    return {
+        width:  width  / scale,
+        height: height / scale,
+    }
+}
+
 // Draws one rounded pill with its top-left at (x, y) in canvas pixels.
 const drawPill = (ctx, txt, x, y, size, fillStyle) => {
     const { width: boxW, height: boxH } = measurePill(ctx, txt, size)
@@ -74,18 +87,18 @@ const drawNewQuestionMark = (canvas, coordinates, scale, fontSize) => {
 
 
 // getLabel(tag, key) returns the text drawn for that tag, so the click
-// area matches the pill on screen
+// area matches the pill on screen. Checks in reverse draw order so the
+// pill painted on top wins when two overlap.
 const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, getLabel) => {
-    const ctx  = canvas.getContext('2d')
-    const size = parseInt(fontSize)
+    const keys = Object.keys(coordinatesMap).reverse()
 
-    for (const key in coordinatesMap) {
+    for (const key of keys) {
         const coordinates       = coordinatesMap[key]
-        const { width, height } = measurePill(ctx, getLabel(coordinates, key), size)
+        const { width, height } = getPillSize(canvas, getLabel(coordinates, key), fontSize, scale)
         const tagX              = parseFloat(coordinates['x'])
         const tagY              = parseFloat(coordinates['y'])
 
-        if (x >= tagX && x <= tagX + width / scale && y >= tagY && y <= tagY + height / scale) {
+        if (x >= tagX && x <= tagX + width && y >= tagY && y <= tagY + height) {
             return key
         }
     }
@@ -93,19 +106,167 @@ const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, ge
     return null
 }
 
-const getClickCoordinates = (event, scale) => {
-    const image = event.target;
-    const rect = image.getBoundingClientRect();
-
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    const deltaX = x / scale
-    const deltaY = y / scale
+// Screen point → image-space point on this canvas. Takes the canvas
+// explicitly so it also works when the event target isn't the canvas
+// (e.g. dropping a word bank chip onto it).
+const getCanvasPoint = (canvas, clientX, clientY, scale) => {
+    const rect = canvas.getBoundingClientRect()
 
     return {
-        x: deltaX,
-        y: deltaY
+        x: (clientX - rect.left) / scale,
+        y: (clientY - rect.top)  / scale,
+    }
+}
+
+const getClickCoordinates = (event, scale) => {
+    return getCanvasPoint(event.target, event.clientX, event.clientY, scale)
+}
+
+const DRAG_THRESHOLD    = 3  // screen px before a press counts as a drag
+const OFF_CANVAS_MARGIN = 24 // screen px past the edge before a drop reverts
+
+// Lets the user left-drag items drawn on a canvas. Callbacks describe the
+// items and apply the move; all points are image space. Right-click is
+// left alone. Releasing well outside the canvas puts the item back where
+// it started. Returns a function that removes the listeners.
+//   hitTest(point)        → key | null
+//   getPosition(key)      → {x, y} top-left of the item
+//   getSize(key)          → {width, height}, used to keep it inside the image
+//   onDragMove(key, pos)  → pos is offset by the grab point and clamped
+//   onDragEnd(key, pos)   → optional, only fires if the item actually moved
+const enableCanvasDrag = (canvas, { getScale, hitTest, getPosition, getSize, onDragMove, onDragEnd, threshold = DRAG_THRESHOLD }) => {
+    let drag = null
+
+    const toPoint = (e) => getCanvasPoint(canvas, e.clientX, e.clientY, getScale())
+
+    const clamp = (key, x, y) => {
+        const scale             = getScale()
+        const { width, height } = getSize(key)
+        const maxX              = Math.max(0, canvas.width  / scale - width)
+        const maxY              = Math.max(0, canvas.height / scale - height)
+
+        return {
+            x: Math.min(Math.max(x, 0), maxX),
+            y: Math.min(Math.max(y, 0), maxY),
+        }
+    }
+
+    // Screen-space check, so the margin feels the same at any scale
+    const isOffCanvas = (e) => {
+        const rect = canvas.getBoundingClientRect()
+
+        return e.clientX < rect.left   - OFF_CANVAS_MARGIN
+            || e.clientX > rect.right  + OFF_CANVAS_MARGIN
+            || e.clientY < rect.top    - OFF_CANVAS_MARGIN
+            || e.clientY > rect.bottom + OFF_CANVAS_MARGIN
+    }
+
+    const updateHoverCursor = (e) => {
+        canvas.style.cursor = hitTest(toPoint(e)) != null ? 'grab' : ''
+    }
+
+    const onPointerDown = (e) => {
+        if (e.button !== 0) {
+            return
+        }
+
+        const point = toPoint(e)
+        const key   = hitTest(point)
+
+        if (key == null) {
+            return
+        }
+
+        const pos    = getPosition(key)
+        const origin = { x: parseFloat(pos.x), y: parseFloat(pos.y) }
+
+        drag = {
+            key,
+            origin,
+            pointerId: e.pointerId,
+            startX:    e.clientX,
+            startY:    e.clientY,
+            // Where inside the item it was grabbed, so it doesn't jump to the cursor
+            offsetX:   point.x - origin.x,
+            offsetY:   point.y - origin.y,
+            moved:     false,
+            last:      origin,
+        }
+
+        canvas.setPointerCapture(e.pointerId)
+        e.preventDefault()
+    }
+
+    const onPointerMove = (e) => {
+        if (!drag) {
+            updateHoverCursor(e)
+            return
+        }
+
+        if (e.pointerId !== drag.pointerId) {
+            return
+        }
+
+        if (!drag.moved) {
+            if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < threshold) {
+                return
+            }
+
+            drag.moved = true
+        }
+
+        if (isOffCanvas(e)) {
+            canvas.style.cursor = 'not-allowed'
+            drag.last = drag.origin
+        } else {
+            canvas.style.cursor = 'grabbing'
+            const point = toPoint(e)
+            drag.last = clamp(drag.key, point.x - drag.offsetX, point.y - drag.offsetY)
+        }
+
+        onDragMove(drag.key, drag.last)
+    }
+
+    // Shared by pointerup and pointercancel
+    const endDrag = (e, revert) => {
+        if (!drag || e.pointerId !== drag.pointerId) {
+            return
+        }
+
+        const { key, moved, origin } = drag
+        let { last } = drag
+        drag = null
+
+        if (moved && revert) {
+            last = origin
+            onDragMove(key, origin)
+        }
+
+        if (moved && onDragEnd) {
+            onDragEnd(key, last)
+        }
+    }
+
+    const onPointerUp = (e) => {
+        endDrag(e, drag != null && isOffCanvas(e))
+        updateHoverCursor(e)
+    }
+
+    const onPointerCancel = (e) => {
+        endDrag(e, true)
+        canvas.style.cursor = ''
+    }
+
+    canvas.addEventListener('pointerdown',   onPointerDown)
+    canvas.addEventListener('pointermove',   onPointerMove)
+    canvas.addEventListener('pointerup',     onPointerUp)
+    canvas.addEventListener('pointercancel', onPointerCancel)
+
+    return () => {
+        canvas.removeEventListener('pointerdown',   onPointerDown)
+        canvas.removeEventListener('pointermove',   onPointerMove)
+        canvas.removeEventListener('pointerup',     onPointerUp)
+        canvas.removeEventListener('pointercancel', onPointerCancel)
     }
 }
 
@@ -122,15 +283,32 @@ const redrawEverything = async (canvas, imgElement, coordinatesMap, fontSize, sc
     await drawBodyPartWithTags(canvas, imgElement, coordinatesMap, fontSize, scale)
 }
 
+// Repaints the already-decoded image and calls drawOverlay(canvas) to draw
+// whatever sits on top (tags, '?' marks, drop highlights). Synchronous and
+// doesn't resize the canvas, so it's cheap enough to call on every pointer
+// move. Assumes a prior drawNewImage at this scale sized the canvas.
+const redrawSync = (canvas, imgElement, drawOverlay, scale = 1) => {
+    if (!imgElement.complete || imgElement.naturalWidth === 0) {
+        return
+    }
+
+    const ctx = canvas.getContext('2d')
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(imgElement, 0, 0, imgElement.naturalWidth * scale, imgElement.naturalHeight * scale)
+    drawOverlay(canvas)
+}
+
+const drawTags = (canvas, coordinatesMap, fontSize, scale = 1) => {
+    for (const key in coordinatesMap) {
+        const coordinates = coordinatesMap[key]
+        drawNewText(canvas, coordinates['name'], coordinates, scale, fontSize)
+    }
+}
+
 const drawBodyPartWithTags = async (canvas, imgElement, coordinatesMap, fontSize, scale = 1) => {
     await drawNewImage(canvas, imgElement, 0, 0, scale)
-    requestAnimationFrame(() => {
-        for (const key in coordinatesMap) {
-            const coordinates = coordinatesMap[key]
-            const tagName = coordinates['name']
-            drawNewText(canvas, tagName, coordinates, scale, fontSize)
-        }
-    })
+    requestAnimationFrame(() => drawTags(canvas, coordinatesMap, fontSize, scale))
 }
 
 export {
@@ -138,7 +316,12 @@ export {
     drawNewText,
     drawNewQuestionMark,
     checkCoordinatesExist,
+    getPillSize,
+    getCanvasPoint,
     getClickCoordinates,
+    enableCanvasDrag,
+    redrawSync,
+    drawTags,
     clearCanvas,
     redrawEverything,
     drawBodyPartWithTags,
