@@ -1,8 +1,8 @@
 {
   "name": "study_helper",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "main": "src/main/index.js",
-  "description": "Study Helper",
+  "description": "Anatome",
   "repository": {
     "type": "git",
     "url": "https://github.com/ihernandez812/StudyHelper"
@@ -18,7 +18,7 @@
   },
   "author": "Isaiah Hernandez",
   "license": "ISC",
-  "productName": "Study Helper",
+  "productName": "AnatoMe",
   "homepage": "https://github.com/ihernandez812/StudyHelper",
   "keywords": [],
   "devDependencies": {
