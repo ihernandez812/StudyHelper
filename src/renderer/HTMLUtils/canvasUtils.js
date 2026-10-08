@@ -17,123 +17,80 @@ const drawNewImage = async (canvas, imgElement, x, y, scale) => {
     
 }
 
-const drawNewText = (canvas, txt, currCoordinates, scale, fontSize) => {
-    const ctx  = canvas.getContext('2d')
-    const size = parseInt(fontSize)   // ← parse here
-    const x    = currCoordinates['x'] * scale
-    const y    = currCoordinates['y'] * scale
+// Pill fills for tags drawn on a canvas. Canvas can't read CSS variables,
+// so these mirror the theme by hand.
+const TAG_COLORS = {
+    DEFAULT:    'rgba(199, 91, 122, 0.88)',   // --accent
+    UNANSWERED: 'rgba(168, 128, 144, 0.88)',  // --text-muted tone
+    CORRECT:    'rgba(46, 140, 87, 0.9)',
+    INCORRECT:  'rgba(196, 64, 64, 0.9)',
+}
 
-    const paddingX = 8
-    const paddingY = 4
-    const radius   = 6
+const PILL_PADDING_X = 8
+const PILL_PADDING_Y = 4
+const PILL_RADIUS    = 6
 
+const setTagFont = (ctx, size) => {
     ctx.font         = `500 ${size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
     ctx.textBaseline = 'top'
+}
 
-    const textWidth = ctx.measureText(txt).width
-    const boxW      = textWidth + paddingX * 2
-    const boxH      = size + paddingY * 2        // ← use size, not fontSize
+// Box size of a pill drawn by drawPill, in canvas pixels
+const measurePill = (ctx, txt, size) => {
+    setTagFont(ctx, size)
 
-    ctx.fillStyle = 'rgba(199, 91, 122, 0.88)'
+    return {
+        width:  ctx.measureText(txt).width + PILL_PADDING_X * 2,
+        height: size + PILL_PADDING_Y * 2,
+    }
+}
+
+// Draws one rounded pill with its top-left at (x, y) in canvas pixels.
+const drawPill = (ctx, txt, x, y, size, fillStyle) => {
+    const { width: boxW, height: boxH } = measurePill(ctx, txt, size)
+
+    ctx.fillStyle = fillStyle
     ctx.beginPath()
-    ctx.roundRect(x, y, boxW, boxH, radius)
+    ctx.roundRect(x, y, boxW, boxH, PILL_RADIUS)
     ctx.fill()
 
     ctx.fillStyle = '#ffffff'
-    ctx.fillText(txt, x + paddingX, y + paddingY)
+    ctx.fillText(txt, x + PILL_PADDING_X, y + PILL_PADDING_Y)
 }
 
+const drawNewText = (canvas, txt, currCoordinates, scale, fontSize, fillStyle = TAG_COLORS.DEFAULT) => {
+    const ctx = canvas.getContext('2d')
+    const x   = currCoordinates['x'] * scale
+    const y   = currCoordinates['y'] * scale
+
+    drawPill(ctx, txt, x, y, parseInt(fontSize), fillStyle)
+}
+
+// Same pill style as tags but muted so it reads as "unanswered"
 const drawNewQuestionMark = (canvas, coordinates, scale, fontSize) => {
-    const ctx      = canvas.getContext('2d')
-    const size     = parseInt(fontSize)
-    const x        = coordinates['x'] * scale
-    const y        = coordinates['y'] * scale
-    const paddingX = 8
-    const paddingY = 4
-    const radius   = 6
-
-    ctx.font         = `500 ${size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
-    ctx.textBaseline = 'top'
-
-    const textWidth = ctx.measureText('?').width
-    const boxW      = textWidth + paddingX * 2
-    const boxH      = size      + paddingY * 2
-
-    // Same pill style as tags but muted so it reads as "unanswered"
-    ctx.fillStyle = 'rgba(168, 128, 144, 0.88)'  // --text-muted tone
-    ctx.beginPath()
-    ctx.roundRect(x, y, boxW, boxH, radius)
-    ctx.fill()
-
-    ctx.fillStyle = '#ffffff'
-    ctx.fillText('?', x + paddingX, y + paddingY)
+    drawNewText(canvas, '?', coordinates, scale, fontSize, TAG_COLORS.UNANSWERED)
 }
 
 
-const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, isText) => {
-    let foundKey = null
 
-    for(const key in coordinatesMap) {
-        const coordinates = coordinatesMap[key]
-        const imgBounds = getWidthAndHeightOfCoordinate(canvas, coordinates, scale, fontSize, isText)
-        const width = imgBounds['width']
-        const height = imgBounds['height']
-        const tagX = parseFloat(coordinates['x'])
-        const tagY = parseFloat(coordinates['y'])
+// getLabel(tag, key) returns the text drawn for that tag, so the click
+// area matches the pill on screen
+const checkCoordinatesExist = (canvas, x, y, coordinatesMap, scale, fontSize, getLabel) => {
+    const ctx  = canvas.getContext('2d')
+    const size = parseInt(fontSize)
+
+    for (const key in coordinatesMap) {
+        const coordinates       = coordinatesMap[key]
+        const { width, height } = measurePill(ctx, getLabel(coordinates, key), size)
+        const tagX              = parseFloat(coordinates['x'])
+        const tagY              = parseFloat(coordinates['y'])
 
         if (x >= tagX && x <= tagX + width / scale && y >= tagY && y <= tagY + height / scale) {
-            foundKey = key
-            break
-          }
-    }
-    return foundKey
-}
-
-const getWidthAndHeightOfCoordinate = (canvas, coordinates, scale, fontSize, isText) => {
-    if (isText) {
-        return getWidthAndHeightOfText(canvas, coordinates, false, fontSize)
+            return key
+        }
     }
 
-    return getWidthAndHeightOfQuestionMark(canvas, scale, fontSize)
-}
-
-const getWidthAndHeightOfQuestionMark = (canvas, scale, fontSize) => {
-    const ctx      = canvas.getContext('2d')
-    const size     = parseInt(fontSize)
-    const paddingX = 8
-    const paddingY = 4
-
-    ctx.font         = `500 ${size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
-    ctx.textBaseline = 'top'
-
-    const textWidth = ctx.measureText('?').width
-    const boxW      = textWidth + paddingX * 2
-    const boxH      = size      + paddingY * 2
-
-    return {
-        width: boxW,
-        height: boxH
-    }
-}
-
-const getWidthAndHeightOfText = (canvas, coordinates, checkAnswer, fontSize) => {
-    const tagName = checkAnswer
-        ? (coordinates['answer'] || 'No Answer')
-        : coordinates['name']
-
-    const paddingX = 8
-    const paddingY = 4
-    const size     = parseInt(fontSize)
-
-    const ctx = canvas.getContext('2d')
-    ctx.font  = `500 ${size}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
-
-    const textWidth = ctx.measureText(tagName).width
-
-    return {
-        width:  textWidth + paddingX * 2,
-        height: size      + paddingY * 2
-    }
+    return null
 }
 
 const getClickCoordinates = (event, scale) => {
@@ -184,5 +141,6 @@ export {
     getClickCoordinates,
     clearCanvas,
     redrawEverything,
-    drawBodyPartWithTags
+    drawBodyPartWithTags,
+    TAG_COLORS,
 }

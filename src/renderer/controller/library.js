@@ -415,7 +415,7 @@ dropZone.addEventListener('drop', e => {
 mustGetElementById('editor-canvas').addEventListener('contextmenu', async (e) => {
     const canvas = document.getElementById('editor-canvas')
     const coords = getClickCoordinates(e, editorState.resizeScale)
-    const existingKey = checkCoordinatesExist(canvas, coords.x, coords.y, editorState.coordinatesMap, editorState.resizeScale, editorState.fontSize, true)
+    const existingKey = checkCoordinatesExist(canvas, coords.x, coords.y, editorState.coordinatesMap, editorState.resizeScale, editorState.fontSize, tag => tag['name'])
     await populateCategorySelect('editor-tag-category')
 
     if (!existingKey) {

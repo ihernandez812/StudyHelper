@@ -241,9 +241,9 @@
 
             <!-- Active quiz: shown when studying -->
             <div id="study-active" class="hide">
-                <div class="study-layout">
-                    <div class="study-canvas-area">
-                        <div class="study-progress">
+                <div class="session-layout">
+                    <div class="session-canvas-area">
+                        <div class="session-progress">
                             <span id="study-progress-label">Body part 1 of 1</span>
                             <div class="progress-bar-bg">
                                 <div class="progress-bar-fill" id="study-progress-bar"></div>
@@ -252,11 +252,11 @@
                         <img id="study-image" src="" style="display:none;" alt="">
                         <canvas id="study-canvas"></canvas>
                     </div>
-                    <div class="study-sidebar">
+                    <div class="session-sidebar">
                         <div class="card" style="margin-bottom: 12px;">
                             <div class="card-title">
                                 <span id="study-body-part-name">—</span>
-                                <span class="study-body-part-checklist" id="study-body-part-checklist"></span>
+                                <span class="session-subtitle" id="study-body-part-checklist"></span>
                             </div>
                             <div id="study-wordbank-wrap">
                                 <div class="field-label" style="margin-bottom: 6px;">Word bank</div>
@@ -268,7 +268,7 @@
                             <p id="study-tags-progress" class="progress-paragraph">0 / 0 tags labeled</p>
                             <p id="study-tags-hint" class="progress-paragraph">3 hints left</p>
                         </div>
-                        <div id="body-part-btn-group" class="d-flex gap-2 hide">
+                        <div id="body-part-btn-group" class="session-nav d-flex gap-2 hide">
                             <button class="btn btn-outline-primary" id="study-prev-btn">
                                 ← Previous
                             </button>
@@ -358,6 +358,46 @@
                             </button>
                         </li>
                     </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Practical review ─────────────────────────────────── -->
+        <div id="screen-practical-review" class="screen">
+            <div class="session-layout">
+                <div class="session-canvas-area">
+                    <div class="session-progress">
+                        <span id="review-progress-label">Station 1 of 1</span>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="review-progress-bar"></div>
+                        </div>
+                    </div>
+                    <img id="review-image" src="" style="display:none;" alt="">
+                    <canvas id="review-canvas"></canvas>
+                </div>
+                <div class="session-sidebar">
+                    <div class="card">
+                        <div class="card-title">
+                            <span id="review-body-part-name">—</span>
+                            <span class="session-subtitle" id="review-body-part-checklist"></span>
+                        </div>
+                        <div class="form-check form-switch review-answers-toggle">
+                            <input class="form-check-input" type="checkbox" role="switch" id="review-show-answers">
+                            <label class="form-check-label" for="review-show-answers">Show answers</label>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Score</div>
+                        <p id="review-station-score" class="progress-paragraph"></p>
+                        <p id="review-total-score" class="progress-paragraph"></p>
+                    </div>
+                    <div id="review-btn-group" class="session-nav d-flex gap-2 hide">
+                        <button class="btn btn-outline-primary" id="review-prev-btn">← Previous</button>
+                        <button class="btn btn-primary" id="review-next-btn">Next →</button>
+                    </div>
+                    <button class="btn btn-secondary w-100" id="review-exit-btn">
+                        Back to results
+                    </button>
                 </div>
             </div>
         </div>

@@ -4,6 +4,7 @@ const PAGES ={
     LIBRARY: 'library',
     PRACTICAL: 'practical',
     RESULTS: 'results',
+    PRACTICAL_REVIEW: 'practical-review',
     HOME: 'home',
     CHECKLIST_DETAIL: 'checklist-detail',
     BODYPART_EDITOR: 'bodypart-editor',
@@ -15,6 +16,8 @@ const AppState = {
     currentChecklistName: null,
     currentBodyPartId:    null,
     currentBodyPartName:  null,
+    currentPracticalId:   null,
+    currentPracticalDate: null,
     currentPage: PAGES.HOME
 }
 

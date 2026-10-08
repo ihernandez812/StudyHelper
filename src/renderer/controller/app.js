@@ -5,6 +5,7 @@ import './library.js'
 import './study.js'
 import './practical.js'
 import './results.js'
+import './practicalReview.js'
 import './sidebar.js'
 
 import { navigate } from './router.js'

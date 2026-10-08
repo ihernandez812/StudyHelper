@@ -51,6 +51,8 @@ interface Category {
 /** One station in a practical: a snapshot of a body part at the time it was taken. */
 interface PracticalStation {
     checklistId: string
+    /** Name at the time the practical was taken. Missing on practicals saved before it was added. */
+    checklistName?: string
     bodyPart: BodyPart
 }
 

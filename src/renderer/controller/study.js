@@ -4,6 +4,7 @@ import {drawNewImage, drawNewText, drawNewQuestionMark,
     checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
 import {cloneTemplate, getActionTarget, mustGetElementById, createImageUrl} from "../HTMLUtils/domUtils.js"
 import {PAGES} from "./state.js";
+import {createSessionNav} from "../HTMLUtils/sessionNav.js"
 
 // ── Study screen ──────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ const DIFFICULTY = {
     HARD:      2,
 }
 
-//Offsets passed to loadBodyPart() to step through the session
+//Steps for moving through the search results with the arrow keys
 const DIRECTION = {
     NEXT:     1,
     PREVIOUS: -1,
@@ -355,93 +356,53 @@ mustGetElementById('study-settings-save-btn').addEventListener('click', () => {
 
 // ── Active study session ──────────────────────────────────────────────────────
 
+const studyNav = createSessionNav({
+    label:       mustGetElementById('study-progress-label'),
+    bar:         mustGetElementById('study-progress-bar'),
+    prevBtn:     mustGetElementById('study-prev-btn'),
+    nextBtn:     mustGetElementById('study-next-btn'),
+    btnGroup:    mustGetElementById('body-part-btn-group'),
+    formatLabel: (position, count) => `Body part ${position} of ${count}`,
+    onChange:    (index, previousIndex) => showBodyPart(index, previousIndex),
+})
+
 const beginStudySession = (items) => {
     studyState.bodyParts = items
     studyState.correctTags    = {}
     studyState.hintText       = ''
     studyState.answeredTags   = {}
-    studyState.currentBodyPartIndex = null
     clearSelection()
 
     document.getElementById('study-picker').classList.add('hide')
     document.getElementById('study-active').classList.remove('hide')
 
-    // Show "next" button only if more than one body part
-    const bodyPartBtnGroup = document.getElementById('body-part-btn-group')
-    bodyPartBtnGroup.classList.toggle('hide', items.length <= 1)
-
-    loadNextBodyPart().catch(err => {
+    studyNav.start(items.length).catch(err => {
         console.error(err)
     })
 }
 
-const loadNextBodyPart = () => loadBodyPart(DIRECTION.NEXT)
-
-const loadPrevBodyPart = () => loadBodyPart(DIRECTION.PREVIOUS)
-
-const loadBodyPart = async (offset) => {
-    const bodyPartList = studyState.bodyParts
-    const bodyPartCount = bodyPartList.length
-    let nextBodyPartIndex = 0
-
-    //If this is the first time in the study app then we don't have a current,
-    //and we need to just set it to the first one
-    if (studyState.currentBodyPartIndex != null) {
-        //Switching body parts need to updat the persisted answers
-        const currentBodyPartIndex = studyState.currentBodyPartIndex
-        const currentItem = studyState.bodyParts[currentBodyPartIndex]
-
-        if (currentItem != null) {
-            const currentBodyPartId = currentItem.bodyPartId
-            const currentChecklistId = currentItem.checklistId
-            let answeredTagKey= createSelectionKey(currentChecklistId, currentBodyPartId)
-            studyState.answeredTags[answeredTagKey] = studyState.correctTags
-            nextBodyPartIndex = currentBodyPartIndex + offset
-
-            if (nextBodyPartIndex >= bodyPartCount) {
-                return
-            }
-        }
-
+const showBodyPart = async (index, previousIndex) => {
+    // Keep what was answered on the body part being left, so coming back restores it
+    if (previousIndex != null) {
+        const previousItem = studyState.bodyParts[previousIndex]
+        const previousKey  = createSelectionKey(previousItem.checklistId, previousItem.bodyPartId)
+        studyState.answeredTags[previousKey] = studyState.correctTags
     }
 
-    studyState.currentBodyPartIndex  = nextBodyPartIndex
-    studyState.correctTags  = {}
-    studyState.hintText     = ''
-    studyState.answerTag    = {}
+    studyState.correctTags = {}
+    studyState.hintText    = ''
+    studyState.answerTag   = {}
 
-    // Update progress
-    const done  = nextBodyPartIndex + 1
-    document.getElementById('study-progress-label').textContent = `Body part ${done} of ${bodyPartCount}`
-    const pct = (done / bodyPartCount) * 100
-    document.getElementById('study-progress-bar').style.width = `${pct}%`
-
-    const nextBtn = document.getElementById('study-next-btn')
-    const prevBtn = document.getElementById('study-prev-btn')
-
-    prevBtn.classList.toggle('disabled', done <= 1)
-    nextBtn.classList.toggle('disabled', done >= bodyPartCount)
-
-    const nextItem = studyState.bodyParts[nextBodyPartIndex]
-
-    if (nextItem == null) {
-        return
-    }
-
-    const nextBodyPartId = nextItem.bodyPartId
-    const nextChecklistId = nextItem.checklistId
-    const bodyPart  = await window.api.getBodyPartById(nextBodyPartId, nextChecklistId)
-    studyState.scale    = bodyPart['scale'] || 1
-    studyState.fontSize = bodyPart['fontSize'] || 16
+    const item     = studyState.bodyParts[index]
+    const bodyPart = await window.api.getBodyPartById(item.bodyPartId, item.checklistId)
+    studyState.scale       = bodyPart['scale'] || 1
+    studyState.fontSize    = bodyPart['fontSize'] || 16
     studyState.coordinates = bodyPart['coordinates'] || {}
+    studyState.correctTags = studyState.answeredTags[createSelectionKey(item.checklistId, item.bodyPartId)] || {}
 
-    const answerTagKey = createSelectionKey(nextChecklistId, nextBodyPartId)
-    studyState.correctTags = studyState.answeredTags[answerTagKey] || {}
-
-    document.getElementById('study-body-part-name').textContent = bodyPart['name']
-    document.getElementById('study-body-part-checklist').textContent = nextItem.checklistName
-    document.getElementById('study-tags-progress').textContent =
-        `0 / ${Object.keys(studyState.coordinates).length} tags labeled`
+    document.getElementById('study-body-part-name').textContent      = bodyPart['name']
+    document.getElementById('study-body-part-checklist').textContent = item.checklistName
+    updateTagsProgress()
 
     const image  = document.getElementById('study-image')
     const canvas = document.getElementById('study-canvas')
@@ -454,8 +415,9 @@ const loadBodyPart = async (offset) => {
         console.error(err)
     }
 
-    // Word bank
+    // Word bank, greying out words already used on this body part
     setupWordBank()
+    updateWordBank()
     // Hints
     updateHintButton()
 }
@@ -865,7 +827,8 @@ mustGetElementById('study-hint-btn').addEventListener('click', () => {
 mustGetElementById('study-canvas').addEventListener('click', async (e) => {
     const canvas  = document.getElementById('study-canvas')
     const coords  = getClickCoordinates(e, studyState.scale)
-    const key     = checkCoordinatesExist(canvas, coords.x, coords.y, studyState.coordinates, studyState.scale, studyState.fontSize,false)
+    const key     = checkCoordinatesExist(canvas, coords.x, coords.y, studyState.coordinates, studyState.scale, studyState.fontSize,
+        (tag, id) => studyState.correctTags[id] ? tag['name'] : '?')
 
     if (key && !studyState.correctTags[key]) {
         try {
@@ -1011,18 +974,6 @@ const expandChecklistRow = async (id, row, toggle) => {
         toggle.setAttribute('aria-expanded', 'true');
     }
 }
-
-mustGetElementById('study-next-btn').addEventListener('click', () => {
-    loadNextBodyPart().catch(err => {
-        console.error(err)
-    })
-})
-
-mustGetElementById('study-prev-btn').addEventListener('click', () => {
-    loadPrevBodyPart().catch(err => {
-        console.error(err)
-    })
-})
 
 mustGetElementById('study-end-btn').addEventListener('click', async () => {
     try {

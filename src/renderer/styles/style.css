@@ -1041,8 +1041,8 @@ canvas {
     color: var(--text-muted);
 }
 
-/* Active session: checklist under the body part name */
-.study-body-part-checklist {
+/* Session screens: secondary line under the card title */
+.session-subtitle {
     display: block;
     margin-top: 2px;
     font-size: 12px;
@@ -1052,20 +1052,20 @@ canvas {
     letter-spacing: normal;
 }
 
-.study-layout {
+.session-layout {
     display: grid;
     grid-template-columns: 1fr 260px;
     height: calc(100vh - var(--topbar-height));
     overflow: hidden;
 }
 
-.study-canvas-area {
+.session-canvas-area {
     padding: 24px;
     overflow: auto;
     background: var(--bg-page);
 }
 
-.study-sidebar {
+.session-sidebar {
     border-left: 1px solid var(--border);
     background: var(--bg-surface);
     padding: 20px 16px;
@@ -1090,11 +1090,11 @@ canvas {
     transition: width 0.3s ease;
 }
 
-.study-progress {
+.session-progress {
     margin-bottom: 16px;
 }
 
-.study-progress span {
+.session-progress span {
     font-size: 12px;
     color: var(--text-muted);
 }
@@ -1250,7 +1250,18 @@ canvas {
     color: var(--text-secondary);
 }
 
-#study-prev-btn, #study-next-btn {
+.session-nav .btn {
     flex: 1;
+}
+
+/* Practical review: "Show answers" switch */
+.review-answers-toggle .form-check-input:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+.review-answers-toggle .form-check-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
 }
 
