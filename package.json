@@ -1,6 +1,6 @@
 {
   "name": "study_helper",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "main": "src/main/index.js",
   "description": "Study Helper",
   "repository": {
@@ -11,7 +11,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
     "build": "electron-builder -m",
-    "deploy": "GH_TOKEN=$(gh auth token) electron-builder build -m --publish always",
+    "deploy": "GH_TOKEN=$(gh auth token) electron-builder build -m --publish always && gh release edit v$npm_package_version --draft=false --latest",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "lint:strict": "npx tsc --noEmit --strict false"
@@ -38,8 +38,7 @@
     "electron-log": "^5.4.4",
     "electron-store": "^8.2.0",
     "electron-updater": "^6.3.9",
-    "electron-window-state": "^5.0.3",
-    "id-generator.js": "^1.0.1"
+    "electron-window-state": "^5.0.3"
   },
   "build": {
     "appId": "com.ih.StudyHelper",
@@ -49,10 +48,8 @@
     ],
     "publish": {
       "provider": "github",
-      "host": "github.com",
       "owner": "ihernandez812",
-      "repo": "StudyHelper",
-      "releaseType": "release"
+      "repo": "StudyHelper"
     },
     "mac": {
       "category": "public.app-category.utilities",

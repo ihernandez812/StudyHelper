@@ -26,7 +26,7 @@ protocol.registerSchemesAsPrivileged([
 app.on('ready', () => {
     //media://images/<checklistId>/<bodyPartId>/image.png
     //A fixed host keeps every id in the pathname. Hostnames are lowercased by
-    //URL parsing, and the legacy XXXX-XXXX ids contain uppercase letters.
+    //URL parsing, so ids must never be used as the host.
     protocol.handle('media', (request) => {
         const { hostname, pathname } = new URL(request.url)
 
