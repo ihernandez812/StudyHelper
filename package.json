@@ -11,19 +11,13 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
     "build": "electron-builder -m",
-    "deploy": "electron-builder build -m --publish always",
+    "deploy": "GH_TOKEN=$(gh auth token) electron-builder build -m --publish always",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "lint:strict": "npx tsc --noEmit --strict false"
   },
   "author": "Isaiah Hernandez",
   "license": "ISC",
-  "publish": {
-    "provider": "github",
-    "host": "github.com",
-    "owner": "ihernandez812",
-    "repo": "StudyHelper"
-  },
   "productName": "Study Helper",
   "homepage": "https://github.com/ihernandez812/StudyHelper",
   "keywords": [],
@@ -41,6 +35,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",
     "bootstrap": "^5.3.8",
+    "electron-log": "^5.4.4",
     "electron-store": "^8.2.0",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3",
@@ -56,16 +51,25 @@
       "provider": "github",
       "host": "github.com",
       "owner": "ihernandez812",
-      "repo": "StudyHelper"
+      "repo": "StudyHelper",
+      "releaseType": "release"
     },
     "mac": {
       "category": "public.app-category.utilities",
-      "icon": "src/renderer/images/AnatoMeIcon.png"
-    },
-    "build": {
-      "files": [
-        "src/**/*",
-        "!src/private/**"
+      "icon": "src/renderer/images/AnatoMeIcon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
       ]
     }
   }

@@ -1,49 +1,72 @@
-const { dialog } = require('electron')
+const { app, dialog } = require('electron')
 const { autoUpdater } = require('electron-updater')
+const log = require('electron-log/main')
+const { getWindow } = require('./WindowFactory')
+const { filePaths } = require('./WindowConstants')
 
+//Logs to ~/Library/Logs/Study Helper/main.log
+log.transports.file.level = 'info'
+autoUpdater.logger = log
 autoUpdater.autoDownload = false
 
-module.exports = async () => {
-    autoUpdater.setFeedURL({
-        provider: 'github',
-        owner: 'ihernandez812',
-        repo: 'StudyHelper',
-        host: 'github.com',
+let started = false
+
+const onUpdateAvailable = async (info) => {
+    const { response } = await dialog.showMessageBox(getWindow(filePaths.home), {
+        type: 'info',
+        title: 'Update',
+        message: `Version ${info.version} of AnatoMe is available. Download it now?`,
+        buttons: ['Download', 'Later'],
+        defaultId: 0,
+        cancelId: 1,
     })
 
-    try {
-        await autoUpdater.checkForUpdatesAndNotify()
-    } catch (err) {
-        console.error(err)
+    if (response === 0) {
+        autoUpdater.downloadUpdate().catch(err => log.error(err))
+    }
+}
+
+const onUpdateDownloaded = async () => {
+    const { response } = await dialog.showMessageBox(getWindow(filePaths.home), {
+        type: 'info',
+        title: 'Update',
+        message: 'The update is ready. Restart AnatoMe now to install it?',
+        detail: 'If you choose Later it will install the next time you quit.',
+        buttons: ['Restart', 'Later'],
+        defaultId: 0,
+        cancelId: 1,
+    })
+
+    if (response === 0) {
+        autoUpdater.quitAndInstall()
+    }
+}
+
+const onUpdateError = (err) => {
+    log.error('Auto update failed', err)
+}
+
+const checkForUpdates = async () => {
+    //Unpackaged runs skip the check unless UPDATER_DEV is set (reads dev-app-update.yml)
+    if (started || (!app.isPackaged && !process.env.UPDATER_DEV)) {
+        return
     }
 
-    autoUpdater.on('update-available', async () => {
-        try {
-            await dialog.showMessageBox({
-                type: 'info',
-                title: 'Update',
-                message: 'A new version of AnatoMe is available. Download it now?',
-                buttons: ['Download', 'Later']
-            })
+    started = true
+    autoUpdater.forceDevUpdateConfig = !app.isPackaged
 
-            await autoUpdater.downloadUpdate()
-        } catch (err) {
-            console.error(err)
-        }
-    })
+    //Listeners go first, they fire during checkForUpdates
+    autoUpdater.on('update-available', onUpdateAvailable)
+    autoUpdater.on('update-downloaded', onUpdateDownloaded)
+    autoUpdater.on('error', onUpdateError)
 
-    autoUpdater.on('update-downloaded', async () => {
-        try {
-            await dialog.showMessageBox({
-                type: 'info',
-                title: 'Update',
-                message: 'The update is ready. AnatoMe will restart to install it.',
-                buttons: ['Restart']
-            })
-            autoUpdater.quitAndInstall()
-        } catch (err) {
-            console.error(err)
-        }
-    })
+    try {
+        await autoUpdater.checkForUpdates()
+    } catch (err) {
+        log.error(err)
+    }
+}
 
+module.exports = {
+    checkForUpdates,
 }

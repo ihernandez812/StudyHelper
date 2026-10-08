@@ -5,6 +5,7 @@ const { absPathFor, baseDir } = require('./FileHelper')
 const { createWindow } = require('./WindowFactory')
 const { filePaths } = require('./WindowConstants')
 const { menuBuilder } = require('./menu')
+const { checkForUpdates } = require('./updater')
 
 require('./ipcHandlers/IpcHandlerBase')
 require('./ipcHandlers/IpcHandlerBodyPart')
@@ -54,6 +55,7 @@ app.on('ready', () => {
     }
 
     createWindow(filePaths.home, options)
+    checkForUpdates().catch(err => console.error(err))
 })
 
 app.on('window-all-closed', () => {
