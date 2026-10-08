@@ -1,7 +1,8 @@
 // ── Library screen ────────────────────────────────────────────────────────────
 
 import {navigate, refreshTopbar, registerScreen, refreshCurrentScreen} from "./router.js";
-import {checkCoordinatesExist, getClickCoordinates, redrawEverything, drawBodyPartWithTags} from "../HTMLUtils/canvasUtils.js"
+import {checkCoordinatesExist, getClickCoordinates, redrawEverything, drawBodyPartWithTags,
+    enableCanvasDrag, getPillSize, redrawSync, drawTags} from "../HTMLUtils/canvasUtils.js"
 import {cloneTemplate, createImageUrl, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
 import {AppState, PAGES} from "./state.js"
 
@@ -421,6 +422,31 @@ mustGetElementById('editor-canvas').addEventListener('contextmenu', async (e) =>
     if (!existingKey) {
         openNewTagModal(coords)
     }
+})
+
+// Left-drag a tag to move it
+const editorCanvas = mustGetElementById('editor-canvas')
+
+const redrawEditorSync = () => {
+    const image = document.getElementById('editor-image')
+    redrawSync(editorCanvas, image,
+        c => drawTags(c, editorState.coordinatesMap, editorState.fontSize, editorState.resizeScale),
+        editorState.resizeScale)
+}
+
+enableCanvasDrag(editorCanvas, {
+    getScale:    () => editorState.resizeScale,
+    hitTest:     (point) => checkCoordinatesExist(editorCanvas, point.x, point.y, editorState.coordinatesMap,
+                     editorState.resizeScale, editorState.fontSize, tag => tag['name']),
+    getPosition: (key) => editorState.coordinatesMap[key],
+    getSize:     (key) => getPillSize(editorCanvas, editorState.coordinatesMap[key]['name'],
+                     editorState.fontSize, editorState.resizeScale),
+    onDragMove:  (key, pos) => {
+        const tag = editorState.coordinatesMap[key]
+        tag.x = pos.x
+        tag.y = pos.y
+        redrawEditorSync()
+    },
 })
 
 // Scale controls
