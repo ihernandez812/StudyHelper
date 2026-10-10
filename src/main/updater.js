@@ -4,7 +4,7 @@ const log = require('electron-log/main')
 const { getWindow } = require('./WindowFactory')
 const { filePaths } = require('./WindowConstants')
 
-//Logs to ~/Library/Logs/Study Helper/main.log
+//Logs to ~/Library/Logs/AnatoMe/main.log
 log.transports.file.level = 'info'
 autoUpdater.logger = log
 autoUpdater.autoDownload = false

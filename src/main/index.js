@@ -1,18 +1,20 @@
-const { app, protocol, net } = require('electron')
+const { app, dialog, protocol, net } = require('electron')
+const log = require('electron-log/main')
 const { pathToFileURL } = require('url')
 const path = require('path')
-const { absPathFor, baseDir } = require('./FileHelper')
+const { absolutePathForKey, imagesDirectory } = require('./FileHelper')
 const { createWindow } = require('./WindowFactory')
 const { filePaths } = require('./WindowConstants')
 const { menuBuilder } = require('./menu')
 const { checkForUpdates } = require('./updater')
+const { runUpgrades } = require('./upgrades/upgradeFactory')
+const { closeAnatomeDatabase } = require('./storage/anatomeDatabase')
 
 require('./ipcHandlers/IpcHandlerBase')
 require('./ipcHandlers/IpcHandlerBodyPart')
 require('./ipcHandlers/IpcHandlerCategory')
 require('./ipcHandlers/IpcHandlerChecklist')
 require('./ipcHandlers/IpcHandlerPractical')
-require('./ipcHandlers/IpcHandlerUpgradeTasks')
 require('./ipcHandlers/IpcHandlerWindow')
 
 
@@ -23,8 +25,8 @@ protocol.registerSchemesAsPrivileged([
     { scheme: 'media', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ])
 
-app.on('ready', () => {
-    //media://images/<checklistId>/<bodyPartId>/image.png
+app.on('ready', async () => {
+    //media://images/checklists/<checklistId>/<bodyPartId>/image.png
     //A fixed host keeps every id in the pathname. Hostnames are lowercased by
     //URL parsing, so ids must never be used as the host.
     protocol.handle('media', (request) => {
@@ -35,19 +37,27 @@ app.on('ready', () => {
         }
 
         const key = decodeURIComponent(pathname.slice(1))
-        const abs = path.resolve(absPathFor(key))
+        const absolutePath = path.resolve(absolutePathForKey(key))
 
-        //Containment: a key like ../../../etc/passwd must never escape baseDir
-        if (!abs.startsWith(path.resolve(baseDir) + path.sep)) {
+        //Containment: a key like ../../../etc/passwd must never escape imagesDirectory
+        if (!absolutePath.startsWith(path.resolve(imagesDirectory) + path.sep)) {
             return new Response('Forbidden', { status: 403 })
         }
 
         //no-store so a replaced image isn't served from cache at the same URL
-        return net.fetch(pathToFileURL(abs).toString(), {
+        return net.fetch(pathToFileURL(absolutePath).toString(), {
             headers: { 'Cache-Control': 'no-store' },
         })
     })
 
+    try {
+        await runUpgrades()
+    } catch (error) {
+        log.error(error)
+        dialog.showErrorBox('AnatoMe', `AnatoMe could not update its data and needs to close.\n\n${error.message}`)
+        app.quit()
+        return
+    }
 
     const menu = menuBuilder()
     const options = {
@@ -55,10 +65,14 @@ app.on('ready', () => {
     }
 
     createWindow(filePaths.home, options)
-    checkForUpdates().catch(err => console.error(err))
+    checkForUpdates().catch(error => console.error(error))
 })
 
 app.on('window-all-closed', () => {
     app.quit()
+})
+
+app.on('will-quit', () => {
+    closeAnatomeDatabase()
 })
 

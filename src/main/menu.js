@@ -1,10 +1,10 @@
 const { Menu, shell , nativeTheme} = require('electron')
-const lightStorage = require("./storage/storageUtils");
+const { settingKeys, setSetting } = require('./storage/settingsStorage')
 
 const toggleDarkMode = () => {
     const isDark = nativeTheme.shouldUseDarkColors
     nativeTheme.themeSource = isDark ? 'light' : 'dark'
-    lightStorage.setIsDarkMode(!isDark)
+    setSetting(settingKeys.IS_DARK_MODE, !isDark)
 
     // Tell all renderer windows to update Bootstrap's data-bs-theme
     const { BrowserWindow } = require('electron')

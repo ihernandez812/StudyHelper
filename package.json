@@ -1,6 +1,6 @@
 {
-  "name": "study_helper",
-  "version": "1.1.2",
+  "name": "anatome",
+  "version": "1.1.0",
   "main": "src/main/index.js",
   "description": "Anatome",
   "repository": {
@@ -36,12 +36,11 @@
     "@fortawesome/fontawesome-free": "^7.2.0",
     "bootstrap": "^5.3.8",
     "electron-log": "^5.4.4",
-    "electron-store": "^8.2.0",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3"
   },
   "build": {
-    "appId": "com.ih.StudyHelper",
+    "appId": "com.ih.AnatoMe",
     "copyright": "Big Dog Inc.",
     "files": [
       "!src/private/**"

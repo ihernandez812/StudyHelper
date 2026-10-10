@@ -399,7 +399,7 @@ const showBodyPart = async (index, previousIndex) => {
     studyState.wrongDrop   = null
 
     const item     = studyState.bodyParts[index]
-    const bodyPart = await window.api.getBodyPartById(item.bodyPartId, item.checklistId)
+    const bodyPart = await window.api.getBodyPartById(item.bodyPartId)
     studyState.scale       = bodyPart['scale'] || 1
     studyState.fontSize    = bodyPart['fontSize'] || 16
     studyState.coordinates = bodyPart['coordinates'] || {}

@@ -230,14 +230,7 @@ mustGetElementById('checklist-save-btn').addEventListener('click', async () => {
         return
     }
 
-    if (_editingChecklistId) {
-        const checklist = await window.api.getChecklistById(_editingChecklistId)
-        checklist['name'] = name
-        await window.api.addOrEditChecklistById(_editingChecklistId, checklist)
-    } else {
-
-        await window.api.addOrEditChecklistById(null, { name, bodyParts: {} })
-    }
+    await window.api.addOrEditChecklistById(_editingChecklistId, { name })
 
     checklistModal.hide()
     await loadLibraryScreen()
@@ -301,7 +294,7 @@ const deleteBodyPart = async (id) => {
     const result = await window.api.dialogQuestion('Delete this body part?')
 
     if (result.response === 0) {
-        await window.api.removeBodyPart(id, AppState.currentChecklistId)
+        await window.api.removeBodyPart(id)
         await refreshCurrentScreen()
     }
 }
@@ -331,7 +324,6 @@ const initBodyPartEditor = async () => {
     renderTagList()
 
     const bpId        = AppState.currentBodyPartId
-    const checklistId = AppState.currentChecklistId
     const nameInput   = document.getElementById('editor-name')
     const image       = document.getElementById('editor-image')
     const canvas      = document.getElementById('editor-canvas')
@@ -344,7 +336,7 @@ const initBodyPartEditor = async () => {
 
     if (bpId) {
         editorState.isEdit = true
-        const bp = await window.api.getBodyPartById(bpId, checklistId)
+        const bp = await window.api.getBodyPartById(bpId)
         nameInput.value             = bp['name']
         editorState.coordinatesMap  = bp['coordinates'] || {}
         editorState.resizeScale     = bp['scale'] || 1
@@ -517,6 +509,15 @@ const deleteTag = async (tagId, tagName) => {
     }
 }
 
+// Unsaved tags need a key in coordinatesMap before the database has given them
+// an id. bodyPartStorage inserts any key that isn't an existing tag id.
+let newTagCount = 0
+
+const createNewTagKey = () => {
+    newTagCount++
+    return `new-${newTagCount}`
+}
+
 mustGetElementById('editor-tag-save-btn').addEventListener('click', async () => {
     const name     = document.getElementById('editor-tag-name').value.trim()
     const category = document.getElementById('editor-tag-category').value
@@ -525,7 +526,7 @@ mustGetElementById('editor-tag-save-btn').addEventListener('click', async () => 
         return
     }
 
-    const tagId = editorState.currentTagId || crypto.randomUUID()
+    const tagId = editorState.currentTagId || createNewTagKey()
     const coords = editorState.currentTagId
         ? editorState.coordinatesMap[editorState.currentTagId]
         : _pendingTagCoords
@@ -587,8 +588,8 @@ mustGetElementById('editor-save-btn').addEventListener('click', async () => {
         bodyPart.image = editorState.pendingImageDataUrl
     }
 
-    const bpId = AppState.currentBodyPartId || crypto.randomUUID()
-    await window.api.addOrEditBodyPartById(bpId, AppState.currentChecklistId, bodyPart)
+    // A null id creates the body part
+    await window.api.addOrEditBodyPartById(AppState.currentBodyPartId, AppState.currentChecklistId, bodyPart)
     navigate(PAGES.CHECKLIST_DETAIL)
 })
 

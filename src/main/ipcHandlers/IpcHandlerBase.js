@@ -1,15 +1,6 @@
-const { ipcMain} = require('electron');
-const lightStorage = require("../storage/storageUtils");
-
-
-ipcMain.handle('search', (event, isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery) => {
-    return lightStorage.search(isChecklistFilterChecked, isBodyPartFilterChecked, isBodyTagFilterChecked, searchQuery)
-})
+const { ipcMain } = require('electron')
+const { settingKeys, getSetting } = require('../storage/settingsStorage')
 
 ipcMain.handle('getDarkMode', () => {
-    return lightStorage.getIsDarkMode()
+    return getSetting(settingKeys.IS_DARK_MODE, false)
 })
-
-
-
-

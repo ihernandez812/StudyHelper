@@ -7,7 +7,7 @@ ipcMain.handle('popup', (event, message) => {
     const win = getWindow(filePaths.home);
 
     dialog.showMessageBox(win, {
-        title: 'Study Helper',
+        title: 'AnatoMe',
         message: message,
     }).catch((err) => {
         console.error(err);

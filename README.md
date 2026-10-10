@@ -1,88 +1,115 @@
-# Study Helper
+# AnatoMe
 
+AnatoMe helps you study anatomy. You build checklists of body part images, label them with tags, then quiz yourself on those tags or take a timed practical exam.
 
-## Installation
+It was written to help my girlfriend pass Anatomy.
 
-Study helper is signed with a development certificate but not notarized, as it was written to help my girlfriend pass Anatomy.
-To install download the latest release from gitHub and run the installer. Currently only supported on Mac.
+## Installing
 
-When running for the first time you will have to allow the app to be opened from System Settings → Privacy & Security → Open Anyway.
-After that the app checks for updates on launch and installs them itself.
+AnatoMe only runs on Mac.
 
-## Releasing
-1. One time: `gh auth login` (the token lives in the macOS Keychain, never in this repo)
-2. Bump `version` in package.json
-3. `npm run deploy`. Builds a universal dmg + zip and publishes a GitHub release with latest-mac.yml
-4. Installed copies see the update on their next launch
+1. Download the latest `.dmg` from the [Releases page](https://github.com/ihernandez812/StudyHelper/releases).
+2. Open it and drag AnatoMe into Applications.
+3. The first time you open it, macOS will block it. The app is signed with a development certificate but not notarized by Apple. Go to System Settings, then Privacy & Security, and click Open Anyway.
 
-To test the updater from source: `UPDATER_DEV=1 npm start` (set the package.json version below the latest release first).
-Updater logs are in `~/Library/Logs/Study Helper/main.log`.
+After that, AnatoMe checks for updates every time it starts and installs them for you.
 
-## Structure
-- Checklist
-    - Body part
-        - Tags
-            - Categories
-## How to Use
-##### Checklist
+## Using AnatoMe
 
-    Once in the app you can create a checklist by clicking the plus button on the 
-    home screen. Once added it will display in the nav bar. Where you can add a
-    body part.
-    You are also able to edit checklist names by right clicking on the checklist
-    in the nav menu.
+The sidebar has five screens: Home, Library, Study, Practical and Results.
 
-##### Body Parts
-    From the home page you can use the nav menu to select a checklist and see
-    body parts you have created. To create a body part select a checklist and
-    click add body part. Created body parts will be in the checklist dropdown
-    where you can edit or delete them. 
-    Steps To Create a Body Part select a checklist dropdown then select add
-    a body part. From there you can give the body part a name, image and tags.
-    To add an image drag and drop any imgae onto the image box.
-    To add Tags right click on the image and you will shown a modal where you
-    can give the tag a value and category. 
-    To delete a tag right click on the tag you wish to delete and click delete.
-    Note for the delete to commit you must save the body part. 
-    You are also able to scale the image up or down by using the plus or minus
-    buttons. You can also edit the font size of the tags by using the font size 
-    select.
-    Once you are done adding tags you can save the body part
+### Library: build your checklists
 
-##### Categories
-    Categories are give you the option to label a tag. This can be helpful if
-    you have multiple tags in the same area. 
-    Steps Navigate to Configuration then Config Tag Categories
-    To add a new category type in the name you wish to give it and click save
-    To edit a category type in the new name and click the edit icon
-    To delete a category click the delete icon
+Everything starts here. A checklist is a group of body parts, like "Upper limb".
 
-##### Testing yourself
-    From the home page you can select a checklist drop down then select a body
-    part you want to be tested on.
-    Once on the test screen you will be prompted to select a level and hint count
-    Once that is done you will have entered the test
-    To complete the test you will click on a question mark and enter the tag name
+- Click **New checklist** to create one. Use the Rename and Delete buttons to change or remove it.
+- Open a checklist and click **Add body part**.
+- In the body part editor:
+  - Give it a name.
+  - Drag an image onto the image box.
+  - Right click on the image to add a tag. A tag is a label, like "Biceps".
+  - Drag a tag to move it.
+  - Use the zoom buttons to resize the image and the font size menu to resize the tags.
+  - Edit or delete tags from the tag list.
+  - Click **Save** when you are done. Nothing is kept until you save.
 
-##### Random Testing
-    You'll notice under each checklist there is a submenu labeled random. This submenu
-    has two options Single Body Part and All Body Parts. These are pretty self explanatory.
-    Selecting Single Body Part will test you on a random body part in the checklist.
-    Selecting All Body Parts will test you on all body parts in a random order.
+**Tag categories** let you say what kind of thing a tag is, like "Muscle" or "Origin". When you are quizzed, the question then asks "What is this Muscle?" instead of "What is this?". Click **Categories** at the top of the Library to add or delete them. Deleting a category removes it from any tags that used it.
 
-##### Practical Test
-    Taking a pratical test will allow you to simulate an actual pracitcal exam. To take a 
-    practical test navigate to Practical Simulator > Take Practical Test. You will be prompted
-    to select the checklist you want to be part of the practical test. The app will then select 
-    40 distict tags and split them into 14 stations. Once the practical test begins you will have 
-    2 minutes to complete each station. The testing for each station is similar to testing yourself
-    on a body part. Except your answers are not checked when entered. You can also edit answers in
-    the current station by clicking on the tag you entered. 
+### Study: quiz yourself
 
-##### Practical Results
-    Once you have taken one or many practical test(s) you can view your results by navigating to
-    Practical Simulator > View Past Results. Here you will be presented with an list of the practicals
-    you have taken. You can view the results of the whole practical by clicking on the Title, or if you'd
-    like to view a specific station you can expand the practical accordion and select the station you want.
-    When looking at the results each tag will have a red or green background depending on whether you got the
-    question right. You can see the correct answer by clicking on the the tag you wish to view. 
+- Search for body parts by name, or open a checklist and pick the ones you want.
+- Click **Random** on a checklist to study one body part picked at random from it.
+- Click **Study selected**, then choose a difficulty:
+  - **Easy**: a word bank of answers and 3 hints
+  - **Medium**: a word bank, no hints
+  - **Hard**: no word bank, no hints
+- Each tag shows as a question mark. Click one and type the answer, or drag a word from the word bank onto it.
+
+### Practical: take a practice exam
+
+A practical works like a real lab exam.
+
+1. Pick the checklists to include. Every body part in them becomes a station, in random order.
+2. Pick a time limit: none, 5, 10 or 15 minutes.
+3. At each station, click a question mark and type your answer. Answers are not checked until the end.
+
+When you finish, the practical is scored and saved.
+
+### Results: review past practicals
+
+Results lists every practical you have taken, with its score.
+
+- Click **Open** to go through a practical station by station. Right answers are green, wrong ones are red.
+- Turn on **Show answers** to see the correct name on every tag.
+- A practical keeps its own copy of each body part, so editing or deleting a checklist later does not change your results.
+
+## For developers
+
+### Running from source
+
+```bash
+npm install
+npm start
+```
+
+### Where data lives
+
+Everything is stored in `~/Library/Application Support/AnatoMe/`:
+
+- `anatome.db`: a SQLite database with all checklists, body parts, tags, categories, practicals and settings
+- `images/`: the body part images. Checklist images are in `images/checklists/`, and each practical keeps copies in `images/practicals/`.
+
+Logs are in `~/Library/Logs/AnatoMe/main.log`.
+
+### Changing the database
+
+Database changes are made by upgrade tasks. They run when the app starts, before any window opens.
+
+To add one:
+
+1. Add the new version to `src/main/upgrades/upgradeVersions.js`.
+2. Create a folder `src/main/upgrades/v<version>/`.
+3. In it, add one class per task. Each class extends `UpgradeTask` and does its work in `upgrade()`.
+4. Add a `v<version>UpgradeFactory` that lists those tasks in order.
+5. Add the factory to `VERSION_UPGRADE_FACTORY_LIST` in `upgradeFactory.js`.
+
+The app remembers the last version it upgraded to. On every start it runs that version again plus every newer version, up to the app's own version. So **every task must be safe to run more than once**. For example:
+
+- Use `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`.
+- Use `INSERT OR IGNORE` when adding rows.
+- SQLite has no `ADD COLUMN IF NOT EXISTS`, so check `PRAGMA table_info` before `ALTER TABLE ... ADD COLUMN`.
+
+If a task fails, the app shows an error and closes. Nothing is marked as done, so it tries again on the next start.
+
+### Releasing
+
+1. One time only: run `gh auth login`. The token is kept in the macOS Keychain, never in this repo.
+2. Raise `version` in `package.json`.
+3. Run `npm run deploy`. This builds the app and publishes a GitHub release.
+4. Installed copies find the update the next time they start.
+
+To test the updater from source, set `version` in `package.json` lower than the latest release, then run:
+
+```bash
+UPDATER_DEV=1 npm start
+```

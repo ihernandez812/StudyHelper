@@ -1,7 +1,7 @@
 const { BrowserWindow, Menu, nativeTheme} = require("electron");
 const windowStateKeeper = require("electron-window-state");
 const path = require("path");
-const lightStorage = require("./storage/storageUtils");
+const { settingKeys, getSetting } = require('./storage/settingsStorage')
 const windows = {};
 
 const createWindow = (guiFilePath, options) => {
@@ -38,7 +38,7 @@ const createWindow = (guiFilePath, options) => {
     })
 
     windState.manage(win)
-    const isDarkMode = lightStorage.getIsDarkMode()
+    const isDarkMode = getSetting(settingKeys.IS_DARK_MODE, false)
     nativeTheme.themeSource = (isDarkMode) ? 'dark' : 'light'
 
     win.loadFile(path.join(__dirname, guiFilePath))
