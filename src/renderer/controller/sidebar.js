@@ -1,7 +1,20 @@
 import {navigate} from "./router.js";
 import {AppState, PAGES} from "./state.js"
 import {isStudySessionActive} from "./study.js";
+import {isPracticalActive} from "./practical.js";
 import {mustGetElementById} from "../HTMLUtils/domUtils.js"
+
+// Screens holding a session that's lost on leaving, and the warning to show first
+const LEAVE_GUARDS = {
+    [PAGES.STUDY]: {
+        isActive: isStudySessionActive,
+        message:  "Are you sure?\nLeaving this page will reset the current study session.",
+    },
+    [PAGES.PRACTICAL]: {
+        isActive: isPracticalActive,
+        message:  "Are you sure?\nLeaving this page will end the current practical without saving it.",
+    },
+}
 
 mustGetElementById('sidebar').addEventListener('click', async (e) => {
     let navItem = e.target
@@ -17,9 +30,10 @@ mustGetElementById('sidebar').addEventListener('click', async (e) => {
         if (dataTarget) {
             e.preventDefault()
             let doNavigate = true
+            const guard = LEAVE_GUARDS[AppState.currentPage]
 
-            if (AppState.currentPage === PAGES.STUDY && isStudySessionActive()) {
-                const res = await window.api.dialogQuestion("Are you sure?\nLeaving this page will reset the current study session.")
+            if (guard?.isActive()) {
+                const res = await window.api.dialogQuestion(guard.message)
                 doNavigate = res.response === 0
             }
 

@@ -2,8 +2,9 @@
 
 import {registerScreen, navigate} from "./router.js";
 import {drawNewImage, drawNewText, clearCanvas, TAG_COLORS} from "../HTMLUtils/canvasUtils.js"
-import {mustGetElementById, createImageUrl} from "../HTMLUtils/domUtils.js"
+import {mustGetElementById, createImageUrl, cloneTemplate} from "../HTMLUtils/domUtils.js"
 import {createSessionNav} from "../HTMLUtils/sessionNav.js"
+import {createDisplayControls} from "../HTMLUtils/displayControls.js"
 import {AppState, PAGES} from "./state.js";
 
 registerScreen(PAGES.PRACTICAL_REVIEW, {
@@ -21,6 +22,8 @@ const reviewState = {
     stations:     [],
     currentIndex: 0,
     showAnswers:  false,
+    scale:        1,
+    fontSize:     16,
 }
 
 const reviewNav = createSessionNav({
@@ -31,6 +34,18 @@ const reviewNav = createSessionNav({
     btnGroup:    mustGetElementById('review-btn-group'),
     formatLabel: (position, count) => `Station ${position} of ${count}`,
     onChange:    (index) => showStation(index),
+})
+
+// View only, never saved; the practical keeps the sizes it was taken at
+const reviewDisplayMount = mustGetElementById('review-display-controls')
+reviewDisplayMount.appendChild(cloneTemplate(mustGetElementById('tpl-display-controls')))
+
+const reviewDisplayControls = createDisplayControls(reviewDisplayMount, {
+    onChange: ({ scale, fontSize }) => {
+        reviewState.scale    = scale
+        reviewState.fontSize = fontSize
+        drawStation().catch(error => console.error(error))
+    },
 })
 
 const loadPracticalReview = async () => {
@@ -59,6 +74,10 @@ const showStation = async (index) => {
     const tags    = Object.values(bodyPart['coordinates'] || {})
     const correct = tags.filter(tag => tag['isCorrect']).length
 
+    reviewState.scale    = bodyPart['scale'] || 1
+    reviewState.fontSize = bodyPart['fontSize'] || 16
+    reviewDisplayControls.reset(reviewState.scale, reviewState.fontSize)
+
     document.getElementById('review-body-part-name').textContent      = bodyPart['name']
     document.getElementById('review-body-part-checklist').textContent = checklistName || ''
     document.getElementById('review-station-score').textContent      =
@@ -70,8 +89,7 @@ const showStation = async (index) => {
 
 const drawStation = async () => {
     const { bodyPart } = reviewState.stations[reviewState.currentIndex]
-    const scale    = bodyPart['scale'] || 1
-    const fontSize = bodyPart['fontSize'] || 16
+    const { scale, fontSize } = reviewState
     const canvas   = document.getElementById('review-canvas')
     const image    = document.getElementById('review-image')
 

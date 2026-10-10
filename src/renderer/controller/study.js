@@ -6,6 +6,7 @@ import {drawNewImage, drawNewText, drawNewQuestionMark,
 import {cloneTemplate, getActionTarget, mustGetElementById, createImageUrl} from "../HTMLUtils/domUtils.js"
 import {PAGES} from "./state.js";
 import {createSessionNav} from "../HTMLUtils/sessionNav.js"
+import {createDisplayControls} from "../HTMLUtils/displayControls.js"
 
 // ── Study screen ──────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ const TEMPLATES = {
     selectionChip:     mustGetElementById('tpl-study-selection-chip'),
     settingsGroup:     mustGetElementById('tpl-study-settings-group'),
     searchResult:      mustGetElementById('tpl-study-search-result'),
+    displayControls:   mustGetElementById('tpl-display-controls'),
 }
 
 const studyState = {
@@ -369,6 +371,20 @@ const studyNav = createSessionNav({
     onChange:    (index, previousIndex) => showBodyPart(index, previousIndex),
 })
 
+// View only, never saved. Goes into studyState because the click and
+// drag checks read scale and fontSize from there, so they keep matching
+// the pills as drawn.
+const studyDisplayMount = mustGetElementById('study-display-controls')
+studyDisplayMount.appendChild(cloneTemplate(TEMPLATES.displayControls))
+
+const studyDisplayControls = createDisplayControls(studyDisplayMount, {
+    onChange: ({ scale, fontSize }) => {
+        studyState.scale    = scale
+        studyState.fontSize = fontSize
+        redrawStudyAtScale().catch(error => console.error(error))
+    },
+})
+
 const beginStudySession = (items) => {
     studyState.bodyParts = items
     studyState.correctTags    = {}
@@ -404,18 +420,17 @@ const showBodyPart = async (index, previousIndex) => {
     studyState.fontSize    = bodyPart['fontSize'] || 16
     studyState.coordinates = bodyPart['coordinates'] || {}
     studyState.correctTags = studyState.answeredTags[createSelectionKey(item.checklistId, item.bodyPartId)] || {}
+    studyDisplayControls.reset(studyState.scale, studyState.fontSize)
 
     document.getElementById('study-body-part-name').textContent      = bodyPart['name']
     document.getElementById('study-body-part-checklist').textContent = item.checklistName
     updateTagsProgress()
 
     const image  = document.getElementById('study-image')
-    const canvas = document.getElementById('study-canvas')
     image.src = createImageUrl(bodyPart['image'])
 
     try {
-        await drawNewImage(canvas, image, 0, 0, studyState.scale)
-        drawAllQuestionMarks()
+        await redrawStudyAtScale()
     } catch (err) {
         console.error(err)
     }
@@ -912,6 +927,16 @@ const redrawStudy = () => {
     const canvas = document.getElementById('study-canvas')
     const image  = document.getElementById('study-image')
     redrawSync(canvas, image, drawAllQuestionMarks, studyState.scale)
+}
+
+// Repaints at studyState.scale, resizing the canvas to match. redrawSync
+// skips the resize, so anything that changes the scale goes through here.
+const redrawStudyAtScale = async () => {
+    const canvas = document.getElementById('study-canvas')
+    const image  = document.getElementById('study-image')
+
+    await drawNewImage(canvas, image, 0, 0, studyState.scale)
+    drawAllQuestionMarks(canvas)
 }
 
 mustGetElementById('study-answer-submit-btn').addEventListener('click', async () => {

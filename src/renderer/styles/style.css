@@ -1226,6 +1226,39 @@ canvas {
     color: var(--text-muted);
 }
 
+/* Zoom + font size controls (tpl-display-controls) */
+.display-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.display-controls .btn-group {
+    width: 100%;
+}
+
+.editor-sidebar .display-controls {
+    gap: 16px;
+}
+
+/* One row, for the practical header */
+.display-controls-inline .display-controls {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+}
+
+.display-controls-inline .editor-field {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.display-controls-inline .btn-group,
+.display-controls-inline .form-select {
+    width: auto;
+}
+
 .practical-canvas-wrap {
     padding: 24px;
     overflow: auto;

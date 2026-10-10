@@ -5,6 +5,7 @@ import {checkCoordinatesExist, getClickCoordinates, redrawEverything, drawBodyPa
     enableCanvasDrag, getPillSize, redrawSync, drawTags} from "../HTMLUtils/canvasUtils.js"
 import {cloneTemplate, createImageUrl, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
 import {AppState, PAGES} from "./state.js"
+import {createDisplayControls, DEFAULT_SCALE, DEFAULT_FONT_SIZE} from "../HTMLUtils/displayControls.js"
 
 const TEMPLATES = {
     checklistRow:    mustGetElementById('tpl-checklist-row'),
@@ -302,8 +303,8 @@ const deleteBodyPart = async (id) => {
 // ── Body part editor ──────────────────────────────────────────────────────────
 let editorState = {
     coordinatesMap: {},
-    resizeScale:    1,
-    fontSize:       16,
+    resizeScale:    DEFAULT_SCALE,
+    fontSize:       DEFAULT_FONT_SIZE,
     currentTagId:   null,
     isEdit:         false,
     // Set only when the user drops a new image. img.src is display-only and
@@ -319,8 +320,8 @@ const openBodyPartEditor = (bodyPartId) => {
 
 const initBodyPartEditor = async () => {
     // Reset state
-    editorState = { coordinatesMap: {}, resizeScale: 1, fontSize: 16, currentTagId: null, isEdit: false, pendingImageDataUrl: null }
-    updateScaleLabel()
+    editorState = { coordinatesMap: {}, resizeScale: DEFAULT_SCALE, fontSize: DEFAULT_FONT_SIZE, currentTagId: null, isEdit: false, pendingImageDataUrl: null }
+    editorDisplayControls.reset(editorState.resizeScale, editorState.fontSize)
     renderTagList()
 
     const bpId        = AppState.currentBodyPartId
@@ -339,12 +340,10 @@ const initBodyPartEditor = async () => {
         const bp = await window.api.getBodyPartById(bpId)
         nameInput.value             = bp['name']
         editorState.coordinatesMap  = bp['coordinates'] || {}
-        editorState.resizeScale     = bp['scale'] || 1
-        editorState.fontSize        = bp['fontSize'] || 16
+        editorState.resizeScale     = bp['scale'] || DEFAULT_SCALE
+        editorState.fontSize        = bp['fontSize'] || DEFAULT_FONT_SIZE
         AppState.currentBodyPartName = bp['name']
-
-        const fontSelect = document.getElementById('editor-font-size')
-        fontSelect.value = editorState.fontSize
+        editorDisplayControls.reset(editorState.resizeScale, editorState.fontSize)
 
         image.style.display = 'none'
         dropHint.style.display = 'none'
@@ -358,7 +357,6 @@ const initBodyPartEditor = async () => {
             console.error(err)
         }
 
-        updateScaleLabel()
         renderTagList()
 
         refreshTopbar()
@@ -441,30 +439,14 @@ enableCanvasDrag(editorCanvas, {
     },
 })
 
-// Scale controls
-mustGetElementById('editor-scale-up').addEventListener('click', () => {
-    if (editorState.resizeScale < 2.0) {
-        editorState.resizeScale = Math.round((editorState.resizeScale + 0.05) * 100) / 100
-        updateScaleLabel()
+// Display controls: unlike the session screens, these are saved with the body part
+const editorDisplayControls = createDisplayControls(mustGetElementById('editor-display-controls'), {
+    onChange: ({ scale, fontSize }) => {
+        editorState.resizeScale = scale
+        editorState.fontSize    = fontSize
         redrawEditor()
-    }
+    },
 })
-
-mustGetElementById('editor-scale-down').addEventListener('click', () => {
-    if (editorState.resizeScale > 0.1) {
-        editorState.resizeScale = Math.round((editorState.resizeScale - 0.05) * 100) / 100
-        updateScaleLabel()
-        redrawEditor()
-    }
-})
-mustGetElementById('editor-font-size').addEventListener('change', (e) => {
-    editorState.fontSize = e.target.value
-    redrawEditor()
-})
-
-const updateScaleLabel = () => {
-    document.getElementById('editor-scale-label').textContent = `Scale: ${editorState.resizeScale.toFixed(2)}×`
-}
 
 const redrawEditor = () => {
     const canvas = document.getElementById('editor-canvas')

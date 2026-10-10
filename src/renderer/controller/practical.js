@@ -4,13 +4,17 @@ import {registerScreen, navigate} from "./router.js";
 import {drawNewImage, drawNewText, drawNewQuestionMark,
     checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
 import {cloneTemplate, createImageUrl, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {createDisplayControls} from "../HTMLUtils/displayControls.js"
 import {PAGES} from "./state.js";
 
 
 registerScreen(PAGES.PRACTICAL, {
     sidebar: PAGES.PRACTICAL,
     load: () => loadPracticalSetup(),
-    teardown: () => stopPracticalTimer(),
+    teardown: () => {
+        stopPracticalTimer()
+        clearPractical()
+    },
     topbar: { title: 'Practical' },
 })
 
@@ -18,6 +22,7 @@ registerScreen(PAGES.PRACTICAL, {
 const TEMPLATES = {
     checklistOption:   mustGetElementById('tpl-practical-checklist-option'),
     noChecklistsEmpty: mustGetElementById('tpl-no-checklists-empty'),
+    displayControls:   mustGetElementById('tpl-display-controls'),
 }
 
 const practicalState = {
@@ -30,6 +35,20 @@ const practicalState = {
     scale:                1,
     fontSize:             16,
 }
+
+// View only, never saved. Goes into practicalState, not the station's
+// bodyPart: the click check reads practicalState, and the bodyPart is
+// saved as part of the practical.
+const practicalDisplayMount = mustGetElementById('practical-display-controls')
+practicalDisplayMount.appendChild(cloneTemplate(TEMPLATES.displayControls))
+
+const practicalDisplayControls = createDisplayControls(practicalDisplayMount, {
+    onChange: ({ scale, fontSize }) => {
+        practicalState.scale    = scale
+        practicalState.fontSize = fontSize
+        redrawPracticalStation().catch(error => console.error(error))
+    },
+})
 
 mustGetElementById('practical-checklist-select').addEventListener('change', async (e) => {
     const checkbox= e.target;
@@ -63,6 +82,16 @@ const stopPracticalTimer = () => {
         clearInterval(practicalState.timerInterval)
         practicalState.timerInterval = null
     }
+}
+
+// A practical is running from Start until it's saved or the screen is left
+const isPracticalActive = () => {
+    return practicalState.bodyPartQueue.length !== 0
+}
+
+const clearPractical = () => {
+    practicalState.bodyPartQueue     = []
+    practicalState.currentStationIdx = 0
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
@@ -211,20 +240,29 @@ const loadCurrentStation = async () => {
     practicalState.scale        = bp['scale'] || 1
     practicalState.fontSize     = bp['fontSize'] || 16
     practicalState.currentCoordinates = bp['coordinates'] || {}
+    practicalDisplayControls.reset(practicalState.scale, practicalState.fontSize)
 
     document.getElementById('practical-station-name').textContent =
         `${practicalState.currentStationIdx + 1} / ${practicalState.bodyPartQueue.length} — ${bp['name']}`
 
     const image  = document.getElementById('practical-image')
-    const canvas = document.getElementById('practical-canvas')
     image.src    = createImageUrl(bp['image'])
 
     try {
-        await drawNewImage(canvas, image, 0, 0, practicalState.scale)
-        drawPracticalQuestionMarks()
+        await redrawPracticalStation()
     } catch (err) {
         console.error(err)
     }
+}
+
+// Repaints the station at practicalState.scale, resizing the canvas to match
+const redrawPracticalStation = async () => {
+    const canvas = document.getElementById('practical-canvas')
+    const image  = document.getElementById('practical-image')
+
+    clearCanvas(canvas)
+    await drawNewImage(canvas, image, 0, 0, practicalState.scale)
+    drawPracticalQuestionMarks()
 }
 
 const drawPracticalQuestionMarks = () => {
@@ -300,13 +338,9 @@ mustGetElementById('practical-tag-save-btn').addEventListener('click', async () 
     }
 
     practicalTagModal.hide()
-    const canvas = document.getElementById('practical-canvas')
-    clearCanvas(canvas)
-    const image = document.getElementById('practical-image')
 
     try {
-        await drawNewImage(canvas, image, 0, 0, practicalState.scale)
-        drawPracticalQuestionMarks()
+        await redrawPracticalStation()
     } catch (err) {
         console.error(err)
     }
@@ -368,4 +402,6 @@ const endPractical = async () => {
     }
 }
 
-
+export {
+    isPracticalActive,
+}

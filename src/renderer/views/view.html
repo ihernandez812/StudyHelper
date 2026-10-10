@@ -147,31 +147,24 @@
                         <input type="text" id="editor-name" class="form-control" placeholder="e.g. Bicep brachii">
                     </div>
 
-                    <div class="editor-field">
-                        <label for="editor-font-size" class="field-label">Font size</label>
-                        <select class="form-select" id="editor-font-size">
-                            <option value=14>14</option>
-                            <option value=16 selected>16</option>
-                            <option value=18>18</option>
-                            <option value=20>20</option>
-                            <option value=22>22</option>
-                            <option value=24>24</option>
-                            <option value=28>28</option>
-                            <option value=36>36</option>
-                        </select>
-                    </div>
-
-                    <div class="editor-field">
-                        <label class="field-label">Zoom</label>
-                        <div class="btn-group w-100">
-                            <button class="btn btn-secondary" id="editor-scale-down">
-                                <i class="fas fa-minus"></i>
-                            </button>
-                            <button class="btn btn-secondary" id="editor-scale-up">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                    <div class="display-controls" id="editor-display-controls">
+                        <div class="editor-field">
+                            <span class="field-label">Font size</span>
+                            <select class="form-select js-font-size" aria-label="Font size"></select>
                         </div>
-                        <span class="field-hint" id="editor-scale-label">Scale: 1.0×</span>
+
+                        <div class="editor-field">
+                            <span class="field-label">Zoom</span>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-secondary js-scale-down" aria-label="Zoom out">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <button type="button" class="btn btn-secondary js-scale-up" aria-label="Zoom in">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <span class="field-hint js-scale-label"></span>
+                        </div>
                     </div>
 
                     <div class="editor-field">
@@ -264,6 +257,10 @@
                             </div>
                         </div>
                         <div class="card" style="margin-bottom: 12px;">
+                            <div class="card-title">Display</div>
+                            <div id="study-display-controls"></div>
+                        </div>
+                        <div class="card" style="margin-bottom: 12px;">
                             <div class="card-title">Progress</div>
                             <p id="study-tags-progress" class="progress-paragraph">0 / 0 tags labeled</p>
                             <p id="study-tags-hint" class="progress-paragraph">3 hints left</p>
@@ -330,6 +327,7 @@
                         <div class="field-label">Station</div>
                         <div id="practical-station-name" style="font-size: 15px; font-weight: 600;"></div>
                     </div>
+                    <div id="practical-display-controls" class="display-controls-inline"></div>
                     <div id="practical-timer" class="practical-timer hide">
                         <i class="fas fa-stopwatch"></i>
                         <span id="practical-timer-display">00:00</span>
@@ -385,6 +383,10 @@
                             <input class="form-check-input" type="checkbox" role="switch" id="review-show-answers">
                             <label class="form-check-label" for="review-show-answers">Show answers</label>
                         </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Display</div>
+                        <div id="review-display-controls"></div>
                     </div>
                     <div class="card">
                         <div class="card-title">Score</div>
@@ -896,6 +898,28 @@
             </button>
         </div>
     </li>
+</template>
+
+<!-- Zoom + font size for a session canvas; wired by createDisplayControls() -->
+<template id="tpl-display-controls">
+    <div class="display-controls">
+        <div class="editor-field">
+            <span class="field-label">Font size</span>
+            <select class="form-select form-select-sm js-font-size" aria-label="Font size"></select>
+        </div>
+        <div class="editor-field">
+            <span class="field-label">Zoom</span>
+            <div class="btn-group">
+                <button type="button" class="btn btn-secondary btn-sm js-scale-down" aria-label="Zoom out">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm js-scale-up" aria-label="Zoom in">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <span class="field-hint js-scale-label"></span>
+        </div>
+    </div>
 </template>
 
 <script src="../../../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
