@@ -11,7 +11,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
     "build": "electron-builder -m",
-    "deploy": "GH_TOKEN=$(gh auth token) electron-builder build -m --publish always && gh release edit v$npm_package_version --draft=false --latest",
+    "deploy": "gh release create v$npm_package_version --draft --title $npm_package_version --notes '' && GH_TOKEN=$(gh auth token) electron-builder build -m --publish always && gh release edit v$npm_package_version --draft=false --latest",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "lint:strict": "npx tsc --noEmit --strict false"

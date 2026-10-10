@@ -105,8 +105,10 @@ If a task fails, the app shows an error and closes. Nothing is marked as done, s
 
 1. One time only: run `gh auth login`. The token is kept in the macOS Keychain, never in this repo.
 2. Raise `version` in `package.json`.
-3. Run `npm run deploy`. This builds the app and publishes a GitHub release.
+3. Run `npm run deploy`. This creates a draft GitHub release, builds the app, uploads the files to that draft, then publishes it.
 4. Installed copies find the update the next time they start.
+
+If a deploy fails partway, delete the draft release on GitHub before running it again. The deploy stops if a release for that version already exists.
 
 To test the updater from source, set `version` in `package.json` lower than the latest release, then run:
 
