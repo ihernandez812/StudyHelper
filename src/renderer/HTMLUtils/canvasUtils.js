@@ -126,35 +126,43 @@ const getClickCoordinates = (event, scale) => {
 const DRAG_THRESHOLD    = 3  // screen px before a press counts as a drag
 const OFF_CANVAS_MARGIN = 24 // screen px past the edge before a drop reverts
 
-// Shared pointer bookkeeping for drags: left button only, pointer capture,
-// a movement threshold so clicks aren't drags, and one pointer at a time.
-// Callbacks get the raw pointer events.
+// Shared pointer bookkeeping for drags: left button only, a movement
+// threshold so clicks aren't drags, and one pointer at a time. Callbacks get
+// the raw pointer events.
 //   onPress(e)          → return true to track this press, false to ignore it
 //   onStart(e)          → optional, the press moved past the threshold
 //   onMove(e)           → every move after onStart
 //   onEnd(e, cancelled) → release or cancel, only if onStart fired
-//   onHover(e)          → optional, moves while nothing is pressed
+//   onHover(e)          → optional, moves over the element while nothing is pressed
 // Returns a function that removes the listeners.
 const trackPointerDrag = (element, { onPress, onStart, onMove, onEnd, onHover, threshold = DRAG_THRESHOLD }) => {
     let press = null
 
-    const onPointerDown = (e) => {
-        if (e.button !== 0 || press || !onPress(e)) {
-            return
-        }
+    const isPressPointer = (e) => press != null && e.pointerId === press.pointerId
 
-        press = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, moved: false }
-        element.setPointerCapture(e.pointerId)
-        e.preventDefault()
+    const finish = (e, cancelled) => {
+        const { moved } = press
+        press = null
+        setWindowListeners(false)
+
+        if (moved) {
+            onEnd(e, cancelled)
+        }
     }
 
-    const onPointerMove = (e) => {
-        if (!press) {
-            onHover?.(e)
+    // During a press the pointer is followed on the window, not just through
+    // pointer capture: macOS trackpad gestures (force click, tap-to-drag) can
+    // drop capture or swallow the release, which left drags stuck.
+    const onPressMove = (e) => {
+        if (!isPressPointer(e)) {
             return
         }
 
-        if (e.pointerId !== press.pointerId) {
+        press.lastEvent = e
+
+        // Button is already up but the release never arrived
+        if (e.buttons === 0) {
+            finish(e, true)
             return
         }
 
@@ -170,36 +178,82 @@ const trackPointerDrag = (element, { onPress, onStart, onMove, onEnd, onHover, t
         onMove(e)
     }
 
-    const finish = (e, cancelled) => {
-        if (!press || e.pointerId !== press.pointerId) {
+    const onPressUp = (e) => {
+        if (isPressPointer(e)) {
+            finish(e, false)
+        }
+    }
+
+    const onPressCancel = (e) => {
+        if (isPressPointer(e)) {
+            finish(e, true)
+        }
+    }
+
+    // App lost focus mid-drag (Look Up popover, Cmd-Tab)
+    const onWindowBlur = () => {
+        if (press) {
+            finish(press.lastEvent, true)
+        }
+    }
+
+    const windowListeners = [
+        ['pointermove',   onPressMove],
+        ['pointerup',     onPressUp],
+        ['pointercancel', onPressCancel],
+        ['blur',          onWindowBlur],
+    ]
+
+    // Capture phase, so the drag ends before the element's own pointerup
+    // refreshes the hover cursor
+    const setWindowListeners = (on) => {
+        for (const [type, listener] of windowListeners) {
+            if (on) {
+                window.addEventListener(type, listener, true)
+            } else {
+                window.removeEventListener(type, listener, true)
+            }
+        }
+    }
+
+    const onPointerDown = (e) => {
+        if (e.button !== 0 || press || !onPress(e)) {
             return
         }
 
-        const { moved } = press
-        press = null
+        try {
+            // Only for the cursor: keeps 'grabbing' while over other elements
+            element.setPointerCapture(e.pointerId)
+        } catch {
+            return
+        }
 
-        if (moved) {
-            onEnd(e, cancelled)
+        press = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, moved: false, lastEvent: e }
+        setWindowListeners(true)
+        e.preventDefault()
+    }
+
+    const onPointerMove = (e) => {
+        if (!press) {
+            onHover?.(e)
         }
     }
 
-    const onPointerUp = (e) => {
-        finish(e, false)
-        onHover?.(e)
-    }
+    // Refresh the hover cursor once the release has ended the drag
+    const onPointerUp = (e) => onHover?.(e)
 
-    const onPointerCancel = (e) => finish(e, true)
-
-    element.addEventListener('pointerdown',   onPointerDown)
-    element.addEventListener('pointermove',   onPointerMove)
-    element.addEventListener('pointerup',     onPointerUp)
-    element.addEventListener('pointercancel', onPointerCancel)
+    element.addEventListener('pointerdown', onPointerDown)
+    element.addEventListener('pointermove', onPointerMove)
+    element.addEventListener('pointerup',   onPointerUp)
 
     return () => {
-        element.removeEventListener('pointerdown',   onPointerDown)
-        element.removeEventListener('pointermove',   onPointerMove)
-        element.removeEventListener('pointerup',     onPointerUp)
-        element.removeEventListener('pointercancel', onPointerCancel)
+        element.removeEventListener('pointerdown', onPointerDown)
+        element.removeEventListener('pointermove', onPointerMove)
+        element.removeEventListener('pointerup',   onPointerUp)
+
+        if (press) {
+            finish(press.lastEvent, true)
+        }
     }
 }
 
