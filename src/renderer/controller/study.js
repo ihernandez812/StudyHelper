@@ -2,11 +2,16 @@
 import { registerScreen, navigate } from "./router.js";
 import {drawNewImage, drawNewText, drawNewQuestionMark,
     checkCoordinatesExist, getClickCoordinates, redrawSync,
-    enableDragOntoCanvas, animateFrames, shakeOffset, SHAKE_DURATION, TAG_COLORS} from "../HTMLUtils/canvasUtils.js"
-import {cloneTemplate, getActionTarget, mustGetElementById, createImageUrl} from "../HTMLUtils/domUtils.js"
-import {PAGES} from "./state.js";
+    enableDragOntoCanvas, animateFrames, shakeOffset, SHAKE_DURATION} from "../HTMLUtils/canvasUtils.js"
+import {cloneTemplate, getActionTarget, mustGetElementById, createImageUrl, compareNames} from "../HTMLUtils/domUtils.js"
+import {PAGES} from "../enums/pages.js"
 import {createSessionNav} from "../HTMLUtils/sessionNav.js"
 import {createDisplayControls} from "../HTMLUtils/displayControls.js"
+import {matchesQuery, paginate, createPager} from "../HTMLUtils/pagination.js"
+import {PAGE_SIZE} from "../enums/pageSize.js"
+import {TAG_COLORS} from "../enums/tagColors.js"
+import {DIFFICULTY} from "../enums/difficulty.js"
+import {createSearchCombobox} from "../HTMLUtils/searchCombobox.js"
 
 // ── Study screen ──────────────────────────────────────────────────────────────
 
@@ -25,10 +30,11 @@ const TEMPLATES = {
     pickerItem:        mustGetElementById('tpl-study-picker-item'),
     noChecklistsEmpty: mustGetElementById('tpl-no-checklists-empty'),
     bodyPartListItem:  mustGetElementById('tpl-study-browse-item'),
-    selectionChip:     mustGetElementById('tpl-study-selection-chip'),
+    selectionChip:     mustGetElementById('tpl-selection-chip'),
     settingsGroup:     mustGetElementById('tpl-study-settings-group'),
-    searchResult:      mustGetElementById('tpl-study-search-result'),
+    searchCombobox:    mustGetElementById('tpl-search-combobox'),
     displayControls:   mustGetElementById('tpl-display-controls'),
+    pager:             mustGetElementById('tpl-pager'),
 }
 
 const studyState = {
@@ -49,17 +55,11 @@ const studyState = {
 
 const bodyPartSelection = new Map()
 
-const DIFFICULTY = {
-    EASY:      0,
-    MEDIUM:    1,
-    HARD:      2,
-}
+// Checklists with more body parts than this get a filter box when expanded
+const BROWSE_FILTER_MIN = 10
 
-//Steps for moving through the search results with the arrow keys
-const DIRECTION = {
-    NEXT:     1,
-    PREVIOUS: -1,
-}
+// Checkboxes Select all acts on: enabled, and not hidden by the filter
+const SELECTABLE_CHECKBOX = 'li:not(.hide) .js-checkbox:not(:disabled)'
 
 mustGetElementById('study-picker-list').addEventListener('click', async (e) => {
     //If there are no body parts to study if it is empty and the only thing to be clicked is a navigate to library
@@ -112,7 +112,7 @@ mustGetElementById('study-picker-list').addEventListener('change', (e) => {
     }
 
     if (e.target.matches('.js-select-all')) {
-        row.querySelectorAll('.js-checkbox:not(:disabled)').forEach(checkbox => {
+        row.querySelectorAll(SELECTABLE_CHECKBOX).forEach(checkbox => {
             setSelected(getBrowseItem(checkbox), e.target.checked)
         })
     } else if (e.target.matches('.js-checkbox')) {
@@ -122,14 +122,41 @@ mustGetElementById('study-picker-list').addEventListener('change', (e) => {
     onSelectionChanged()
 })
 
+mustGetElementById('study-picker-list').addEventListener('input', (e) => {
+    if (!e.target.matches('.js-browse-filter')) {
+        return
+    }
+
+    filterBrowseRows(e.target.closest('.study-picker-item'), e.target.value)
+})
+
+const filterBrowseRows = (row, query) => {
+    const itemList = row.querySelectorAll('.js-browse-list li')
+    let shownCount = 0
+
+    itemList.forEach(item => {
+        const isMatch = matchesQuery(item.dataset.bodyPartName, query)
+        item.classList.toggle('hide', !isMatch)
+
+        if (isMatch) {
+            shownCount++
+        }
+    })
+
+    row.querySelector('.js-browse-empty').classList.toggle('hide', shownCount > 0)
+    row.querySelector('.js-select-all-label').textContent = query.trim() ? 'Select all shown' : 'Select all'
+    updateSelectAll(row)
+}
+
 // Turns a checkbox's browse row back into a selection entry
 const getBrowseItem = (checkbox) => {
     const { checklistId, bodyPartId, bodyPartName, checklistName } = checkbox.closest('li').dataset
     return { checklistId, bodyPartId, bodyPartName, checklistName }
 }
 
-// Re-tick every rendered checkbox from the selection (expanded rows only)
-const syncBrowseCheckboxes = () => {
+// Re-ticks each expanded row's checkboxes from the selection, and refreshes
+// every row's "N selected" count (collapsed rows too)
+const syncPickerRows = () => {
     document.querySelectorAll('#study-picker-list .study-picker-item').forEach(row => {
         row.querySelectorAll('.js-checkbox').forEach(checkbox => {
             const { checklistId, bodyPartId } = checkbox.closest('li').dataset
@@ -137,7 +164,23 @@ const syncBrowseCheckboxes = () => {
         })
 
         updateSelectAll(row)
+        updatePickerMeta(row)
     })
+}
+
+// "40 body parts" or "40 body parts · 3 selected"
+const updatePickerMeta = (row) => {
+    const bodyPartCount = Number(row.dataset.bodyPartCount)
+    const selectedCount = [...bodyPartSelection.values()]
+        .filter(item => item.checklistId === row.dataset.id).length
+
+    let metaText = `${bodyPartCount} body part${bodyPartCount !== 1 ? 's' : ''}`
+
+    if (selectedCount > 0) {
+        metaText += ` · ${selectedCount} selected`
+    }
+
+    row.querySelector('.js-meta').textContent = metaText
 }
 
 const confirmDiscardSelection = async () => {
@@ -155,8 +198,8 @@ const confirmDiscardSelection = async () => {
 
 const updateSelectAll = (row) => {
     const selectAll  = row.querySelector('.js-select-all')
-    const selectable = row.querySelectorAll('.js-checkbox:not(:disabled)')
-    const checked    = row.querySelectorAll('.js-checkbox:not(:disabled):checked')
+    const selectable = row.querySelectorAll(SELECTABLE_CHECKBOX)
+    const checked    = row.querySelectorAll(`${SELECTABLE_CHECKBOX}:checked`)
 
     selectAll.disabled      = selectable.length === 0
     selectAll.checked       = selectable.length > 0 && checked.length === selectable.length
@@ -165,6 +208,23 @@ const updateSelectAll = (row) => {
 
 // ── Study picker ──────────────────────────────────────────────────────────────
 
+// page isn't reset on load: coming back from a session keeps your place,
+// and paginate() clamps it if checklists were deleted in the meantime
+const pickerState = {
+    checklistList: [],   // [{ id, checklist }] in storage order
+    page:          1,
+}
+
+const pickerPagerMount = mustGetElementById('study-picker-pager')
+pickerPagerMount.appendChild(cloneTemplate(TEMPLATES.pager))
+
+const pickerPager = createPager(pickerPagerMount, {
+    onPageChange: (page) => {
+        pickerState.page = page
+        renderPickerPage()
+    },
+})
+
 const loadStudyPicker = async () => {
     const picker = document.getElementById('study-picker')
     const active = document.getElementById('study-active')
@@ -172,41 +232,54 @@ const loadStudyPicker = async () => {
     active.classList.add('hide')
 
     const checklists = await window.api.getChecklists()
-    const pickerList = document.getElementById('study-picker-list')
-    pickerList.replaceChildren()
+    const keys       = Object.keys(checklists)
 
-    const keys = Object.keys(checklists)
-
-    resetSearch()
-    searchIndex = buildSearchIndex(checklists)
+    studySearch.reset()
+    studySearch.setEntryList(buildSearchEntryList(checklists))
     document.getElementById('study-search').classList.toggle('hide', keys.length === 0)
 
-    if (keys.length === 0) {
-        const emptyState = cloneTemplate(TEMPLATES.noChecklistsEmpty)
-        pickerList.appendChild(emptyState)
+    pickerState.checklistList = keys.map(id => ({ id, checklist: checklists[id] }))
+    renderPickerPage()
+}
+
+// Re-rendering the page also closes any open browse panel
+const renderPickerPage = () => {
+    const pickerList = document.getElementById('study-picker-list')
+    const { pageItemList, page, pageCount } = paginate(pickerState.checklistList, pickerState.page, PAGE_SIZE.LIST)
+
+    pickerState.page = page
+    pickerList.replaceChildren()
+    pickerPager.render({ page, pageCount })
+
+    if (pickerState.checklistList.length === 0) {
+        pickerList.appendChild(cloneTemplate(TEMPLATES.noChecklistsEmpty))
         return
     }
 
-    keys.forEach(id => {
-        const checklist = checklists[id]
-        const bodyParts = checklist['bodyParts'] || {}
-        const bpKeys    = Object.keys(bodyParts)
-
-        const item       = cloneTemplate(TEMPLATES.pickerItem)
-        const randomBtn  = item.querySelector('[data-action="random"]')
-        const studyAllBtn = item.querySelector('[data-action="all"]')
-
-        item.dataset.id = id
-        item.querySelector('.js-name').textContent = checklist['name']
-        item.querySelector('.js-meta').textContent = `${bpKeys.length} body part${bpKeys.length !== 1 ? 's' : ''}`
-
-        const isStudyDisabled = !hasStudiableBodyPart(bodyParts);
-
-        randomBtn.disabled   = isStudyDisabled
-        studyAllBtn.disabled = isStudyDisabled
-
-        pickerList.appendChild(item)
+    pageItemList.forEach(({ id, checklist }) => {
+        pickerList.appendChild(createPickerItem(id, checklist))
     })
+}
+
+const createPickerItem = (id, checklist) => {
+    const bodyParts = checklist['bodyParts'] || {}
+    const bpKeys    = Object.keys(bodyParts)
+
+    const item        = cloneTemplate(TEMPLATES.pickerItem)
+    const randomBtn   = item.querySelector('[data-action="random"]')
+    const studyAllBtn = item.querySelector('[data-action="all"]')
+
+    item.dataset.id            = id
+    item.dataset.bodyPartCount = bpKeys.length
+    item.querySelector('.js-name').textContent = checklist['name']
+    updatePickerMeta(item)
+
+    const isStudyDisabled = !hasStudiableBodyPart(bodyParts);
+
+    randomBtn.disabled   = isStudyDisabled
+    studyAllBtn.disabled = isStudyDisabled
+
+    return item
 }
 
 const hasStudiableBodyPart = (bodyPartsList) => {
@@ -337,7 +410,7 @@ const renderStudySettingsList = (items) => {
         }
 
         const names = [...bodyPartNames]
-            .sort((a, b) => a.localeCompare(b))
+            .sort(compareNames)
             .slice(0, SETTINGS_LIST_MAX - shown)
         shown += names.length
 
@@ -442,6 +515,15 @@ const showBodyPart = async (index, previousIndex) => {
     updateHintButton()
 }
 
+// "3 tags", or "No tags yet": shared by the search and the browse rows
+const formatTagCount = (tagCount) => {
+    if (tagCount === 0) {
+        return 'No tags yet'
+    }
+
+    return `${tagCount} tag${tagCount !== 1 ? 's' : ''}`
+}
+
 const createSelectionKey = (checklistId, bodyPartId) => {
     return `${checklistId}:${bodyPartId}`
 }
@@ -463,12 +545,10 @@ const clearSelection = () => {
 
 // One place that refreshes everything that shows the selection
 const onSelectionChanged = () => {
-    syncBrowseCheckboxes()
+    syncPickerRows()
     renderSelectionTray()
 
-    if (isSearchOpen()) {
-        renderSearchResults()
-    }
+    studySearch.refresh()
 }
 
 // ── Selection tray ────────────────────────────────────────────────────────────
@@ -503,7 +583,7 @@ const renderSelectionTray = () => {
 }
 
 mustGetElementById('study-selection-chips').addEventListener('click', (e) => {
-    const target = getActionTarget(e.target, '.study-selection-chip')
+    const target = getActionTarget(e.target, '.selection-chip')
 
     if (!target || target.action !== 'remove-selection') {
         return
@@ -526,26 +606,32 @@ mustGetElementById('study-selection-study-btn').addEventListener('click', () => 
 
 // ── Body part search ──────────────────────────────────────────────────────────
 
-// Most results shown in the dropdown before "Keep typing to narrow it down"
-const SEARCH_MAX = 8
-
-const MATCH_RANK = {
-    PREFIX:     0,   // "fem"   → Femur
-    WORD_START: 1,   // "brach" → Biceps brachii
-    CONTAINS:   2,   // "brach" → Coracobrachialis
+const isBodyPartSelected = (entry) => {
+    return bodyPartSelection.has(createSelectionKey(entry.checklistId, entry.bodyPartId))
 }
+
+const studySearchMount = mustGetElementById('study-search')
+studySearchMount.appendChild(cloneTemplate(TEMPLATES.searchCombobox))
+
+const studySearch = createSearchCombobox(studySearchMount, {
+    idPrefix:    'study-search',
+    placeholder: 'Search body parts, like femur',
+    label:       'Search body parts',
+    emptyText:   'No body parts match that search',
+    getName:     (entry) => entry.bodyPartName,
+    getMeta:     (entry) => `${entry.checklistName} · ${formatTagCount(entry.tagCount)}`,
+    isSelected:  isBodyPartSelected,
+    isDisabled:  (entry) => entry.tagCount === 0,
+    onToggle:    (entry) => {
+        const { checklistId, bodyPartId, bodyPartName, checklistName } = entry
+        setSelected({ checklistId, bodyPartId, bodyPartName, checklistName }, !isBodyPartSelected(entry))
+        onSelectionChanged()
+    },
+})
 
 // Every body part in every checklist, rebuilt each time the picker loads
-let searchIndex = []
-
-const searchState = {
-    query:       '',
-    results:     [],   // ranked matches for the current query, uncapped
-    activeIndex: -1,   // highlighted row in the dropdown, -1 for none
-}
-
-const buildSearchIndex = (checklists) => {
-    const index = []
+const buildSearchEntryList = (checklists) => {
+    const entryList = []
 
     for (const checklistId in checklists) {
         const checklist = checklists[checklistId]
@@ -554,227 +640,18 @@ const buildSearchIndex = (checklists) => {
         for (const bodyPartId in bodyParts) {
             const bodyPart = bodyParts[bodyPartId]
 
-            index.push({
+            entryList.push({
                 checklistId,
                 bodyPartId,
                 bodyPartName:  bodyPart['name'],
                 checklistName: checklist['name'],
                 tagCount:      Object.keys(bodyPart['coordinates'] || {}).length,
-                nameLower:     bodyPart['name'].toLowerCase(),
             })
         }
     }
 
-    return index
+    return entryList
 }
-
-const resetSearch = () => {
-    document.getElementById('study-search-input').value = ''
-    searchState.query = ''
-    closeSearch()
-}
-
-// Returns { rank, index } for where the query matches, or null if it doesn't
-const matchBodyPart = (nameLower, query) => {
-    if (nameLower.startsWith(query)) {
-        return { rank: MATCH_RANK.PREFIX, index: 0 }
-    }
-
-    // Start of any later word: after a space, hyphen, slash, or "("
-    for (let i = 1; i < nameLower.length; i++) {
-        if (/[\s\-/(]/.test(nameLower[i - 1]) && nameLower.startsWith(query, i)) {
-            return { rank: MATCH_RANK.WORD_START, index: i }
-        }
-    }
-
-    const index = nameLower.indexOf(query)
-    return index === -1 ? null : { rank: MATCH_RANK.CONTAINS, index }
-}
-
-const runSearch = () => {
-    const query = document.getElementById('study-search-input').value.trim().toLowerCase()
-    searchState.query = query
-
-    if (!query) {
-        closeSearch()
-        return
-    }
-
-    searchState.results = searchIndex
-        .map(entry => ({ entry, match: matchBodyPart(entry.nameLower, query) }))
-        .filter(({ match }) => match !== null)
-        .sort((a, b) =>
-            a.match.rank - b.match.rank ||
-            a.entry.bodyPartName.localeCompare(b.entry.bodyPartName) ||
-            a.entry.checklistName.localeCompare(b.entry.checklistName))
-
-    searchState.activeIndex = findSelectableIndex(-1, DIRECTION.NEXT)
-    renderSearchResults()
-}
-
-const renderSearchResults = () => {
-    const list   = document.getElementById('study-search-results')
-    const empty  = document.getElementById('study-search-empty')
-    const footer = document.getElementById('study-search-footer')
-    const shown  = searchState.results.slice(0, SEARCH_MAX)
-
-    list.replaceChildren()
-
-    shown.forEach(({ entry, match }, i) => {
-        const row        = cloneTemplate(TEMPLATES.searchResult)
-        const isSelected = bodyPartSelection.has(createSelectionKey(entry.checklistId, entry.bodyPartId))
-        const isDisabled = entry.tagCount === 0
-
-        row.id = `study-search-result-${i}`
-        row.dataset.index = i
-        row.classList.toggle('selected', isSelected)
-        row.classList.toggle('disabled', isDisabled)
-        row.classList.toggle('active',   i === searchState.activeIndex)
-        row.setAttribute('aria-selected', isSelected)
-
-        if (isDisabled) {
-            row.setAttribute('aria-disabled', 'true')
-        }
-
-        appendHighlightedName(row.querySelector('.js-bp-name'), entry.bodyPartName, match.index, searchState.query.length)
-
-        const tagText = isDisabled ? 'No tags yet' : `${entry.tagCount} tag${entry.tagCount !== 1 ? 's' : ''}`
-        row.querySelector('.js-meta').textContent = `${entry.checklistName} · ${tagText}`
-
-        list.appendChild(row)
-    })
-
-    const total = searchState.results.length
-    empty.classList.toggle('hide', total > 0)
-    footer.textContent = `Showing ${SEARCH_MAX} of ${total}. Keep typing to narrow it down.`
-    footer.classList.toggle('hide', total <= SEARCH_MAX)
-
-    openSearch()
-}
-
-// Builds "Bi<mark>ceps</mark> brachii" out of text nodes, never innerHTML
-const appendHighlightedName = (element, name, start, length) => {
-    const mark = document.createElement('mark')
-    mark.textContent = name.slice(start, start + length)
-
-    element.replaceChildren(name.slice(0, start), mark, name.slice(start + length))
-}
-
-const openSearch = () => {
-    const input     = document.getElementById('study-search-input')
-    const activeRow = document.getElementById(`study-search-result-${searchState.activeIndex}`)
-
-    document.getElementById('study-search-dropdown').classList.remove('hide')
-    input.setAttribute('aria-expanded', 'true')
-
-    if (activeRow) {
-        input.setAttribute('aria-activedescendant', activeRow.id)
-    } else {
-        input.removeAttribute('aria-activedescendant')
-    }
-}
-
-const closeSearch = () => {
-    const input = document.getElementById('study-search-input')
-
-    document.getElementById('study-search-dropdown').classList.add('hide')
-    input.setAttribute('aria-expanded', 'false')
-    input.removeAttribute('aria-activedescendant')
-    searchState.activeIndex = -1
-}
-
-const isSearchOpen = () => !document.getElementById('study-search-dropdown').classList.contains('hide')
-
-// Next row in `direction` that has tags, wrapping around; -1 if none can be selected
-const findSelectableIndex = (from, direction) => {
-    const count = Math.min(searchState.results.length, SEARCH_MAX)
-
-    for (let step = 1; step <= count; step++) {
-        const i = ((from + direction * step) % count + count) % count
-
-        if (searchState.results[i].entry.tagCount > 0) {
-            return i
-        }
-    }
-
-    return -1
-}
-
-const toggleSearchResult = (index) => {
-    const result = searchState.results[index]
-
-    if (!result || result.entry.tagCount === 0) {
-        return
-    }
-
-    const { checklistId, bodyPartId, bodyPartName, checklistName } = result.entry
-    const isSelected = bodyPartSelection.has(createSelectionKey(checklistId, bodyPartId))
-
-    setSelected({ checklistId, bodyPartId, bodyPartName, checklistName }, !isSelected)
-    onSelectionChanged()
-}
-
-const searchInput = mustGetElementById('study-search-input')
-
-searchInput.addEventListener('input', runSearch)
-
-searchInput.addEventListener('focus', () => {
-    if (searchState.query) {
-        runSearch()
-    }
-})
-
-searchInput.addEventListener('blur', closeSearch)
-
-searchInput.addEventListener('keydown', (e) => {
-    if (!isSearchOpen()) {
-        return
-    }
-
-    switch (e.key) {
-        case 'ArrowDown':
-        case 'ArrowUp': {
-            e.preventDefault()
-            const direction = e.key === 'ArrowDown' ? DIRECTION.NEXT : DIRECTION.PREVIOUS
-            const next = findSelectableIndex(searchState.activeIndex, direction)
-
-            if (next !== -1) {
-                searchState.activeIndex = next
-                renderSearchResults()
-            }
-            break
-        }
-        case 'Enter':
-            e.preventDefault()
-            toggleSearchResult(searchState.activeIndex)
-            break
-        case 'Escape':
-            closeSearch()
-            break
-    }
-})
-
-const searchResults = mustGetElementById('study-search-results')
-
-// mousedown, not click: blur would close the dropdown before a click lands
-searchResults.addEventListener('mousedown', (e) => {
-    const row = e.target.closest('.study-search-result')
-    e.preventDefault()
-
-    if (row) {
-        toggleSearchResult(Number(row.dataset.index))
-    }
-})
-
-searchResults.addEventListener('mouseover', (e) => {
-    const row   = e.target.closest('.study-search-result:not(.disabled)')
-    const index = row ? Number(row.dataset.index) : -1
-
-    if (index !== -1 && index !== searchState.activeIndex) {
-        searchState.activeIndex = index
-        renderSearchResults()
-    }
-})
 
 // Canvas defaults so existing calls work; redrawSync passes it in
 const drawAllQuestionMarks = (canvas = document.getElementById('study-canvas')) => {
@@ -1014,7 +891,17 @@ const toggleChecklistRow = async (id, row) => {
     if (isExpanded === 'true') {
         collapseChecklistRow(row, toggle);
     } else {
+        collapseOpenChecklistRow()
         await expandChecklistRow(id, row, toggle)
+    }
+}
+
+// The selection lives in bodyPartSelection, so closing a row loses nothing
+const collapseOpenChecklistRow = () => {
+    const openToggle = document.querySelector('#study-picker-list .study-picker-toggle[aria-expanded="true"]')
+
+    if (openToggle) {
+        collapseChecklistRow(openToggle.closest('.study-picker-item'), openToggle)
     }
 }
 
@@ -1035,13 +922,12 @@ const expandChecklistRow = async (id, row, toggle) => {
         bodyPartList.replaceChildren()
         const bodyPartMap = checklist.bodyParts || {};
 
-        // sort by alphabetical order
-        const orderedBodyPartMap = Object.fromEntries(
-            Object.entries(bodyPartMap).sort(([, a], [, b]) => a['name'].localeCompare(b['name']))
-        );
+        // Alphabetical. Kept as an array: an object would put its number-like
+        // ids back in numeric order no matter how the entries were sorted
+        const sortedBodyPartEntryList = Object.entries(bodyPartMap)
+            .sort(([, first], [, second]) => compareNames(first['name'], second['name']))
 
-        for (const bodyPartId in orderedBodyPartMap) {
-            const bodyPart = bodyPartMap[bodyPartId];
+        for (const [bodyPartId, bodyPart] of sortedBodyPartEntryList) {
             const coordinatesMap = bodyPart['coordinates'] || {}
             const tagKeyList  = Object.keys(coordinatesMap);
             const  bodyPartBrowseItem = cloneTemplate(TEMPLATES.bodyPartListItem);
@@ -1056,17 +942,15 @@ const expandChecklistRow = async (id, row, toggle) => {
             checkbox.disabled = tagKeyList.length === 0
             checkbox.checked  = bodyPartSelection.has(createSelectionKey(id, bodyPartId))
 
-            let tagCountText = 'No tags yet';
-
-            if (tagKeyList.length > 0) {
-                tagCountText = `${tagKeyList.length} tag${tagKeyList.length > 1 ? 's' : ''}`;
-            }
-
-            bodyPartBrowseItem.querySelector('.js-tag-count').textContent = tagCountText;
+            bodyPartBrowseItem.querySelector('.js-tag-count').textContent = formatTagCount(tagKeyList.length)
             bodyPartList.appendChild(bodyPartBrowseItem);
         }
 
-        updateSelectAll(row)
+        const filter = row.querySelector('.js-browse-filter')
+        filter.value = ''
+        filter.classList.toggle('hide', Object.keys(bodyPartMap).length <= BROWSE_FILTER_MIN)
+        filterBrowseRows(row, '')   // also runs updateSelectAll
+
         bodyPartContainer.classList.remove('hide');
         toggle.setAttribute('aria-expanded', 'true');
     }

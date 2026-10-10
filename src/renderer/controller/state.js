@@ -1,14 +1,5 @@
 // ── App state ─────────────────────────────────────────────────────────────────
-const PAGES ={
-    STUDY: 'study',
-    LIBRARY: 'library',
-    PRACTICAL: 'practical',
-    RESULTS: 'results',
-    PRACTICAL_REVIEW: 'practical-review',
-    HOME: 'home',
-    CHECKLIST_DETAIL: 'checklist-detail',
-    BODYPART_EDITOR: 'bodypart-editor',
-}
+import {PAGES} from "../enums/pages.js"
 
 // Single source of truth for cross-screen state. Replaces localStorage hacks.
 const AppState = {
@@ -23,5 +14,4 @@ const AppState = {
 
 export {
     AppState,
-    PAGES,
 }

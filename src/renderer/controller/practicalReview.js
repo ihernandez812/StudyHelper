@@ -1,11 +1,13 @@
 // ── Practical review screen ───────────────────────────────────────────────────
 
 import {registerScreen, navigate} from "./router.js";
-import {drawNewImage, drawNewText, clearCanvas, TAG_COLORS} from "../HTMLUtils/canvasUtils.js"
+import {drawNewImage, drawNewText, clearCanvas} from "../HTMLUtils/canvasUtils.js"
+import {TAG_COLORS} from "../enums/tagColors.js"
 import {mustGetElementById, createImageUrl, cloneTemplate} from "../HTMLUtils/domUtils.js"
 import {createSessionNav} from "../HTMLUtils/sessionNav.js"
 import {createDisplayControls} from "../HTMLUtils/displayControls.js"
-import {AppState, PAGES} from "./state.js";
+import {AppState} from "./state.js"
+import {PAGES} from "../enums/pages.js"
 
 registerScreen(PAGES.PRACTICAL_REVIEW, {
     sidebar: PAGES.RESULTS,

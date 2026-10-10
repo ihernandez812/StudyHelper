@@ -336,6 +336,46 @@ html, body {
 /* ─── Checklist rows ─────────────────────────────────────── */
 .checklist-list {
     list-style: none;
+    padding: 0;
+}
+
+/* Search box + count above a paged list (library screens) */
+.list-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.list-search {
+    position: relative;
+    flex: 1;
+    max-width: 320px;
+}
+
+.list-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.list-search .form-control {
+    padding-left: 34px;
+}
+
+.list-sort {
+    width: auto;
+}
+
+.list-toolbar-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
 }
 
 .checklist-row {
@@ -545,11 +585,20 @@ canvas {
 }
 
 /* ─── Categories modal ───────────────────────────────────── */
+.category-find {
+    max-width: none;   /* .list-search caps at 320px for page toolbars */
+    margin-bottom: 8px;
+}
+
 .category-list {
     list-style: none;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    padding: 0 8px 0 0;   /* the right padding keeps rows clear of the scrollbar */
+    margin: 0;
+    max-height: 320px;
+    overflow-y: auto;
 }
 
 .category-item {
@@ -563,8 +612,45 @@ canvas {
 }
 
 .category-name {
+    flex: 1;
     font-size: 13px;
     color: var(--text-primary);
+}
+
+.category-rename-input {
+    flex: 1;
+    margin-right: 8px;
+}
+
+.category-meta {
+    margin-right: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.category-actions {
+    display: flex;
+    gap: 2px;
+}
+
+.category-item--add {
+    justify-content: flex-start;
+    gap: 8px;
+    border-style: dashed;
+    color: var(--accent-text);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.category-item--add:hover {
+    background: var(--bg-muted);
+}
+
+.category-list-empty {
+    padding: 12px 0;
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
 /* ─── Body part editor ───────────────────────────────────── */
@@ -775,10 +861,55 @@ canvas {
     border-radius: var(--radius-md);
 }
 
+/* Select all + filter: stays put above the scrolling list */
+.study-browse-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 2px;
+}
+
+.study-browse-header .study-browse-select-all {
+    flex: 1;
+}
+
+.study-browse-filter {
+    width: 180px;
+}
+
+/* Caps the panel so a big checklist scrolls instead of pushing the page down */
+@property --browse-fade {
+    syntax: '<length>';
+    inherits: false;
+    initial-value: 0px;
+}
+
 .study-browse-list {
     list-style: none;
     margin: 0;
     padding: 0;
+    max-height: 280px;
+    overflow-y: auto;
+    /* Keeps the tag counts clear of the scrollbar */
+    padding-right: 12px;
+    /* Fades the bottom edge while there's more to scroll. The fade shrinks to
+       nothing at the bottom, and never appears when the list doesn't scroll. */
+    mask-image: linear-gradient(to bottom, black calc(100% - var(--browse-fade)), transparent);
+    animation: browse-fade-out linear both;
+    animation-timeline: scroll(self);
+}
+
+@keyframes browse-fade-out {
+    from { --browse-fade: 24px; }
+    to   { --browse-fade: 0px; }
+}
+
+.study-browse-empty {
+    padding: 8px 0;
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
 .study-browse-item {
@@ -819,9 +950,6 @@ canvas {
 
 .study-browse-select-all {
     color: var(--text-secondary);
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 7px;
-    margin-bottom: 2px;
 }
 
 .study-browse-meta {
@@ -831,13 +959,13 @@ canvas {
     white-space: nowrap;
 }
 
-/* Body part search */
-.study-search {
+/* Search combobox (tpl-search-combobox): study and practical */
+.search-combobox {
     position: relative;
     margin-bottom: 8px;
 }
 
-.study-search-icon {
+.search-combobox-icon {
     position: absolute;
     left: 12px;
     top: 50%;
@@ -847,11 +975,11 @@ canvas {
     pointer-events: none;
 }
 
-.study-search .form-control {
+.search-combobox .form-control {
     padding-left: 34px;
 }
 
-.study-search-dropdown {
+.search-combobox-dropdown {
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
@@ -864,17 +992,17 @@ canvas {
     overflow: hidden;
 }
 
-.study-search-results {
+.search-combobox-results {
     list-style: none;
     margin: 0;
     padding: 4px 0;
 }
 
-.study-search-results:empty {
+.search-combobox-results:empty {
     display: none;
 }
 
-.study-search-result {
+.search-combobox-result {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -882,88 +1010,97 @@ canvas {
     cursor: pointer;
 }
 
-.study-search-result.active {
+.search-combobox-result.active {
     background: var(--accent-light);
 }
 
-.study-search-result.disabled {
+.search-combobox-result.disabled {
     cursor: default;
 }
 
-.study-search-result.disabled .study-search-bp,
-.study-search-result.disabled .study-search-meta {
+.search-combobox-result.disabled .search-combobox-name,
+.search-combobox-result.disabled .search-combobox-meta {
     color: var(--text-muted);
     opacity: 0.7;
 }
 
-.study-search-check {
+.search-combobox-check {
     width: 14px;
     font-size: 12px;
     color: var(--accent);
     visibility: hidden;
 }
 
-.study-search-result.selected .study-search-check {
+.search-combobox-result.selected .search-combobox-check {
     visibility: visible;
 }
 
-.study-search-bp {
+.search-combobox-name {
     font-size: 14px;
     color: var(--text-primary);
 }
 
-.study-search-bp mark {
+.search-combobox-name mark {
     padding: 0;
     border-radius: 2px;
     background: var(--accent-light);
     color: var(--accent-text);
 }
 
-.study-search-result.active .study-search-bp mark {
+.search-combobox-result.active .search-combobox-name mark {
     background: transparent;
     font-weight: 600;
 }
 
-.study-search-meta {
+.search-combobox-meta {
     margin-left: auto;
     font-size: 12px;
     color: var(--text-muted);
     white-space: nowrap;
 }
 
-.study-search-empty,
-.study-search-footer {
+.search-combobox-empty,
+.search-combobox-footer {
     padding: 8px 12px;
     font-size: 12px;
     color: var(--text-muted);
 }
 
-.study-search-footer {
+.search-combobox-footer {
     border-top: 1px solid var(--border);
 }
 
-/* Selection tray */
-.study-selection {
+/* "Create 'x'" row at the bottom of the results */
+.search-combobox-result.create .search-combobox-check {
+    visibility: visible;
+}
+
+.search-combobox-result.create .search-combobox-name {
+    color: var(--accent-text);
+}
+
+/* Selection tray (study and practical) */
+.selection-tray {
     margin: 4px 0 8px;
     padding: 10px 12px;
     background: var(--bg-muted);
     border-radius: var(--radius-md);
 }
 
-.study-selection-header {
+.selection-tray-header {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
 }
 
-.study-selection-count {
+.selection-tray-count {
     margin-right: auto;
     font-size: 13px;
     color: var(--text-secondary);
 }
 
-.study-selection-chips {
+.selection-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -972,7 +1109,7 @@ canvas {
     padding: 0;
 }
 
-.study-selection-chip {
+.selection-chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -983,7 +1120,7 @@ canvas {
     font-size: 12px;
 }
 
-.study-selection-chip-remove {
+.selection-chip-remove {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -998,11 +1135,11 @@ canvas {
     cursor: pointer;
 }
 
-.study-selection-chip-remove:hover {
+.selection-chip-remove:hover {
     background: var(--border);
 }
 
-.study-selection-chip-remove:focus-visible {
+.selection-chip-remove:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
 }
@@ -1259,6 +1396,63 @@ canvas {
     width: auto;
 }
 
+/* Pager (tpl-pager) */
+.pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 16px;
+}
+
+.pager-pages {
+    display: flex;
+    gap: 4px;
+}
+
+.pager-button {
+    min-width: 30px;
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.pager-button:hover:not(:disabled):not([aria-current]) {
+    background: var(--bg-muted);
+    color: var(--text-primary);
+}
+
+/* Same treatment as the active sidebar item, so it works in dark mode too */
+.pager-button[aria-current="page"] {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 600;
+    cursor: default;
+}
+
+.pager-button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.pager-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.pager-gap {
+    min-width: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
 .practical-canvas-wrap {
     padding: 24px;
     overflow: auto;
@@ -1269,6 +1463,7 @@ canvas {
 /* ─── Results ────────────────────────────────────────────── */
 .results-list {
     list-style: none;
+    padding: 0;
 }
 
 .result-row {

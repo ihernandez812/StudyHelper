@@ -3,17 +3,26 @@
 import {navigate, refreshTopbar, registerScreen, refreshCurrentScreen} from "./router.js";
 import {checkCoordinatesExist, getClickCoordinates, redrawEverything, drawBodyPartWithTags,
     enableCanvasDrag, getPillSize, redrawSync, drawTags} from "../HTMLUtils/canvasUtils.js"
-import {cloneTemplate, createImageUrl, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
-import {AppState, PAGES} from "./state.js"
+import {cloneTemplate, createImageUrl, getActionTarget, mustGetElementById, compareNames} from "../HTMLUtils/domUtils.js"
+import {AppState} from "./state.js"
+import {PAGES} from "../enums/pages.js"
 import {createDisplayControls, DEFAULT_SCALE, DEFAULT_FONT_SIZE} from "../HTMLUtils/displayControls.js"
+import {matchesQuery, paginate, createPager, formatMatchCount} from "../HTMLUtils/pagination.js"
+import {PAGE_SIZE} from "../enums/pageSize.js"
+import {BODY_PART_SORT} from "../enums/bodyPartSort.js"
+import {createSearchCombobox} from "../HTMLUtils/searchCombobox.js"
+import {COMBOBOX_MODE} from "../enums/comboboxMode.js"
 
 const TEMPLATES = {
     checklistRow:    mustGetElementById('tpl-checklist-row'),
     bodyPartCard:    mustGetElementById('tpl-body-part-card'),
     bodyPartAddCard: mustGetElementById('tpl-body-part-add-card'),
     tagListItem:     mustGetElementById('tpl-tag-list-item'),
+    searchCombobox:  mustGetElementById('tpl-search-combobox'),
     noTagsEmpty:     mustGetElementById('tpl-no-tags-empty'),
     categoryItem:    mustGetElementById('tpl-category-item'),
+    categoryAddItem: mustGetElementById('tpl-category-add-item'),
+    pager:           mustGetElementById('tpl-pager'),
 }
 
 // library.js
@@ -128,7 +137,7 @@ mustGetElementById('editor-tag-list').addEventListener('click', async (e) => {
     try {
         switch (action) {
             case 'edit':
-                openEditTagModal(id)
+                await openEditTagModal(id)
                 break;
             case 'delete':
                 await  deleteTag(id, name);
@@ -153,8 +162,14 @@ mustGetElementById('category-list').addEventListener('click', async (e) => {
 
     try {
         switch (action) {
+            case 'add':
+                await addCategory(name);
+                break;
+            case 'rename':
+                startCategoryRename(id);
+                break;
             case 'delete':
-                await  deleteCategory(id, name);
+                await deleteCategory(id, name);
                 break;
             default:
                 console.error(`Unknown action "${action}" on category item ${id}`);
@@ -166,27 +181,63 @@ mustGetElementById('category-list').addEventListener('click', async (e) => {
 
 
 
+// Kept across visits, so Back from a checklist returns to the same search and page
+const libraryListState = {
+    checklistList: [],   // [{ id, name, bodyPartCount }]
+    query:         '',
+    page:          1,
+}
+
+const libraryPagerMount = mustGetElementById('library-pager')
+libraryPagerMount.appendChild(cloneTemplate(TEMPLATES.pager))
+
+const libraryPager = createPager(libraryPagerMount, {
+    onPageChange: (page) => {
+        libraryListState.page = page
+        renderLibraryPage()
+    },
+})
+
+// Searching starts over from page 1
+mustGetElementById('library-search-input').addEventListener('input', (e) => {
+    libraryListState.query = e.target.value
+    libraryListState.page  = 1
+    renderLibraryPage()
+})
+
 const loadLibraryScreen = async () => {
     const checklists = await window.api.getChecklists()
-    const list       = document.getElementById('library-checklist-list')
-    const emptyState = document.getElementById('library-empty')
 
-    Array.from(list.children).forEach(c => { if (c.id !== 'library-empty') c.remove() })
+    libraryListState.checklistList = Object.keys(checklists).map(id => ({
+        id,
+        name:          checklists[id]['name'],
+        bodyPartCount: Object.keys(checklists[id]['bodyParts'] || {}).length,
+    }))
 
-    const keys = Object.keys(checklists)
+    document.getElementById('library-search-input').value = libraryListState.query
+    renderLibraryPage()
+}
 
-    if (keys.length === 0) {
-        emptyState.classList.remove('hide')
-        return
-    }
+const renderLibraryPage = () => {
+    const { checklistList, query } = libraryListState
+    const matchList = checklistList.filter(checklist => matchesQuery(checklist.name, query))
+    const { pageItemList, page, pageCount } = paginate(matchList, libraryListState.page, PAGE_SIZE.LIST)
 
-    emptyState.classList.add('hide')
+    libraryListState.page = page
 
-    keys.forEach(id => {
-        const checklist = checklists[id]
-        const partCount = Object.keys(checklist['bodyParts'] || {}).length
-        list.appendChild(createLibraryRow(id, checklist['name'], partCount))
-    })
+    const rowList = pageItemList.map(checklist =>
+        createLibraryRow(checklist.id, checklist.name, checklist.bodyPartCount))
+
+    document.getElementById('library-checklist-list').replaceChildren(...rowList)
+    libraryPager.render({ page, pageCount })
+
+    const hasChecklists = checklistList.length > 0
+
+    document.getElementById('library-toolbar').classList.toggle('hide', !hasChecklists)
+    document.getElementById('library-empty').classList.toggle('hide', hasChecklists)
+    document.getElementById('library-no-matches').classList.toggle('hide', !hasChecklists || matchList.length > 0)
+    document.getElementById('library-count').textContent =
+        formatMatchCount(matchList.length, checklistList.length, 'checklist')
 }
 
 const createLibraryRow = (id, name, partCount) => {
@@ -247,6 +298,50 @@ const deleteChecklist = async (id) => {
 }
 
 // ── Checklist detail screen ───────────────────────────────────────────────────
+const compareByName = (first, second) => compareNames(first.name, second.name)
+
+// Ties on tag count fall back to name, so the order never jumps around
+const BODY_PART_COMPARATORS = {
+    [BODY_PART_SORT.NAME]:        compareByName,
+    [BODY_PART_SORT.MOST_TAGS]:   (first, second) => second.tagCount - first.tagCount || compareByName(first, second),
+    [BODY_PART_SORT.FEWEST_TAGS]: (first, second) => first.tagCount - second.tagCount || compareByName(first, second),
+}
+
+// The Add card takes one slot on every page, so each page is still a full grid
+const BODY_PARTS_PER_PAGE = PAGE_SIZE.GRID - 1
+
+// Search, sort and page survive a trip to the editor and back, and reset
+// when a different checklist is opened
+const bodyPartGridState = {
+    checklistId:  null,
+    bodyPartList: [],   // [{ id, name, tagCount, tagNameList }]
+    query:        '',
+    sort:         BODY_PART_SORT.NAME,
+    page:         1,
+}
+
+const bodyPartPagerMount = mustGetElementById('body-part-pager')
+bodyPartPagerMount.appendChild(cloneTemplate(TEMPLATES.pager))
+
+const bodyPartPager = createPager(bodyPartPagerMount, {
+    onPageChange: (page) => {
+        bodyPartGridState.page = page
+        renderBodyPartPage()
+    },
+})
+
+mustGetElementById('body-part-search-input').addEventListener('input', (e) => {
+    bodyPartGridState.query = e.target.value
+    bodyPartGridState.page  = 1
+    renderBodyPartPage()
+})
+
+mustGetElementById('body-part-sort').addEventListener('change', (e) => {
+    bodyPartGridState.sort = e.target.value
+    bodyPartGridState.page = 1
+    renderBodyPartPage()
+})
+
 const loadChecklistDetail = async () => {
     const id        = AppState.currentChecklistId
     const checklist = await window.api.getChecklistById(id)
@@ -255,29 +350,60 @@ const loadChecklistDetail = async () => {
         return
     }
 
-    const grid       = document.getElementById('body-part-grid')
-    const emptyState = document.getElementById('body-part-empty')
-
-    // Clear previous cards (keep empty state)
-    Array.from(grid.children).forEach(c => { if (c.id !== 'body-part-empty') c.remove() })
-
-    const bodyParts = checklist['bodyParts'] || {}
-    const keys      = Object.keys(bodyParts)
-
-    if (keys.length === 0) {
-        emptyState.classList.remove('hide')
-    } else {
-        emptyState.classList.add('hide')
-        keys.forEach(bpId => {
-            const bp   = bodyParts[bpId]
-            const tags = Object.keys(bp['coordinates'] || {}).length
-            grid.appendChild(createBodyPartCard(bpId, bp['name'], tags))
-        })
+    if (bodyPartGridState.checklistId !== id) {
+        bodyPartGridState.checklistId = id
+        bodyPartGridState.query       = ''
+        bodyPartGridState.sort        = BODY_PART_SORT.NAME
+        bodyPartGridState.page        = 1
     }
 
-    // Add the "add body part" card at the end
-    const addCard = cloneTemplate(TEMPLATES.bodyPartAddCard)
-    grid.appendChild(addCard)
+    const bodyParts = checklist['bodyParts'] || {}
+
+    bodyPartGridState.bodyPartList = Object.keys(bodyParts).map(bodyPartId => {
+        const bodyPart       = bodyParts[bodyPartId]
+        const coordinatesMap = bodyPart['coordinates'] || {}
+
+        return {
+            id:          bodyPartId,
+            name:        bodyPart['name'],
+            tagCount:    Object.keys(coordinatesMap).length,
+            tagNameList: Object.values(coordinatesMap).map(tag => tag['name']),
+        }
+    })
+
+    document.getElementById('body-part-search-input').value = bodyPartGridState.query
+    document.getElementById('body-part-sort').value         = bodyPartGridState.sort
+    renderBodyPartPage()
+}
+
+// Matches the body part's own name or any of its tags ("deltoid" finds the arm)
+const matchesBodyPart = (bodyPart, query) => {
+    return matchesQuery(bodyPart.name, query) ||
+        bodyPart.tagNameList.some(tagName => matchesQuery(tagName, query))
+}
+
+const renderBodyPartPage = () => {
+    const { bodyPartList, query, sort } = bodyPartGridState
+    const matchList = bodyPartList
+        .filter(bodyPart => matchesBodyPart(bodyPart, query))
+        .sort(BODY_PART_COMPARATORS[sort])
+    const { pageItemList, page, pageCount } = paginate(matchList, bodyPartGridState.page, BODY_PARTS_PER_PAGE)
+
+    bodyPartGridState.page = page
+
+    const cardList = pageItemList.map(bodyPart =>
+        createBodyPartCard(bodyPart.id, bodyPart.name, bodyPart.tagCount))
+
+    document.getElementById('body-part-grid').replaceChildren(cloneTemplate(TEMPLATES.bodyPartAddCard), ...cardList)
+    bodyPartPager.render({ page, pageCount })
+
+    const hasBodyParts = bodyPartList.length > 0
+
+    document.getElementById('body-part-toolbar').classList.toggle('hide', !hasBodyParts)
+    document.getElementById('body-part-empty').classList.toggle('hide', hasBodyParts)
+    document.getElementById('body-part-no-matches').classList.toggle('hide', !hasBodyParts || matchList.length > 0)
+    document.getElementById('body-part-count').textContent =
+        formatMatchCount(matchList.length, bodyPartList.length, 'body part')
 }
 
 const createBodyPartCard = (id, name, tagCount) => {
@@ -407,10 +533,9 @@ mustGetElementById('editor-canvas').addEventListener('contextmenu', async (e) =>
     const canvas = document.getElementById('editor-canvas')
     const coords = getClickCoordinates(e, editorState.resizeScale)
     const existingKey = checkCoordinatesExist(canvas, coords.x, coords.y, editorState.coordinatesMap, editorState.resizeScale, editorState.fontSize, tag => tag['name'])
-    await populateCategorySelect('editor-tag-category')
 
     if (!existingKey) {
-        openNewTagModal(coords)
+        await openNewTagModal(coords)
     }
 })
 
@@ -459,23 +584,57 @@ const redrawEditor = () => {
 const editorTagModal = new bootstrap.Modal(mustGetElementById('editor-tag-modal'))
 let _pendingTagCoords = null
 
-const openNewTagModal = (coords) => {
+// ── Tag modal category picker ─────────────────────────────────────────────────
+
+let tagCategoryId = null   // picked in the tag modal; null for none
+
+const tagCategoryMount = mustGetElementById('editor-tag-category')
+tagCategoryMount.appendChild(cloneTemplate(TEMPLATES.searchCombobox))
+
+const tagCategoryPicker = createSearchCombobox(tagCategoryMount, {
+    mode:        COMBOBOX_MODE.SINGLE,
+    idPrefix:    'editor-tag-category',
+    placeholder: 'None. Type to find or create one',
+    label:       'Category',
+    emptyText:   'No categories yet. Type a name to create one',
+    getName:     (category) => category.name,
+    getMeta:     (category) => formatCategoryTagCount(category.tagCount),
+    isDisabled:  () => false,
+    onSelect:    (category) => {
+        tagCategoryId = category ? category.id : null
+    },
+    onCreate:    async (name) => {
+        const id = await window.api.addOrEditCategoryById(null, { name })
+        return { id, name, tagCount: 0 }
+    },
+})
+
+// Fresh list each time the modal opens, so categories added or renamed in the
+// Categories modal show up. A category that's since been deleted shows as none.
+const loadTagCategoryPicker = async (categoryId) => {
+    const categoryList     = Object.values(await window.api.getCategories())
+    const selectedCategory = categoryList.find(category => category.id === categoryId) ?? null
+
+    tagCategoryPicker.setEntryList(categoryList)
+    tagCategoryPicker.setSelectedEntry(selectedCategory)
+    tagCategoryId = selectedCategory ? selectedCategory.id : null
+}
+
+const openNewTagModal = async (coords) => {
     _pendingTagCoords = coords
     editorState.currentTagId = null
     document.getElementById('editor-tag-modal-label').textContent = 'New tag'
     document.getElementById('editor-tag-name').value = ''
-    const catSelect = document.getElementById('editor-tag-category')
-    catSelect.value = ''
+    await loadTagCategoryPicker(null)
     editorTagModal.show()
 }
 
-const openEditTagModal = (tagId) => {
+const openEditTagModal = async (tagId) => {
     editorState.currentTagId = tagId
     const tag = editorState.coordinatesMap[tagId]
     document.getElementById('editor-tag-modal-label').textContent = 'Edit tag'
     document.getElementById('editor-tag-name').value = tag['name']
-    const catSelect = document.getElementById('editor-tag-category')
-    catSelect.value = tag['category'] || ''
+    await loadTagCategoryPicker(tag['category'])
     editorTagModal.show()
 }
 
@@ -501,8 +660,7 @@ const createNewTagKey = () => {
 }
 
 mustGetElementById('editor-tag-save-btn').addEventListener('click', async () => {
-    const name     = document.getElementById('editor-tag-name').value.trim()
-    const category = document.getElementById('editor-tag-category').value
+    const name = document.getElementById('editor-tag-name').value.trim()
 
     if (!name) {
         return
@@ -513,7 +671,7 @@ mustGetElementById('editor-tag-save-btn').addEventListener('click', async () => 
         ? editorState.coordinatesMap[editorState.currentTagId]
         : _pendingTagCoords
 
-    editorState.coordinatesMap[tagId] = { ...coords, name, category: category || undefined }
+    editorState.coordinatesMap[tagId] = { ...coords, name, category: tagCategoryId || undefined }
     editorTagModal.hide()
     redrawEditor()
     renderTagList()
@@ -578,76 +736,205 @@ mustGetElementById('editor-save-btn').addEventListener('click', async () => {
 // ── Categories modal ──────────────────────────────────────────────────────────
 const categoriesModal = new bootstrap.Modal(mustGetElementById('categories-modal'))
 
+const categoryModalState = {
+    categoryList: [],    // [{ id, name, tagCount }], sorted by name
+    query:        '',
+    renamingId:   null,  // the row showing a rename box, or null
+}
+
+// Names are unique ignoring case and surrounding spaces: "Nerve" blocks " nerve"
+const findCategoryByName = (name) => {
+    const nameLower = name.trim().toLowerCase()
+    return categoryModalState.categoryList.find(category => category.name.toLowerCase() === nameLower)
+}
+
 const openCategoriesModal = async () => {
-    await renderCategoryList()
+    categoryModalState.query      = ''
+    categoryModalState.renamingId = null
+    document.getElementById('category-find-input').value = ''
+
+    await loadCategoryList()
     categoriesModal.show()
 }
 
-const renderCategoryList = async () => {
-    const categories = await window.api.getCategories()
-    const list= document.getElementById('category-list')
-    list.replaceChildren()
+// Focus the box once the modal has finished opening, so typing works straight away
+mustGetElementById('categories-modal').addEventListener('shown.bs.modal', () => {
+    document.getElementById('category-find-input').focus()
+})
 
-    for (const id in categories) {
-        const category = categories[id]
-        list.appendChild(createCategoryItem(id, category.name))
-    }
+const loadCategoryList = async () => {
+    const categories = await window.api.getCategories()
+
+    categoryModalState.categoryList = Object.values(categories)
+        .sort((first, second) => compareNames(first.name, second.name))
+
+    renderCategoryList()
 }
 
-const createCategoryItem = (id, name) => {
-    const li = cloneTemplate(TEMPLATES.categoryItem)
+const renderCategoryList = () => {
+    const { categoryList, query } = categoryModalState
+    const typedText = query.trim()
+    const matchList = categoryList.filter(category => matchesQuery(category.name, query))
+    const rowList   = matchList.map(createCategoryItem)
 
-    li.dataset.id   = id
-    li.dataset.name = name
-    li.querySelector('.js-name').textContent = name
+    if (typedText && !findCategoryByName(typedText)) {
+        rowList.push(createCategoryAddItem(typedText))
+    }
+
+    document.getElementById('category-list').replaceChildren(...rowList)
+    document.getElementById('category-list-empty').classList.toggle('hide', categoryList.length > 0 || Boolean(typedText))
+}
+
+// "Not used yet", "1 tag", "14 tags"
+const formatCategoryTagCount = (tagCount) => {
+    if (tagCount === 0) {
+        return 'Not used yet'
+    }
+
+    return `${tagCount} tag${tagCount !== 1 ? 's' : ''}`
+}
+
+const createCategoryItem = (category) => {
+    const li          = cloneTemplate(TEMPLATES.categoryItem)
+    const isRenaming  = category.id === categoryModalState.renamingId
+    const renameInput = li.querySelector('.js-rename-input')
+
+    li.dataset.id   = category.id
+    li.dataset.name = category.name
+    li.querySelector('.js-name').textContent = category.name
+    li.querySelector('.js-meta').textContent = formatCategoryTagCount(category.tagCount)
+
+    li.querySelector('.js-name').classList.toggle('hide', isRenaming)
+    renameInput.classList.toggle('hide', !isRenaming)
+    renameInput.value = category.name
 
     return li
 }
 
-const deleteCategory = async (id, name) => {
-    const result = await window.api.dialogQuestion(`Are you sure you want to delete category "${name}"?\nThis will remove all references to the category.`)
+const createCategoryAddItem = (name) => {
+    const li = cloneTemplate(TEMPLATES.categoryAddItem)
 
-    if (result.response === 0) {
-        await window.api.removeCategory(id)
-        await renderCategoryList()
-    }
+    li.dataset.name = name
+    li.querySelector('.js-name').textContent = `Add "${name}"`
+
+    return li
 }
 
-mustGetElementById('add-category-btn').addEventListener('click', async () => {
-    const input = document.getElementById('new-category-input')
-    const name  = input.value.trim()
+const categoryFindInput = mustGetElementById('category-find-input')
 
-    if (!name) {
+categoryFindInput.addEventListener('input', () => {
+    categoryModalState.query      = categoryFindInput.value
+    categoryModalState.renamingId = null
+    renderCategoryList()
+})
+
+// Enter adds what's typed, unless a category already has that name
+categoryFindInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') {
         return
     }
 
-    const category = {
-        name: name,
+    e.preventDefault()
+    addCategory(categoryFindInput.value).catch(error => console.error(error))
+})
+
+const addCategory = async (name) => {
+    const trimmedName = name.trim()
+
+    if (!trimmedName || findCategoryByName(trimmedName)) {
+        return
     }
 
-    try {
-        const newId = await window.api.addOrEditCategoryById(null, category)
-        input.value = ''
-        document.getElementById('category-list').appendChild(createCategoryItem(newId, name))
-    } catch (err) {
-        console.error(err)
+    await window.api.addOrEditCategoryById(null, { name: trimmedName })
+
+    categoryModalState.query = ''
+    categoryFindInput.value  = ''
+    await loadCategoryList()
+}
+
+const startCategoryRename = (id) => {
+    categoryModalState.renamingId = id
+    renderCategoryList()
+
+    const renameInput = document.querySelector(`#category-list [data-id="${id}"] .js-rename-input`)
+    renameInput.focus()
+    renameInput.select()
+}
+
+const stopCategoryRename = () => {
+    categoryModalState.renamingId = null
+    renderCategoryList()
+}
+
+// Enter or leaving the box saves; Escape cancels. A blank or unchanged
+// name just cancels. A name another category has keeps the box open.
+const saveCategoryRename = async (renameInput) => {
+    const id          = categoryModalState.renamingId
+    const category    = categoryModalState.categoryList.find(item => item.id === id)
+    const trimmedName = renameInput.value.trim()
+
+    if (!category || !trimmedName || trimmedName === category.name) {
+        stopCategoryRename()
+        return
+    }
+
+    const existingCategory = findCategoryByName(trimmedName)
+
+    if (existingCategory && existingCategory.id !== id) {
+        renameInput.classList.add('is-invalid')
+        renameInput.title = `"${existingCategory.name}" already exists`
+        return
+    }
+
+    categoryModalState.renamingId = null
+    await window.api.addOrEditCategoryById(id, { name: trimmedName })
+    await loadCategoryList()
+}
+
+const categoryList = mustGetElementById('category-list')
+
+categoryList.addEventListener('keydown', (e) => {
+    if (!e.target.matches('.js-rename-input')) {
+        return
+    }
+
+    if (e.key === 'Enter') {
+        e.preventDefault()
+        saveCategoryRename(e.target).catch(error => console.error(error))
+    } else if (e.key === 'Escape') {
+        // Stops Bootstrap closing the whole modal
+        e.stopPropagation()
+        stopCategoryRename()
     }
 })
 
-// ── Shared helper: populate a category <select> ───────────────────────────────
+// focusout bubbles, unlike blur. renamingId is already null after Enter or
+// Escape, so this only saves when you click away.
+categoryList.addEventListener('focusout', (e) => {
+    if (e.target.matches('.js-rename-input') && categoryModalState.renamingId !== null) {
+        saveCategoryRename(e.target).catch(error => console.error(error))
+    }
+})
 
-const populateCategorySelect = async (selectId) => {
-    const select     = document.getElementById(selectId)
-    const categories = await window.api.getCategories()
+categoryList.addEventListener('input', (e) => {
+    if (e.target.matches('.js-rename-input')) {
+        e.target.classList.remove('is-invalid')
+        e.target.removeAttribute('title')
+    }
+})
 
-    // Remove all except the "None" option
-    Array.from(select.options).forEach(o => { if (o.value) o.remove() })
+const deleteCategory = async (id, name) => {
+    const category = categoryModalState.categoryList.find(item => item.id === id)
+    const tagCount = category?.tagCount ?? 0
 
-    for (const id in categories) {
-        const option   = document.createElement('option')
-        option.value   = id
-        const category = categories[id]
-        option.textContent = category.name
-        select.appendChild(option)
+    const message = tagCount > 0
+        ? `${tagCount} tag${tagCount !== 1 ? 's use' : ' uses'} "${name}". They'll keep their names but lose the category.\nDelete it?`
+        : `Delete the category "${name}"?`
+
+    const result = await window.api.dialogQuestion(message)
+
+    if (result.response === 0) {
+        await window.api.removeCategory(id)
+        await loadCategoryList()
     }
 }

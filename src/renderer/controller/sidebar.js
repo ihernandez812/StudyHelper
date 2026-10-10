@@ -1,5 +1,6 @@
 import {navigate} from "./router.js";
-import {AppState, PAGES} from "./state.js"
+import {AppState} from "./state.js"
+import {PAGES} from "../enums/pages.js"
 import {isStudySessionActive} from "./study.js";
 import {isPracticalActive} from "./practical.js";
 import {mustGetElementById} from "../HTMLUtils/domUtils.js"

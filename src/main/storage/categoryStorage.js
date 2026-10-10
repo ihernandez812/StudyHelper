@@ -9,11 +9,20 @@ const rowToCategory = (categoryRow) => {
 }
 
 const getCategories = () => {
-    const categoryRowList = getAnatomeDatabase().prepare('SELECT * FROM categories ORDER BY id').all()
+    // LEFT JOIN so unused categories still come back, with a count of 0
+    const categoryRowList = getAnatomeDatabase().prepare(`
+        SELECT categories.id,
+               categories.name,
+               COUNT(tags.id) AS tag_count
+        FROM categories
+        LEFT JOIN tags ON tags.category_id = categories.id
+        GROUP BY categories.id
+        ORDER BY categories.id
+    `).all()
     const categoryMap = {}
 
     for (const categoryRow of categoryRowList) {
-        const category = rowToCategory(categoryRow)
+        const category = { ...rowToCategory(categoryRow), tagCount: categoryRow.tag_count }
         categoryMap[category.id] = category
     }
 

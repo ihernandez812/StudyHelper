@@ -2,7 +2,11 @@
 
 import {registerScreen, navigate, refreshCurrentScreen} from "./router.js";
 import {cloneTemplate, getActionTarget, mustGetElementById, formatPracticalDate} from "../HTMLUtils/domUtils.js"
-import {AppState, PAGES} from "./state.js";
+import {AppState} from "./state.js"
+import {PAGES} from "../enums/pages.js"
+import {paginate, createPager, formatMatchCount} from "../HTMLUtils/pagination.js"
+import {PAGE_SIZE} from "../enums/pageSize.js"
+import {DATE_RANGE} from "../enums/dateRange.js"
 
 registerScreen(PAGES.RESULTS, {
     sidebar: PAGES.RESULTS,
@@ -13,6 +17,7 @@ registerScreen(PAGES.RESULTS, {
 
 const TEMPLATES = {
     resultRow: mustGetElementById('tpl-result-row'),
+    pager:     mustGetElementById('tpl-pager'),
 }
 
 mustGetElementById('results-list').addEventListener('click', async (e) => {
@@ -41,28 +46,78 @@ mustGetElementById('results-list').addEventListener('click', async (e) => {
     }
 })
 
-const loadResultsScreen = async () => {
-    const practicals = await window.api.getPracticals()
-    console.log(practicals)
-    const list       = document.getElementById('results-list')
-    const emptyState = document.getElementById('results-empty')
+const DAY_IN_MS = 24 * 60 * 60 * 1000
 
-    Array.from(list.children).forEach(c => { if (c.id !== 'results-empty') c.remove() })
+// How far back each range reaches; ALL has no limit
+const DATE_RANGE_DAY_COUNT = {
+    [DATE_RANGE.WEEK]:  7,
+    [DATE_RANGE.MONTH]: 30,
+    [DATE_RANGE.YEAR]:  365,
+}
 
-    const keys = Object.keys(practicals)
+// Kept across visits, so Back from a review returns to the same range and page
+const resultsState = {
+    practicalList: [],   // [{ id, practical }], newest first
+    range:         DATE_RANGE.ALL,
+    page:          1,
+}
 
-    if (keys.length === 0) {
-        emptyState.classList.remove('hide')
-        return
+const resultsPagerMount = mustGetElementById('results-pager')
+resultsPagerMount.appendChild(cloneTemplate(TEMPLATES.pager))
+
+const resultsPager = createPager(resultsPagerMount, {
+    onPageChange: (page) => {
+        resultsState.page = page
+        renderResultsPage()
+    },
+})
+
+// Changing the range starts over from page 1
+mustGetElementById('results-range-options').addEventListener('change', (e) => {
+    resultsState.range = e.target.value
+    resultsState.page  = 1
+    renderResultsPage()
+})
+
+const isInRange = (practical, range) => {
+    if (range === DATE_RANGE.ALL) {
+        return true
     }
 
-    emptyState.classList.add('hide')
+    return Date.now() - practical['takenAt'] <= DATE_RANGE_DAY_COUNT[range] * DAY_IN_MS
+}
 
-    // Most recent first. Numeric string keys iterate in ascending order, which is id order.
-    keys.reverse().forEach(id => {
-        const practical = practicals[id]
-        list.appendChild(createResultRow(id, practical))
-    })
+const loadResultsScreen = async () => {
+    const practicals = await window.api.getPracticals()
+
+    // Newest first, by when it was taken rather than by id order
+    resultsState.practicalList = Object.keys(practicals)
+        .map(id => ({ id, practical: practicals[id] }))
+        .sort((first, second) => second.practical['takenAt'] - first.practical['takenAt'])
+
+    document.querySelector(`#results-range-options input[value="${resultsState.range}"]`).checked = true
+    renderResultsPage()
+}
+
+const renderResultsPage = () => {
+    const { practicalList, range } = resultsState
+    const matchList = practicalList.filter(({ practical }) => isInRange(practical, range))
+    const { pageItemList, page, pageCount } = paginate(matchList, resultsState.page, PAGE_SIZE.LIST)
+
+    resultsState.page = page
+
+    const rowList = pageItemList.map(({ id, practical }) => createResultRow(id, practical))
+
+    document.getElementById('results-list').replaceChildren(...rowList)
+    resultsPager.render({ page, pageCount })
+
+    const hasPracticals = practicalList.length > 0
+
+    document.getElementById('results-toolbar').classList.toggle('hide', !hasPracticals)
+    document.getElementById('results-empty').classList.toggle('hide', hasPracticals)
+    document.getElementById('results-no-matches').classList.toggle('hide', !hasPracticals || matchList.length > 0)
+    document.getElementById('results-count').textContent =
+        formatMatchCount(matchList.length, practicalList.length, 'practical')
 }
 
 const createResultRow = (id, practical) => {
@@ -77,7 +132,7 @@ const createResultRow = (id, practical) => {
     li.dataset.date = dateStr
     li.querySelector('.js-name').textContent = dateStr
     li.querySelector('.js-meta').textContent =
-        `${stationCount} station${stationCount !== 1 ? 's' : ''} · ${correctTags}  correct tag${correctTags !== 1 ? 's' : ''} · ${totalTags} total tags`
+        `${stationCount} station${stationCount !== 1 ? 's' : ''} · ${correctTags} correct tag${correctTags !== 1 ? 's' : ''} · ${totalTags} total tag${totalTags !== 1 ? 's' : ''}`
 
     return li
 }

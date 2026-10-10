@@ -53,6 +53,8 @@ interface Checklist {
 interface Category {
     id: string
     name: string
+    /** Saved tags using this category. Only set by getCategories. */
+    tagCount?: number
 }
 
 /** One station in a practical: a snapshot of a body part at the time it was taken. */

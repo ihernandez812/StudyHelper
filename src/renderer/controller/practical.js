@@ -3,9 +3,12 @@
 import {registerScreen, navigate} from "./router.js";
 import {drawNewImage, drawNewText, drawNewQuestionMark,
     checkCoordinatesExist, getClickCoordinates, clearCanvas} from "../HTMLUtils/canvasUtils.js"
-import {cloneTemplate, createImageUrl, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {cloneTemplate, createImageUrl, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
 import {createDisplayControls} from "../HTMLUtils/displayControls.js"
-import {PAGES} from "./state.js";
+import {paginate, createPager} from "../HTMLUtils/pagination.js"
+import {createSearchCombobox} from "../HTMLUtils/searchCombobox.js"
+import {PAGE_SIZE} from "../enums/pageSize.js"
+import {PAGES} from "../enums/pages.js"
 
 
 registerScreen(PAGES.PRACTICAL, {
@@ -23,10 +26,15 @@ const TEMPLATES = {
     checklistOption:   mustGetElementById('tpl-practical-checklist-option'),
     noChecklistsEmpty: mustGetElementById('tpl-no-checklists-empty'),
     displayControls:   mustGetElementById('tpl-display-controls'),
+    searchCombobox:    mustGetElementById('tpl-search-combobox'),
+    selectionChip:     mustGetElementById('tpl-selection-chip'),
+    pager:             mustGetElementById('tpl-pager'),
 }
 
 const practicalState = {
-    selectedChecklistIds: [],
+    checklistList:        [],   // [{ id, name, bodyPartCount }], loaded with the setup screen
+    selectedChecklistIds: [],   // in the order they were picked, which is the chip order
+    checklistPage:        1,    // kept between visits; paginate() clamps it
     bodyPartQueue:        [],
     currentStationIdx:    0,
     currentCoordinates:   {},
@@ -50,31 +58,6 @@ const practicalDisplayControls = createDisplayControls(practicalDisplayMount, {
     },
 })
 
-mustGetElementById('practical-checklist-select').addEventListener('change', async (e) => {
-    const checkbox= e.target;
-
-    if ((checkbox instanceof HTMLInputElement) && checkbox.type === 'checkbox') {
-        const id = checkbox.value;
-
-        if (checkbox.checked) {
-            practicalState.selectedChecklistIds.push(id)
-        } else {
-            practicalState.selectedChecklistIds = practicalState.selectedChecklistIds.filter(x => x !== id)
-        }
-
-        await updatePracticalSummary();
-    }
-})
-
-mustGetElementById('practical-checklist-select').addEventListener('click', async (e) => {
-    const element = e.target;
-
-    if ((element instanceof HTMLInputElement) && element.closest('[data-action="go-to-library"]')) {
-        navigate(PAGES.LIBRARY)
-    }
-})
-
-
 //Called on entry to the practical screen and again on exit, so a running
 //countdown can't outlive the screen and force a navigation from elsewhere.
 const stopPracticalTimer = () => {
@@ -96,6 +79,149 @@ const clearPractical = () => {
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
+// "12 body parts"
+const formatBodyPartCount = (bodyPartCount) => {
+    return `${bodyPartCount} body part${bodyPartCount !== 1 ? 's' : ''}`
+}
+
+const findChecklist = (id) => practicalState.checklistList.find(checklist => checklist.id === id)
+
+const isChecklistSelected = (id) => practicalState.selectedChecklistIds.includes(id)
+
+const setChecklistSelected = (id, isSelected) => {
+    const otherIdList = practicalState.selectedChecklistIds.filter(selectedId => selectedId !== id)
+    practicalState.selectedChecklistIds = isSelected ? [...otherIdList, id] : otherIdList
+}
+
+// One place that refreshes everything that shows the selection
+const onChecklistSelectionChanged = () => {
+    syncChecklistCheckboxes()
+    renderPracticalTray()
+    practicalSearch.refresh()
+    updatePracticalSummary()
+}
+
+// Checklist search
+const practicalSearchMount = mustGetElementById('practical-search')
+practicalSearchMount.appendChild(cloneTemplate(TEMPLATES.searchCombobox))
+
+const practicalSearch = createSearchCombobox(practicalSearchMount, {
+    idPrefix:    'practical-search',
+    placeholder: 'Search checklists, like upper limb',
+    label:       'Search checklists',
+    emptyText:   'No checklists match that search',
+    getName:     (checklist) => checklist.name,
+    getMeta:     (checklist) => formatBodyPartCount(checklist.bodyPartCount),
+    isSelected:  (checklist) => isChecklistSelected(checklist.id),
+    isDisabled:  (checklist) => checklist.bodyPartCount === 0,
+    onToggle:    (checklist) => {
+        setChecklistSelected(checklist.id, !isChecklistSelected(checklist.id))
+        onChecklistSelectionChanged()
+    },
+})
+
+// Selection tray
+const renderPracticalTray = () => {
+    const selectedList = practicalState.selectedChecklistIds.map(findChecklist)
+    const count        = selectedList.length
+
+    document.getElementById('practical-selection').classList.toggle('hide', count === 0)
+    document.getElementById('practical-selection-count').textContent =
+        `${count} checklist${count !== 1 ? 's' : ''} selected`
+    document.getElementById('practical-selection-chips').replaceChildren(...selectedList.map(createChecklistChip))
+}
+
+const createChecklistChip = (checklist) => {
+    const chip = cloneTemplate(TEMPLATES.selectionChip)
+
+    chip.dataset.id = checklist.id
+    chip.querySelector('.js-label').textContent = checklist.name
+    chip.querySelector('[data-action="remove-selection"]').setAttribute('aria-label', `Remove ${checklist.name}`)
+
+    return chip
+}
+
+mustGetElementById('practical-selection-chips').addEventListener('click', (e) => {
+    const target = getActionTarget(e.target, '.selection-chip')
+
+    if (!target || target.action !== 'remove-selection') {
+        return
+    }
+
+    setChecklistSelected(target.data.id, false)
+    onChecklistSelectionChanged()
+})
+
+mustGetElementById('practical-selection-clear-btn').addEventListener('click', () => {
+    practicalState.selectedChecklistIds = []
+    onChecklistSelectionChanged()
+})
+
+// Paged checkbox list
+const checklistPagerMount = mustGetElementById('practical-checklist-pager')
+checklistPagerMount.appendChild(cloneTemplate(TEMPLATES.pager))
+
+const checklistPager = createPager(checklistPagerMount, {
+    onPageChange: (page) => {
+        practicalState.checklistPage = page
+        renderChecklistPage()
+    },
+})
+
+const renderChecklistPage = () => {
+    const container = document.getElementById('practical-checklist-select')
+    const { pageItemList, page, pageCount } = paginate(practicalState.checklistList, practicalState.checklistPage, PAGE_SIZE.LIST)
+
+    practicalState.checklistPage = page
+    checklistPager.render({ page, pageCount })
+
+    if (practicalState.checklistList.length === 0) {
+        container.replaceChildren(cloneTemplate(TEMPLATES.noChecklistsEmpty))
+        return
+    }
+
+    container.replaceChildren(...pageItemList.map(createChecklistOption))
+}
+
+const createChecklistOption = (checklist) => {
+    const label    = cloneTemplate(TEMPLATES.checklistOption)
+    const checkbox = label.querySelector('input')
+
+    label.dataset.id = checklist.id
+    label.querySelector('.js-name').textContent = checklist.name
+    label.querySelector('.js-meta').textContent = formatBodyPartCount(checklist.bodyPartCount)
+
+    checkbox.value    = checklist.id
+    checkbox.disabled = checklist.bodyPartCount === 0
+    checkbox.checked  = isChecklistSelected(checklist.id)
+
+    return label
+}
+
+// Re-ticks the checkboxes on the current page without redrawing them, so focus stays put
+const syncChecklistCheckboxes = () => {
+    document.querySelectorAll('#practical-checklist-select input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = isChecklistSelected(checkbox.value)
+    })
+}
+
+mustGetElementById('practical-checklist-select').addEventListener('change', (e) => {
+    const checkbox = e.target
+
+    if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== 'checkbox') {
+        return
+    }
+
+    setChecklistSelected(checkbox.value, checkbox.checked)
+    onChecklistSelectionChanged()
+})
+
+mustGetElementById('practical-checklist-select').addEventListener('click', (e) => {
+    if (e.target.closest('[data-action="go-to-library"]')) {
+        navigate(PAGES.LIBRARY)
+    }
+})
+
 const loadPracticalSetup = async () => {
     document.getElementById('practical-setup').classList.remove('hide')
     document.getElementById('practical-active').classList.add('hide')
@@ -103,38 +229,23 @@ const loadPracticalSetup = async () => {
     stopPracticalTimer()
 
     const checklists = await window.api.getChecklists()
-    const container  = document.getElementById('practical-checklist-select')
-    container.replaceChildren()
+
+    practicalState.checklistList = Object.keys(checklists).map(id => ({
+        id,
+        name:          checklists[id]['name'],
+        bodyPartCount: Object.keys(checklists[id]['bodyParts'] || {}).length,
+    }))
     practicalState.selectedChecklistIds = []
-    await updatePracticalSummary()
 
-    const keys = Object.keys(checklists)
+    practicalSearch.reset()
+    practicalSearch.setEntryList(practicalState.checklistList)
+    document.getElementById('practical-search').classList.toggle('hide', practicalState.checklistList.length === 0)
 
-    if (keys.length === 0) {
-        const emptyState = cloneTemplate(TEMPLATES.noChecklistsEmpty)
-        container.appendChild(emptyState)
-        return
-    }
-
-    keys.forEach(id => {
-        const checklist = checklists[id]
-        const bpCount   = Object.keys(checklist['bodyParts'] || {}).length
-
-        const label    = cloneTemplate(TEMPLATES.checklistOption)
-        const checkbox = label.querySelector('input')
-
-        label.dataset.id = id
-        label.querySelector('.js-name').textContent = checklist['name']
-        label.querySelector('.js-meta').textContent = `${bpCount} body part${bpCount !== 1 ? 's' : ''}`
-
-        checkbox.value    = id
-        checkbox.disabled = bpCount === 0
-
-        container.appendChild(label)
-    })
+    renderChecklistPage()
+    onChecklistSelectionChanged()
 }
 
-const updatePracticalSummary = async () => {
+const updatePracticalSummary = () => {
     const startBtn   = document.getElementById('practical-start-btn')
     const summaryTxt = document.getElementById('practical-summary-text')
     const ids        = practicalState.selectedChecklistIds
@@ -145,14 +256,10 @@ const updatePracticalSummary = async () => {
         return
     }
 
-    const checklists  = await window.api.getChecklists()
-    let totalBodyParts = 0
-    ids.forEach(id => {
-        totalBodyParts += Object.keys(checklists[id]['bodyParts'] || {}).length
-    })
+    const totalBodyParts = ids.reduce((total, id) => total + findChecklist(id).bodyPartCount, 0)
 
     summaryTxt.textContent =
-        `${totalBodyParts} body part${totalBodyParts !== 1 ? 's' : ''} from ${ids.length} checklist${ids.length !== 1 ? 's' : ''}`
+        `${formatBodyPartCount(totalBodyParts)} from ${ids.length} checklist${ids.length !== 1 ? 's' : ''}`
     startBtn.disabled = totalBodyParts === 0
 }
 
