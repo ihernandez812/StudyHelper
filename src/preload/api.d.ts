@@ -8,14 +8,21 @@
 // Keep it in step with src/main/preload.js: one entry per exposed method.
 
 // ── Stored data model ─────────────────────────────────────────────────────────
+//
+// Every id is created by the database. They are integers there but always
+// reach the renderer as numeric strings, e.g. "12", so they work as object
+// keys and dataset values without mixing 1 and '1'.
 
-/** A labelled point on a body part image. */
+/**
+ * A labelled point on a body part image. Keyed by tag id in `coordinates`;
+ * the editor uses temporary keys like "new-1" for tags not yet saved.
+ */
 interface Tag {
     name: string
-    /** Image-space coordinates, unscaled. Legacy records may hold numeric strings. */
+    /** Image-space coordinates, unscaled. */
     x: number
     y: number
-    /** Category id, or the literal string 'null' when uncategorised. */
+    /** Category id; undefined when uncategorised. */
     category?: string
     /** Practical only: the answer the user typed at this station. */
     given?: string
@@ -27,13 +34,13 @@ interface BodyPart {
     id: string
     name: string
     /**
-     * An absolute filesystem path once saved. A `data:` URL only while a newly
-     * dropped image is in flight to addOrEditBodyPartById.
+     * An image key like "checklists/1/4/image.png" once saved; see
+     * createImageUrl. A `data:` URL only while a newly dropped image is in
+     * flight to addOrEditBodyPartById.
      */
     image: string
     coordinates: Record<string, Tag>
     scale: number
-    /** Legacy records may hold a numeric string. */
     fontSize: number
 }
 
@@ -50,25 +57,36 @@ interface Category {
 
 /** One station in a practical: a snapshot of a body part at the time it was taken. */
 interface PracticalStation {
+    /** The checklist it was taken from, which may since have been deleted. */
     checklistId: string
-    /** Name at the time the practical was taken. Missing on practicals saved before it was added. */
-    checklistName?: string
+    /** Name at the time the practical was taken. */
+    checklistName: string
     bodyPart: BodyPart
+}
+
+/** What getPracticals returns for each practical: enough for a list row. */
+interface PracticalSummary {
+    id: string
+    /** Milliseconds since the epoch. Format with formatPracticalDate. */
+    takenAt: number
+    stationCount: number
+    totalTags: number
+    numCorrect: number
 }
 
 interface Practical {
     id: string
-    /** Preformatted for display, e.g. "June 24, 2026 at 2:34 PM". Not sortable. */
-    date: string
+    /** Milliseconds since the epoch. Format with formatPracticalDate. */
+    takenAt: number
     queue: PracticalStation[]
     totalTags: number
     numCorrect: number
 }
 
-interface SearchResults {
-    checklists: Record<string, string>
-    bodyParts: Record<string, string>
-    bodyTags: Record<string, string>
+/** What the practical screen hands to addPractical. */
+interface NewPractical {
+    /** Each tag must already carry given and isCorrect. */
+    queue: PracticalStation[]
 }
 
 /** Electron's MessageBoxReturnValue, narrowed to what this app reads. */
@@ -80,7 +98,7 @@ interface DialogResult {
 
 // ── The bridge ────────────────────────────────────────────────────────────────
 
-interface StudyHelperApi {
+interface AnatoMeApi {
     // Dialogs
     /** Shows an OK message box. Resolves once dismissed; carries no value. */
     popup(message: string): Promise<void>
@@ -93,23 +111,19 @@ interface StudyHelperApi {
     // Checklists
     getChecklists(): Promise<Record<string, Checklist>>
     getChecklistById(id: string): Promise<Checklist>
-    /**
-     * Pass null as id to create. NOTE: returns void, not the new id — the
-     * handler drops the key that storageUtils generates, unlike
-     * addOrEditCategoryById. Worth making consistent.
-     */
-    addOrEditChecklistById(id: string | null, checklist: Partial<Checklist>): Promise<void>
+    /** Pass null as id to create. Only the name is saved. Resolves to the checklist's id. */
+    addOrEditChecklistById(id: string | null, checklist: Pick<Checklist, 'name'>): Promise<string>
     deleteChecklistById(id: string): Promise<void>
 
     // Body parts
-    getBodyPartById(bodyPartId: string, checklistId: string): Promise<BodyPart>
-    /** Resolves to the body part's id. */
+    getBodyPartById(bodyPartId: string): Promise<BodyPart>
+    /** Pass null as bodyPartId to create. Resolves to the body part's id. */
     addOrEditBodyPartById(
-        bodyPartId: string,
+        bodyPartId: string | null,
         checklistId: string,
         bodyPart: Partial<BodyPart>,
     ): Promise<string>
-    removeBodyPart(bodyPartId: string, checklistId: string): Promise<void>
+    removeBodyPart(bodyPartId: string): Promise<void>
 
     // Categories
     getCategories(): Promise<Record<string, Category>>
@@ -119,20 +133,14 @@ interface StudyHelperApi {
     removeCategory(id: string): Promise<void>
 
     // Practicals
-    addPractical(id: string, practical: Omit<Practical, 'id'>): Promise<string>
-    /** Undefined when no practical has ever been saved — callers use `|| {}`. */
-    getPracticals(): Promise<Record<string, Practical> | undefined>
+    /** Resolves to the new practical's id. */
+    addPractical(practical: NewPractical): Promise<string>
+    getPracticals(): Promise<Record<string, PracticalSummary>>
     getPracticalById(id: string): Promise<Practical>
     deletePracticalById(id: string): Promise<void>
 
     // Misc
     reloadHome(): Promise<void>
-    search(
-        isChecklistFilterChecked: boolean,
-        isBodyPartFilterChecked: boolean,
-        isBodyTagFilterChecked: boolean,
-        searchQuery: string,
-    ): Promise<SearchResults>
     getDarkMode(): Promise<boolean>
     /**
      * Subscribes to menu-driven theme changes. Returns nothing, so there is no
@@ -142,5 +150,5 @@ interface StudyHelperApi {
 }
 
 interface Window {
-    api: StudyHelperApi
+    api: AnatoMeApi
 }

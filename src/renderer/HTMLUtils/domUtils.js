@@ -43,9 +43,18 @@ const mustGetElementById = (id) => {
 // domUtils.js
 const createImageUrl = (key) => `media://images/${key}`
 
+// "June 24, 2026 at 2:34 PM"
+const formatPracticalDate = (takenAt) => {
+    return new Date(takenAt).toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit'
+    })
+}
+
 export {
     cloneTemplate,
     getActionTarget,
     mustGetElementById,
     createImageUrl,
+    formatPracticalDate,
 }

@@ -1,60 +1,100 @@
-const { app } = require('electron');
-const { writeFile, mkdir, rm, copyFile } = require('fs/promises');
-const path = require('path');
-const userDataPath =  app.getPath('userData')
-const baseDir = path.join(userDataPath, 'images');
+const { app } = require('electron')
+const { existsSync, mkdirSync, writeFileSync, copyFileSync, renameSync } = require('fs')
+const { rm } = require('fs/promises')
+const path = require('path')
 
-const DATA_URL_RE = /^data:image\/(\w+);base64,/
+const imagesDirectory = path.join(app.getPath('userData'), 'images')
 
+const DATA_URL_PATTERN = /^data:image\/(\w+);base64,/
 const IMAGE_FILENAME = 'image.png'
+const CHECKLIST_FOLDER = 'checklists'
+const PRACTICAL_FOLDER = 'practicals'
 
-//Keys are stored with forward slashes regardless of platform so the same
-//store file works on macOS and Windows. absPathFor() turns one back into a
-//real path; nothing outside this file should ever see an absolute path.
-const keyFor     = (parentId, bodyPartId) => `${parentId}/${bodyPartId}/${IMAGE_FILENAME}`
-const absPathFor = (key) => path.join(baseDir, ...key.split('/'))
+//Keys are stored with forward slashes regardless of platform.
+//absolutePathForKey() turns one back into a real path; nothing outside this
+//file should ever see an absolute path.
+const absolutePathForKey = (key) => {
+    return path.join(imagesDirectory, ...key.split('/'))
+}
 
-const saveBodyPartImage = async (parentId, bodyPartId, dataUrl) => {
+const bodyPartImageKey = (checklistId, bodyPartId) => {
+    return `${CHECKLIST_FOLDER}/${checklistId}/${bodyPartId}/${IMAGE_FILENAME}`
+}
+
+const practicalStationImageKey = (practicalId, stationId) => {
+    return `${PRACTICAL_FOLDER}/${practicalId}/${stationId}/${IMAGE_FILENAME}`
+}
+
+const isImageDataUrl = (value) => {
+    return typeof value === 'string' && DATA_URL_PATTERN.test(value)
+}
+
+//Synchronous so it can run inside a database transaction: if the write
+//throws, the row that would have pointed at it is rolled back.
+const saveImage = (key, dataUrl) => {
     //Buffer.from(x, 'base64') silently skips invalid characters instead of
-    //throwing, so anything that isn't a data URL has to be rejected up front
-    //or it gets written out as a corrupt image.
-    if (!DATA_URL_RE.test(dataUrl ?? '')) {
-        throw new Error(`saveBodyPartImage expected a base64 image data URL, got: ${String(dataUrl).slice(0, 40)}`)
+    //throwing, so anything that isn't a data URL has to be rejected up front.
+    if (!isImageDataUrl(dataUrl)) {
+        throw new Error(`saveImage expected a base64 image data URL, got: ${String(dataUrl).slice(0, 40)}`)
     }
 
-
-    const base64   = dataUrl.replace(DATA_URL_RE, '')
-    const key = keyFor(parentId, bodyPartId)
-    await mkdir(path.dirname(absPathFor(key)), { recursive: true })
-    await writeFile(absPathFor(key), Buffer.from(base64, 'base64'))
+    const base64 = dataUrl.replace(DATA_URL_PATTERN, '')
+    mkdirSync(path.dirname(absolutePathForKey(key)), { recursive: true })
+    writeFileSync(absolutePathForKey(key), Buffer.from(base64, 'base64'))
     return key
 }
 
-const deleteBodyPartImage = (parentId, bodyPartId) => {
-    const bodyPartPath = path.join(baseDir, parentId, bodyPartId)
-    return rm(bodyPartPath, {recursive: true, force: true})
-}
-
-const deleteImages = (parentId) => {
-    const checklistPath = path.join(baseDir, parentId);
-    return rm(checklistPath, {recursive: true, force: true})
-}
-
-
-//Snapshots an existing body part image into its own directory so the copy
-//survives the original checklist being edited or deleted.
-const copyBodyPartImage = async (srcKey, parentId, bodyPartId) => {
-    const key = keyFor(parentId, bodyPartId)
-    await mkdir(path.dirname(absPathFor(key)), { recursive: true })
-    await copyFile(absPathFor(srcKey), absPathFor(key))
+//Synchronous for the same reason as saveImage
+const copyImage = (sourceKey, key) => {
+    mkdirSync(path.dirname(absolutePathForKey(key)), { recursive: true })
+    copyFileSync(absolutePathForKey(sourceKey), absolutePathForKey(key))
     return key
+}
+
+//Moves a folder aside instead of deleting it so a failed transaction never
+//leaves rows pointing at missing images. renameSync is atomic: the folder
+//either moves completely or not at all. Returns null when there was nothing
+//to move.
+const moveToTrash = (folder) => {
+    if (!existsSync(folder)) {
+        return null
+    }
+
+    const trashFolder = `${folder}.deleting-${Date.now()}`
+    renameSync(folder, trashFolder)
+    return trashFolder
+}
+
+const moveBodyPartImagesToTrash = (checklistId, bodyPartId) => {
+    return moveToTrash(path.join(imagesDirectory, CHECKLIST_FOLDER, String(checklistId), String(bodyPartId)))
+}
+
+const moveChecklistImagesToTrash = (checklistId) => {
+    return moveToTrash(path.join(imagesDirectory, CHECKLIST_FOLDER, String(checklistId)))
+}
+
+const movePracticalImagesToTrash = (practicalId) => {
+    return moveToTrash(path.join(imagesDirectory, PRACTICAL_FOLDER, String(practicalId)))
+}
+
+const emptyTrash = async (trashFolder) => {
+    if (!trashFolder) {
+        return
+    }
+
+    await rm(trashFolder, { recursive: true, force: true })
 }
 
 module.exports = {
-    saveBodyPartImage,
-    copyBodyPartImage,
-    deleteBodyPartImage,
-    deleteImages,
-    absPathFor,
-    baseDir
+    imagesDirectory,
+    absolutePathForKey,
+    bodyPartImageKey,
+    practicalStationImageKey,
+    isImageDataUrl,
+    saveImage,
+    copyImage,
+    moveBodyPartImagesToTrash,
+    moveChecklistImagesToTrash,
+    movePracticalImagesToTrash,
+    emptyTrash,
 }

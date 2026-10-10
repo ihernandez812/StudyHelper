@@ -16,8 +16,8 @@ contextBridge.exposeInMainWorld(
         deleteChecklistById:  (id) => {
           return ipcRenderer.invoke('deleteChecklistById', id)
         },
-        getBodyPartById: (bodyPartId, checklistId) => {
-            return ipcRenderer.invoke('getBodyPartById', bodyPartId, checklistId)
+        getBodyPartById: (bodyPartId) => {
+            return ipcRenderer.invoke('getBodyPartById', bodyPartId)
         },
         addOrEditBodyPartById: (bodyPartId, checklistId, bodyPart) => {
             return ipcRenderer.invoke('addOrEditBodyPartById', bodyPartId, checklistId, bodyPart)
@@ -28,8 +28,8 @@ contextBridge.exposeInMainWorld(
         getChecklistById: (id) => {
             return ipcRenderer.invoke('getChecklistById', id)
         },   
-        removeBodyPart: (bodyPartId, checklistId) => {
-            return ipcRenderer.invoke('removeBodyPart', bodyPartId, checklistId)
+        removeBodyPart: (bodyPartId) => {
+            return ipcRenderer.invoke('removeBodyPart', bodyPartId)
         },
         getCategories: () => {
             return ipcRenderer.invoke('getCategories')
@@ -44,8 +44,8 @@ contextBridge.exposeInMainWorld(
         addOrEditCategoryById: (id=null, category) => {
             return ipcRenderer.invoke('addOrEditCategoryById', id, category)
         },
-        addPractical: (id, practical) => {
-            return ipcRenderer.invoke('addPractical', id, practical)
+        addPractical: (practical) => {
+            return ipcRenderer.invoke('addPractical', practical)
         },
         getPracticals: () => {
             return ipcRenderer.invoke('getPracticals')

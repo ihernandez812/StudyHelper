@@ -37,7 +37,6 @@ const loadPracticalReview = async () => {
     const practical = await window.api.getPracticalById(AppState.currentPracticalId)
     reviewState.stations = practical['queue'] || []
 
-    // Practicals saved before the current format have no queue to review
     if (reviewState.stations.length === 0) {
         await window.api.popup('This practical has no stations to review.')
         navigate(PAGES.RESULTS)
@@ -56,16 +55,12 @@ const loadPracticalReview = async () => {
 const showStation = async (index) => {
     reviewState.currentIndex = index
 
-    const { bodyPart, checklistId, checklistName } = reviewState.stations[index]
+    const { bodyPart, checklistName } = reviewState.stations[index]
     const tags    = Object.values(bodyPart['coordinates'] || {})
     const correct = tags.filter(tag => tag['isCorrect']).length
 
-    // Older practicals only saved the checklist id, so fall back to a live lookup.
-    // That checklist may since have been deleted, leaving the name blank.
-    const checklist = checklistName ? null : await window.api.getChecklistById(checklistId)
-
     document.getElementById('review-body-part-name').textContent      = bodyPart['name']
-    document.getElementById('review-body-part-checklist').textContent = checklistName || checklist?.name || ''
+    document.getElementById('review-body-part-checklist').textContent = checklistName || ''
     document.getElementById('review-station-score').textContent      =
         `This station: ${correct} / ${tags.length} correct`
 

@@ -333,8 +333,6 @@ mustGetElementById('practical-next-btn').addEventListener('click', async () => {
 const endPractical = async () => {
     stopPracticalTimer()
 
-    let numCorrect = 0
-    let totalTags = 0
     const queue = practicalState.bodyPartQueue
 
     queue.forEach((station) => {
@@ -350,29 +348,19 @@ const endPractical = async () => {
 
             if (given === answer) {
                 isCorrect = true
-                numCorrect++
             }
 
             coordinates['isCorrect'] = isCorrect
-            totalTags++
         }
     })
 
-    const practical   = {
-        date:    new Date().toLocaleDateString('en-US', {
-            month: 'long', day: 'numeric', year: 'numeric',
-            hour: 'numeric', minute: '2-digit'
-        }),
-// "June 24, 2026 at 2:34 PM"
-        queue:   practicalState.bodyPartQueue,
-        totalTags:   totalTags,
-        numCorrect: numCorrect,
+    // The main process records when it was taken and works out the totals
+    const practical = {
+        queue: queue,
     }
 
-    const id = crypto.randomUUID()
-
     try {
-        await window.api.addPractical(id, practical)
+        await window.api.addPractical(practical)
         navigate(PAGES.RESULTS)
     } catch (err) {
         console.error(err)

@@ -1,7 +1,7 @@
 // ── Results screen ────────────────────────────────────────────────────────────
 
 import {registerScreen, navigate, refreshCurrentScreen} from "./router.js";
-import {cloneTemplate, getActionTarget, mustGetElementById} from "../HTMLUtils/domUtils.js"
+import {cloneTemplate, getActionTarget, mustGetElementById, formatPracticalDate} from "../HTMLUtils/domUtils.js"
 import {AppState, PAGES} from "./state.js";
 
 registerScreen(PAGES.RESULTS, {
@@ -42,7 +42,7 @@ mustGetElementById('results-list').addEventListener('click', async (e) => {
 })
 
 const loadResultsScreen = async () => {
-    const practicals = await window.api.getPracticals() || {}
+    const practicals = await window.api.getPracticals()
     console.log(practicals)
     const list       = document.getElementById('results-list')
     const emptyState = document.getElementById('results-empty')
@@ -58,7 +58,7 @@ const loadResultsScreen = async () => {
 
     emptyState.classList.add('hide')
 
-    // Most recent first
+    // Most recent first. Numeric string keys iterate in ascending order, which is id order.
     keys.reverse().forEach(id => {
         const practical = practicals[id]
         list.appendChild(createResultRow(id, practical))
@@ -66,11 +66,10 @@ const loadResultsScreen = async () => {
 }
 
 const createResultRow = (id, practical) => {
-    const dateStr        = practical['date']
-    const queue       = practical['queue'] || []
-    const totalTags     = practical['totalTags'] || 0
-    const correctTags = practical['numCorrect'] || 0
-    const stationCount = queue.length
+    const dateStr        = formatPracticalDate(practical['takenAt'])
+    const totalTags     = practical['totalTags']
+    const correctTags = practical['numCorrect']
+    const stationCount = practical['stationCount']
 
     const li = cloneTemplate(TEMPLATES.resultRow)
 

@@ -17,7 +17,7 @@ registerScreen(PAGES.HOME, {
 
 const loadHomeScreen = async () => {
     const checklists = await window.api.getChecklists()
-    const practicals = await window.api.getPracticals() || {}
+    const practicals = await window.api.getPracticals()
 
     const checklistKeys = Object.keys(checklists)
     let totalBodyParts  = 0
