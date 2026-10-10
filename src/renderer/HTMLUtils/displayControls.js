@@ -1,6 +1,8 @@
 // Zoom and font size controls for a body part canvas, shared by the editor
 // and the session screens (study, practical, practical review).
 
+import {mustQuerySelector} from "./domUtils.js"
+
 const SCALE_STEP = 0.05
 const SCALE_MIN  = 0.1
 const SCALE_MAX  = 2.0
@@ -14,16 +16,6 @@ const FONT_SIZE_OPTIONS = [14, 16, 18, 20, 22, 24, 28, 36]
 const roundScale = (scale) => Math.round(scale * 100) / 100
 
 const formatScaleLabel = (scale) => `Scale: ${scale.toFixed(2)}×`
-
-const mustQuerySelector = (container, selector) => {
-    const element = container.querySelector(selector)
-
-    if (!element) {
-        throw new Error(`Missing required element ${selector}`)
-    }
-
-    return element
-}
 
 const addFontSizeOption = (select, fontSize) => {
     const option = document.createElement('option')

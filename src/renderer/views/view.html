@@ -116,12 +116,25 @@
         <div id="screen-library" class="screen">
             <div class="screen-content">
                 <div class="card">
-                    <ul class="checklist-list" id="library-checklist-list">
-                        <li class="empty-state" id="library-empty">
-                            <i class="fas fa-folder-open"></i>
-                            <p>No checklists yet. Create one to get started.</p>
-                        </li>
-                    </ul>
+                    <!-- Hidden until there's at least one checklist -->
+                    <div class="list-toolbar hide" id="library-toolbar">
+                        <div class="list-search">
+                            <i class="fas fa-search list-search-icon" aria-hidden="true"></i>
+                            <input type="search" id="library-search-input" class="form-control"
+                                   placeholder="Search checklists" autocomplete="off" aria-label="Search checklists">
+                        </div>
+                        <span class="list-toolbar-count" id="library-count"></span>
+                    </div>
+                    <ul class="checklist-list" id="library-checklist-list"></ul>
+                    <div class="empty-state hide" id="library-empty">
+                        <i class="fas fa-folder-open"></i>
+                        <p>No checklists yet. Create one to get started.</p>
+                    </div>
+                    <div class="empty-state hide" id="library-no-matches">
+                        <i class="fas fa-search"></i>
+                        <p>No checklists match that search.</p>
+                    </div>
+                    <div id="library-pager"></div>
                 </div>
             </div>
         </div>
@@ -129,12 +142,31 @@
         <!-- ── Checklist detail ────────────────────────────────── -->
         <div id="screen-checklist-detail" class="screen">
             <div class="screen-content">
-                <div class="body-part-grid" id="body-part-grid">
-                    <div class="empty-state" id="body-part-empty">
-                        <i class="fas fa-image"></i>
-                        <p>No body parts yet. Add one to get started.</p>
+                <!-- Hidden until the checklist has a body part -->
+                <div class="list-toolbar hide" id="body-part-toolbar">
+                    <div class="list-search">
+                        <i class="fas fa-search list-search-icon" aria-hidden="true"></i>
+                        <input type="search" id="body-part-search-input" class="form-control"
+                               placeholder="Search body parts or tags" autocomplete="off" aria-label="Search body parts or tags">
                     </div>
+                    <select id="body-part-sort" class="form-select list-sort" aria-label="Sort body parts">
+                        <option value="name">Name A–Z</option>
+                        <option value="most-tags">Most tags</option>
+                        <option value="fewest-tags">Fewest tags</option>
+                    </select>
+                    <span class="list-toolbar-count" id="body-part-count"></span>
                 </div>
+                <div class="empty-state hide" id="body-part-empty">
+                    <i class="fas fa-image"></i>
+                    <p>No body parts yet. Add one to get started.</p>
+                </div>
+                <div class="empty-state hide" id="body-part-no-matches">
+                    <i class="fas fa-search"></i>
+                    <p>No body parts match that search.</p>
+                </div>
+                <!-- Add card first, then cards from tpl-body-part-card -->
+                <div class="body-part-grid" id="body-part-grid"></div>
+                <div id="body-part-pager"></div>
             </div>
         </div>
 
@@ -199,36 +231,24 @@
                 <div class="card" id="study-checklist-picker">
                     <div class="card-title">Choose what to study</div>
 
-                    <!-- Body part search: rows come from tpl-study-search-result -->
-                    <div class="study-search" id="study-search">
-                        <i class="fas fa-search study-search-icon" aria-hidden="true"></i>
-                        <input type="text" id="study-search-input" class="form-control"
-                               placeholder="Search body parts, like femur" autocomplete="off"
-                               role="combobox" aria-expanded="false" aria-controls="study-search-results"
-                               aria-label="Search body parts">
+                    <!-- Body part search: filled from tpl-search-combobox -->
+                    <div id="study-search"></div>
 
-                        <div class="study-search-dropdown hide" id="study-search-dropdown">
-                            <ul class="study-search-results" id="study-search-results"
-                                role="listbox" aria-multiselectable="true"></ul>
-                            <div class="study-search-empty hide" id="study-search-empty">No body parts match that search</div>
-                            <div class="study-search-footer hide" id="study-search-footer"></div>
-                        </div>
-                    </div>
-
-                    <!-- Selection tray: hidden until something is selected; chips come from tpl-study-selection-chip -->
-                    <div class="study-selection hide" id="study-selection">
-                        <div class="study-selection-header">
-                            <span class="study-selection-count" id="study-selection-count"></span>
+                    <!-- Selection tray: hidden until something is selected; chips come from tpl-selection-chip -->
+                    <div class="selection-tray hide" id="study-selection">
+                        <div class="selection-tray-header">
+                            <span class="selection-tray-count" id="study-selection-count"></span>
                             <button type="button" class="btn btn-ghost btn-sm" id="study-selection-clear-btn">Clear</button>
                             <button type="button" class="btn btn-primary btn-sm" id="study-selection-study-btn">
                                 <i class="fas fa-book-open"></i> Study selected
                             </button>
                         </div>
-                        <ul class="study-selection-chips" id="study-selection-chips"></ul>
+                        <ul class="selection-tray-chips" id="study-selection-chips"></ul>
                     </div>
 
                     <!-- Filled by loadStudyPicker(); empty state comes from tpl-no-checklists-empty -->
                     <div id="study-picker-list"></div>
+                    <div id="study-picker-pager"></div>
                 </div>
             </div>
 
@@ -291,7 +311,18 @@
                     <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
                         Body parts will be selected randomly from the checklists you choose.
                     </p>
+                    <!-- Checklist search: filled from tpl-search-combobox -->
+                    <div id="practical-search"></div>
+                    <!-- Selection tray: hidden until something is selected; chips come from tpl-selection-chip -->
+                    <div class="selection-tray hide" id="practical-selection">
+                        <div class="selection-tray-header">
+                            <span class="selection-tray-count" id="practical-selection-count"></span>
+                            <button type="button" class="btn btn-ghost btn-sm" id="practical-selection-clear-btn">Clear</button>
+                        </div>
+                        <ul class="selection-tray-chips" id="practical-selection-chips"></ul>
+                    </div>
                     <div id="practical-checklist-select"></div>
+                    <div id="practical-checklist-pager"></div>
                 </div>
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-title">Time limit</div>
@@ -347,15 +378,29 @@
         <div id="screen-results" class="screen">
             <div class="screen-content">
                 <div class="card">
-                    <ul class="results-list" id="results-list">
-                        <li class="empty-state" id="results-empty">
-                            <i class="fas fa-chart-bar"></i>
-                            <p>No practicals taken yet.</p>
-                            <button id="results-start-practical-btn" class="btn btn-primary">
-                                Start a practical
-                            </button>
-                        </li>
-                    </ul>
+                    <!-- Hidden until a practical has been taken -->
+                    <div class="list-toolbar hide" id="results-toolbar">
+                        <div class="time-options" id="results-range-options" role="radiogroup" aria-label="Show practicals from">
+                            <label class="time-option"><input type="radio" name="results-range" value="all" checked> All time</label>
+                            <label class="time-option"><input type="radio" name="results-range" value="week"> Last 7 days</label>
+                            <label class="time-option"><input type="radio" name="results-range" value="month"> Last 30 days</label>
+                            <label class="time-option"><input type="radio" name="results-range" value="year"> Last 12 months</label>
+                        </div>
+                        <span class="list-toolbar-count" id="results-count"></span>
+                    </div>
+                    <ul class="results-list" id="results-list"></ul>
+                    <div class="empty-state hide" id="results-empty">
+                        <i class="fas fa-chart-bar"></i>
+                        <p>No practicals taken yet.</p>
+                        <button id="results-start-practical-btn" class="btn btn-primary">
+                            Start a practical
+                        </button>
+                    </div>
+                    <div class="empty-state hide" id="results-no-matches">
+                        <i class="fas fa-calendar"></i>
+                        <p>No practicals in that time range.</p>
+                    </div>
+                    <div id="results-pager"></div>
                 </div>
             </div>
         </div>
@@ -440,12 +485,16 @@
                 <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
                     Categories let you give tags a type (e.g. "muscle", "nerve", "vessel"). When studying, the question will say "What is this nerve?" instead of "What is this?"
                 </p>
+                <!-- Filters the list as you type; Enter adds it when nothing matches exactly -->
+                <div class="list-search category-find">
+                    <i class="fas fa-search list-search-icon" aria-hidden="true"></i>
+                    <input type="search" class="form-control" id="category-find-input"
+                           placeholder="Find or add a category…" autocomplete="off" aria-label="Find or add a category">
+                </div>
+                <!-- Rows from tpl-category-item, then tpl-category-add-item when there's no exact match -->
                 <ul class="category-list" id="category-list"></ul>
-                <div class="input-group mt-3">
-                    <input type="text" class="form-control" id="new-category-input" placeholder="New category name">
-                    <button class="btn btn-primary" id="add-category-btn">
-                        <i class="fas fa-plus"></i> Add
-                    </button>
+                <div class="category-list-empty hide" id="category-list-empty">
+                    No categories yet. Type a name above to add one.
                 </div>
             </div>
             <div class="modal-footer">
@@ -469,10 +518,9 @@
                     <input type="text" class="form-control" id="editor-tag-name" placeholder="e.g. Origin">
                 </div>
                 <div class="mb-3">
-                    <label for="editor-tag-category" class="form-label field-label">Category <span style="color: var(--text-muted); font-weight: 400;">(optional)</span></label>
-                    <select class="form-select" id="editor-tag-category">
-                        <option value="">None</option>
-                    </select>
+                    <span class="form-label field-label">Category <span style="color: var(--text-muted); font-weight: 400;">(optional)</span></span>
+                    <!-- Filled from tpl-search-combobox -->
+                    <div id="editor-tag-category"></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -811,9 +859,20 @@
 <template id="tpl-category-item">
     <li class="category-item">
         <span class="category-name js-name"></span>
+        <input type="text" class="form-control form-control-sm category-rename-input js-rename-input hide"
+               aria-label="Category name" autocomplete="off">
+        <span class="category-meta js-meta"></span>
         <div class="category-actions">
-            <button class="btn btn-ghost btn-icon" data-action="delete"><i class="fas fa-trash"></i></button>
+            <button class="btn btn-ghost btn-icon" data-action="rename" title="Rename"><i class="fas fa-pen"></i></button>
+            <button class="btn btn-ghost btn-icon" data-action="delete" title="Delete"><i class="fas fa-trash"></i></button>
         </div>
+    </li>
+</template>
+
+<template id="tpl-category-add-item">
+    <li class="category-item category-item--add" data-action="add">
+        <i class="fas fa-plus" aria-hidden="true"></i>
+        <span class="js-name"></span>
     </li>
 </template>
 
@@ -837,13 +896,19 @@
             </div>
         </div>
 
-        <!-- Browse list: rows come from tpl-study-browse-item -->
+        <!-- Browse list: rows come from tpl-study-browse-item. Only the <ul> scrolls. -->
         <div class="study-browse hide js-browse">
-            <label class="study-browse-item study-browse-select-all">
-                <input type="checkbox" class="form-check-input js-select-all">
-                <span>Select all</span>
-            </label>
+            <div class="study-browse-header">
+                <label class="study-browse-item study-browse-select-all">
+                    <input type="checkbox" class="form-check-input js-select-all">
+                    <span class="js-select-all-label">Select all</span>
+                </label>
+                <!-- Shown only for checklists with more than BROWSE_FILTER_MIN body parts -->
+                <input type="search" class="form-control form-control-sm study-browse-filter js-browse-filter hide"
+                       placeholder="Filter body parts" aria-label="Filter body parts" autocomplete="off">
+            </div>
             <ul class="study-browse-list js-browse-list"></ul>
+            <div class="study-browse-empty hide js-browse-empty">No body parts match that filter</div>
         </div>
     </div>
 </template>
@@ -858,18 +923,11 @@
     </li>
 </template>
 
-<template id="tpl-study-search-result">
-    <li class="study-search-result" role="option" aria-selected="false">
-        <i class="fas fa-check study-search-check" aria-hidden="true"></i>
-        <span class="study-search-bp js-bp-name"></span>
-        <span class="study-search-meta js-meta"></span>
-    </li>
-</template>
 
-<template id="tpl-study-selection-chip">
-    <li class="study-selection-chip">
+<template id="tpl-selection-chip">
+    <li class="selection-chip">
         <span class="js-label"></span>
-        <button type="button" class="study-selection-chip-remove" data-action="remove-selection">
+        <button type="button" class="selection-chip-remove" data-action="remove-selection">
             <i class="fas fa-times" aria-hidden="true"></i>
         </button>
     </li>
@@ -920,6 +978,39 @@
             <span class="field-hint js-scale-label"></span>
         </div>
     </div>
+</template>
+
+<template id="tpl-search-combobox">
+    <div class="search-combobox">
+        <i class="fas fa-search search-combobox-icon" aria-hidden="true"></i>
+        <input type="text" class="form-control js-search-input" autocomplete="off"
+               role="combobox" aria-expanded="false">
+        <div class="search-combobox-dropdown hide js-search-dropdown">
+            <ul class="search-combobox-results js-search-results" role="listbox" aria-multiselectable="true"></ul>
+            <div class="search-combobox-empty hide js-search-empty"></div>
+            <div class="search-combobox-footer hide js-search-footer"></div>
+        </div>
+    </div>
+</template>
+
+<template id="tpl-search-combobox-result">
+    <li class="search-combobox-result" role="option" aria-selected="false">
+        <i class="fas fa-check search-combobox-check" aria-hidden="true"></i>
+        <span class="search-combobox-name js-name"></span>
+        <span class="search-combobox-meta js-meta"></span>
+    </li>
+</template>
+
+<template id="tpl-pager">
+    <nav class="pager" aria-label="Pages">
+        <button type="button" class="pager-button js-pager-previous" aria-label="Previous page">
+            <i class="fas fa-chevron-left" aria-hidden="true"></i>
+        </button>
+        <div class="pager-pages js-pager-pages"></div>
+        <button type="button" class="pager-button js-pager-next" aria-label="Next page">
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+        </button>
+    </nav>
 </template>
 
 <script src="../../../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

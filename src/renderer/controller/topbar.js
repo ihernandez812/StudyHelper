@@ -44,6 +44,7 @@ const buildBreadcrumb = (segments, onNavigate) => {
                 e.preventDefault()
                 onNavigate(segment.screen)
             })
+            nav.appendChild(link)
         } else {
             const current = document.createElement('span')
             current.className   = 'breadcrumb-current'

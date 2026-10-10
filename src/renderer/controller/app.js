@@ -9,7 +9,7 @@ import './practicalReview.js'
 import './sidebar.js'
 
 import { navigate } from './router.js'
-import {PAGES} from "./state.js";
+import {PAGES} from "../enums/pages.js"
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 

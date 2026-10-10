@@ -40,8 +40,23 @@ const mustGetElementById = (id) => {
     return element
 }
 
+const mustQuerySelector = (container, selector) => {
+    const element = container.querySelector(selector)
+
+    if (!element) {
+        throw new Error(`Missing required element ${selector}`)
+    }
+
+    return element
+}
+
 // domUtils.js
 const createImageUrl = (key) => `media://images/${key}`
+
+// Sorts names the way people read numbers: "Rib 2" before "Rib 11"
+const compareNames = (first, second) => {
+    return first.localeCompare(second, undefined, { numeric: true })
+}
 
 // "June 24, 2026 at 2:34 PM"
 const formatPracticalDate = (takenAt) => {
@@ -55,6 +70,8 @@ export {
     cloneTemplate,
     getActionTarget,
     mustGetElementById,
+    mustQuerySelector,
     createImageUrl,
     formatPracticalDate,
+    compareNames,
 }

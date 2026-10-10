@@ -1,5 +1,5 @@
 import { registerScreen} from "./router.js";
-import {PAGES} from "./state.js";
+import {PAGES} from "../enums/pages.js"
 
 const TEMPLATES = {
     //TODO This will eventually have the metrics template
