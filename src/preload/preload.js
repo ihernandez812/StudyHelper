@@ -2,13 +2,26 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld(
     'api', {
-        popup: (message) => {
-            return ipcRenderer.invoke('popup', message)
-            
+        checkForUpdates: () => {
+            return ipcRenderer.invoke('checkForUpdates')
         },
-        dialogQuestion: (message) => {
-            return ipcRenderer.invoke('dialogQuestion', message)
-            
+        downloadUpdate: () => {
+            return ipcRenderer.invoke('downloadUpdate')
+        },
+        installUpdate: () => {
+            return ipcRenderer.invoke('installUpdate')
+        },
+        onUpdateAvailable: (callback) => {
+            ipcRenderer.on('update-available', (_event, info) => callback(info))
+        },
+        onUpdateDownloadProgress: (callback) => {
+            ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress))
+        },
+        onUpdateDownloaded: (callback) => {
+            ipcRenderer.on('update-downloaded', () => callback())
+        },
+        onUpdateError: (callback) => {
+            ipcRenderer.on('update-error', () => callback())
         },
         addOrEditChecklistById: (id=null, checklist) => {
             return ipcRenderer.invoke('addOrEditChecklistById', id, checklist)

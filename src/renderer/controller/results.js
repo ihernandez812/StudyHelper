@@ -7,6 +7,8 @@ import {PAGES} from "../enums/pages.js"
 import {paginate, createPager, formatMatchCount} from "../HTMLUtils/pagination.js"
 import {PAGE_SIZE} from "../enums/pageSize.js"
 import {DATE_RANGE} from "../enums/dateRange.js"
+import {confirmDialog} from "../HTMLUtils/confirmDialog.js"
+import {runWithButtonDisabled} from "../HTMLUtils/actionGuard.js"
 
 registerScreen(PAGES.RESULTS, {
     sidebar: PAGES.RESULTS,
@@ -36,7 +38,7 @@ mustGetElementById('results-list').addEventListener('click', async (e) => {
                 openPracticalReview(id, date)
                 break;
             case 'delete':
-                await deleteResultRow(id, date);
+                await runWithButtonDisabled(target.actionElement, () => deleteResultRow(id, date));
                 break;
             default:
                 console.error(`Unknown action "${action}" on result row ${id}`);
@@ -144,9 +146,15 @@ const openPracticalReview = (id, dateStr) => {
 }
 
 const deleteResultRow = async (id, dateStr) => {
-    const result = await window.api.dialogQuestion(`Are you sure you want to delete the practical take on ${dateStr}?`)
+    const confirmed = await confirmDialog({
+        title:        'Delete practical',
+        message:      `Are you sure you want to delete the practical take on ${dateStr}?`,
+        confirmLabel: 'Delete',
+        cancelLabel:  'Cancel',
+        danger:       true,
+    })
 
-    if (result.response === 0) {
+    if (confirmed) {
         await window.api.deletePracticalById(id)
         await refreshCurrentScreen()
     }

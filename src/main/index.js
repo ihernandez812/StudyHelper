@@ -6,7 +6,6 @@ const { absolutePathForKey, imagesDirectory } = require('./FileHelper')
 const { createWindow } = require('./WindowFactory')
 const { filePaths } = require('./WindowConstants')
 const { menuBuilder } = require('./menu')
-const { checkForUpdates } = require('./updater')
 const { runUpgrades } = require('./upgrades/upgradeFactory')
 const { closeAnatomeDatabase } = require('./storage/anatomeDatabase')
 
@@ -16,6 +15,7 @@ require('./ipcHandlers/IpcHandlerCategory')
 require('./ipcHandlers/IpcHandlerChecklist')
 require('./ipcHandlers/IpcHandlerPractical')
 require('./ipcHandlers/IpcHandlerWindow')
+require('./ipcHandlers/IpcHandlerUpdate')
 
 
 
@@ -65,7 +65,6 @@ app.on('ready', async () => {
     }
 
     createWindow(filePaths.home, options)
-    checkForUpdates().catch(error => console.error(error))
 })
 
 app.on('window-all-closed', () => {

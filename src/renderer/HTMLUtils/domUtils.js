@@ -25,6 +25,7 @@ const getActionTarget = (element, rowSelector) => {
 
     return {
         action: actionElement.dataset.action,
+        actionElement: actionElement,
         data: parentElement.dataset,
         element: parentElement,
     }

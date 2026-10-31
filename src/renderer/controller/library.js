@@ -12,6 +12,10 @@ import {PAGE_SIZE} from "../enums/pageSize.js"
 import {BODY_PART_SORT} from "../enums/bodyPartSort.js"
 import {createSearchCombobox} from "../HTMLUtils/searchCombobox.js"
 import {COMBOBOX_MODE} from "../enums/comboboxMode.js"
+import {confirmDialog} from "../HTMLUtils/confirmDialog.js"
+import {runWithButtonDisabled, preventRepeat} from "../HTMLUtils/actionGuard.js"
+import {showToast} from "../HTMLUtils/toast.js"
+import {TOAST_TYPE} from "../enums/toastType.js"
 
 const TEMPLATES = {
     checklistRow:    mustGetElementById('tpl-checklist-row'),
@@ -85,7 +89,7 @@ mustGetElementById('library-checklist-list').addEventListener('click', async (e)
                 openEditChecklistModal(id, name);
                 break
             case 'delete':
-                await deleteChecklist(id);
+                await runWithButtonDisabled(target.actionElement, () => deleteChecklist(id));
                 break;
             default:
                 console.error(`Unknown action "${target.action}" on checklist row ${id}`);
@@ -111,7 +115,7 @@ mustGetElementById('body-part-grid').addEventListener('click', async (e) => {
                 openBodyPartEditor(id)
                 break;
             case 'delete':
-                await  deleteBodyPart(id);
+                await runWithButtonDisabled(target.actionElement, () => deleteBodyPart(id));
                 break;
             case 'add':
                 openBodyPartEditor(null)
@@ -169,7 +173,7 @@ mustGetElementById('category-list').addEventListener('click', async (e) => {
                 startCategoryRename(id);
                 break;
             case 'delete':
-                await deleteCategory(id, name);
+                await runWithButtonDisabled(target.actionElement, () => deleteCategory(id, name));
                 break;
             default:
                 console.error(`Unknown action "${action}" on category item ${id}`);
@@ -275,23 +279,32 @@ const openEditChecklistModal = (id, name) => {
     checklistModal.show()
 }
 
-mustGetElementById('checklist-save-btn').addEventListener('click', async () => {
+const checklistSaveButton = mustGetElementById('checklist-save-btn')
+
+checklistSaveButton.addEventListener('click', async () => {
     const name = document.getElementById('checklist-name-input').value.trim()
 
     if (!name) {
         return
     }
 
-    await window.api.addOrEditChecklistById(_editingChecklistId, { name })
-
-    checklistModal.hide()
-    await loadLibraryScreen()
+    await runWithButtonDisabled(checklistSaveButton, async () => {
+        await window.api.addOrEditChecklistById(_editingChecklistId, { name })
+        checklistModal.hide()
+        await loadLibraryScreen()
+    })
 })
 
 const deleteChecklist = async (id) => {
-    const result = await window.api.dialogQuestion('Delete this checklist and all its body parts?')
+    const confirmed = await confirmDialog({
+        title:        'Delete checklist',
+        message:      'Delete this checklist and all its body parts?',
+        confirmLabel: 'Delete',
+        cancelLabel:  'Cancel',
+        danger:       true,
+    })
 
-    if (result.response === 0) {
+    if (confirmed) {
         await window.api.deleteChecklistById(id)
         await refreshCurrentScreen()
     }
@@ -418,9 +431,15 @@ const createBodyPartCard = (id, name, tagCount) => {
 }
 
 const deleteBodyPart = async (id) => {
-    const result = await window.api.dialogQuestion('Delete this body part?')
+    const confirmed = await confirmDialog({
+        title:        'Delete body part',
+        message:      'Delete this body part?',
+        confirmLabel: 'Delete',
+        cancelLabel:  'Cancel',
+        danger:       true,
+    })
 
-    if (result.response === 0) {
+    if (confirmed) {
         await window.api.removeBodyPart(id)
         await refreshCurrentScreen()
     }
@@ -603,10 +622,10 @@ const tagCategoryPicker = createSearchCombobox(tagCategoryMount, {
     onSelect:    (category) => {
         tagCategoryId = category ? category.id : null
     },
-    onCreate:    async (name) => {
+    onCreate:    preventRepeat(async (name) => {
         const id = await window.api.addOrEditCategoryById(null, { name })
         return { id, name, tagCount: 0 }
-    },
+    }),
 })
 
 // Fresh list each time the modal opens, so categories added or renamed in the
@@ -639,9 +658,15 @@ const openEditTagModal = async (tagId) => {
 }
 
 const deleteTag = async (tagId, tagName) => {
-    const result = await window.api.dialogQuestion(`Delete tag "${tagName}"?`)
+    const confirmed = await confirmDialog({
+        title:        'Delete tag',
+        message:      `Delete tag "${tagName}"?`,
+        confirmLabel: 'Delete',
+        cancelLabel:  'Cancel',
+        danger:       true,
+    })
 
-    if (result.response === 0) {
+    if (confirmed) {
         if (tagId != null) {
             delete editorState.coordinatesMap[tagId]
             redrawEditor()
@@ -703,16 +728,18 @@ const renderTagList = () => {
 }
 
 // Save body part
-mustGetElementById('editor-save-btn').addEventListener('click', async () => {
+const editorSaveButton = mustGetElementById('editor-save-btn')
+
+editorSaveButton.addEventListener('click', async () => {
     const name    = document.getElementById('editor-name').value.trim()
 
     if (!name) {
-        await window.api.popup('Please enter a body part name.')
+        showToast(TOAST_TYPE.WARN, 'Please enter a body part name.')
         return
     }
 
     if (!editorState.isEdit && !editorState.pendingImageDataUrl) {
-        await window.api.popup('Please add an image before saving.')
+        showToast(TOAST_TYPE.WARN, 'Please add an image before saving.')
         return
     }
 
@@ -729,8 +756,10 @@ mustGetElementById('editor-save-btn').addEventListener('click', async () => {
     }
 
     // A null id creates the body part
-    await window.api.addOrEditBodyPartById(AppState.currentBodyPartId, AppState.currentChecklistId, bodyPart)
-    navigate(PAGES.CHECKLIST_DETAIL)
+    await runWithButtonDisabled(editorSaveButton, async () => {
+        await window.api.addOrEditBodyPartById(AppState.currentBodyPartId, AppState.currentChecklistId, bodyPart)
+        navigate(PAGES.CHECKLIST_DETAIL)
+    })
 })
 
 // ── Categories modal ──────────────────────────────────────────────────────────
@@ -838,7 +867,7 @@ categoryFindInput.addEventListener('keydown', (e) => {
     addCategory(categoryFindInput.value).catch(error => console.error(error))
 })
 
-const addCategory = async (name) => {
+const addCategory = preventRepeat(async (name) => {
     const trimmedName = name.trim()
 
     if (!trimmedName || findCategoryByName(trimmedName)) {
@@ -850,7 +879,7 @@ const addCategory = async (name) => {
     categoryModalState.query = ''
     categoryFindInput.value  = ''
     await loadCategoryList()
-}
+})
 
 const startCategoryRename = (id) => {
     categoryModalState.renamingId = id
@@ -931,9 +960,15 @@ const deleteCategory = async (id, name) => {
         ? `${tagCount} tag${tagCount !== 1 ? 's use' : ' uses'} "${name}". They'll keep their names but lose the category.\nDelete it?`
         : `Delete the category "${name}"?`
 
-    const result = await window.api.dialogQuestion(message)
+    const confirmed = await confirmDialog({
+        title:        'Delete category',
+        message:      message,
+        confirmLabel: 'Delete',
+        cancelLabel:  'Cancel',
+        danger:       true,
+    })
 
-    if (result.response === 0) {
+    if (confirmed) {
         await window.api.removeCategory(id)
         await loadCategoryList()
     }

@@ -10,6 +10,7 @@ import './sidebar.js'
 
 import { navigate } from './router.js'
 import {PAGES} from "../enums/pages.js"
+import {startUpdateCheck} from "./updates.js"
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 
@@ -28,4 +29,5 @@ window.addEventListener('load', async () => {
     window.api.onDarkModeChanged((isDark) => applyTheme(isDark))
 
     navigate(PAGES.HOME)
+    startUpdateCheck()
 })
