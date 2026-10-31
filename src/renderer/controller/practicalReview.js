@@ -8,6 +8,8 @@ import {createSessionNav} from "../HTMLUtils/sessionNav.js"
 import {createDisplayControls} from "../HTMLUtils/displayControls.js"
 import {AppState} from "./state.js"
 import {PAGES} from "../enums/pages.js"
+import {showToast} from "../HTMLUtils/toast.js"
+import {TOAST_TYPE} from "../enums/toastType.js"
 
 registerScreen(PAGES.PRACTICAL_REVIEW, {
     sidebar: PAGES.RESULTS,
@@ -55,7 +57,7 @@ const loadPracticalReview = async () => {
     reviewState.stations = practical['queue'] || []
 
     if (reviewState.stations.length === 0) {
-        await window.api.popup('This practical has no stations to review.')
+        showToast(TOAST_TYPE.WARN, 'This practical has no stations to review.')
         navigate(PAGES.RESULTS)
         return
     }

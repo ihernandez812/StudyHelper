@@ -1517,3 +1517,110 @@ canvas {
     box-shadow: 0 0 0 3px var(--accent-light);
 }
 
+
+/* ─── Confirm modal ──────────────────────────────────────── */
+/* Messages carry \n line breaks */
+.confirm-modal-message {
+    white-space: pre-line;
+    color: var(--text-secondary);
+}
+
+/* Sits above another open modal (e.g. deleting a category) */
+#confirm-modal {
+    z-index: 1065;
+}
+
+.confirm-modal-backdrop {
+    z-index: 1060;
+}
+
+/* ─── Toasts ─────────────────────────────────────────────── */
+/* Each type only sets --toast-color; the structure is shared */
+.app-toast-info    { --toast-color: var(--accent); }
+.app-toast-success { --toast-color: #2f9e5b; }
+.app-toast-warn    { --toast-color: #d18a12; }
+.app-toast-fail    { --toast-color: #d23f3f; }
+
+[data-bs-theme="dark"] .app-toast-success { --toast-color: #5cc98a; }
+[data-bs-theme="dark"] .app-toast-warn    { --toast-color: #f0b44c; }
+[data-bs-theme="dark"] .app-toast-fail    { --toast-color: #f07a7a; }
+
+/* Above Bootstrap modals (1055) so feedback shows while one is open */
+.toast-stack {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 1090;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.app-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 320px;
+    padding: 10px 12px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--toast-color);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    font-size: 13px;
+    pointer-events: auto;
+    animation: toast-enter 0.2s ease-out;
+}
+
+.app-toast-leaving {
+    animation: toast-leave 0.2s ease-in forwards;
+}
+
+.app-toast-icon {
+    color: var(--toast-color);
+    font-size: 16px;
+    margin-top: 1px;
+}
+
+.app-toast-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.app-toast-message {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.app-toast-close {
+    font-size: 10px;
+    margin-top: 3px;
+}
+
+.app-toast-progress {
+    height: 4px;
+    margin-top: 8px;
+    background: var(--bg-muted);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.app-toast-progress-fill {
+    width: 0;
+    height: 100%;
+    background: var(--toast-color);
+    transition: width 0.2s linear;
+}
+
+@keyframes toast-enter {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-leave {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(24px); }
+}

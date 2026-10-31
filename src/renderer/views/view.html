@@ -628,6 +628,28 @@
     </div>
 </div>
 
+<!-- Confirm modal — shared by every Yes/No question (HTMLUtils/confirmDialog.js) -->
+<div class="modal fade" id="confirm-modal" tabindex="-1" aria-labelledby="confirm-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirm-modal-title"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="confirm-modal-message" id="confirm-modal-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="confirm-modal-cancel" data-bs-dismiss="modal">No</button>
+                <button type="button" class="btn btn-primary" id="confirm-modal-confirm">Yes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toasts stack here, newest at the bottom (HTMLUtils/toast.js) -->
+<div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+
 <!-- ── Logo mark ─────────────────────────────────────────────────
      Extracted from images/AnatoMeIcon.svg: the icon's background and wordmark
      are dropped, and each traced color is snapped to the nearest --logo-*
@@ -787,6 +809,19 @@
      Grouped by the controller that owns each one, in script load order. -->
 
 <!-- shared -->
+<template id="tpl-toast">
+    <div class="app-toast">
+        <i class="fas app-toast-icon js-toast-icon" aria-hidden="true"></i>
+        <div class="app-toast-body">
+            <div class="app-toast-message js-toast-message"></div>
+            <div class="app-toast-progress js-toast-progress" hidden>
+                <div class="app-toast-progress-fill js-toast-progress-fill"></div>
+            </div>
+        </div>
+        <button type="button" class="btn-close app-toast-close js-toast-close" aria-label="Close"></button>
+    </div>
+</template>
+
 <template id="tpl-no-checklists-empty">
     <div class="empty-state">
         <i class="fas fa-folder-open"></i>

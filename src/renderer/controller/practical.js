@@ -9,6 +9,10 @@ import {paginate, createPager} from "../HTMLUtils/pagination.js"
 import {createSearchCombobox} from "../HTMLUtils/searchCombobox.js"
 import {PAGE_SIZE} from "../enums/pageSize.js"
 import {PAGES} from "../enums/pages.js"
+import {confirmDialog} from "../HTMLUtils/confirmDialog.js"
+import {runWithButtonDisabled} from "../HTMLUtils/actionGuard.js"
+import {showToast} from "../HTMLUtils/toast.js"
+import {TOAST_TYPE} from "../enums/toastType.js"
 
 
 registerScreen(PAGES.PRACTICAL, {
@@ -263,10 +267,14 @@ const updatePracticalSummary = () => {
     startBtn.disabled = totalBodyParts === 0
 }
 
-mustGetElementById('practical-start-btn').addEventListener('click', async () => {
+const practicalStartButton = mustGetElementById('practical-start-btn')
+
+practicalStartButton.addEventListener('click', async () => {
     try {
-        await buildBodyPartQueue(),
-        await startPractical()
+        await runWithButtonDisabled(practicalStartButton, async () => {
+            await buildBodyPartQueue()
+            await startPractical()
+        })
     } catch (err) {
         console.error(err)
     }
@@ -453,19 +461,29 @@ mustGetElementById('practical-tag-save-btn').addEventListener('click', async () 
     }
 })
 
-mustGetElementById('practical-next-btn').addEventListener('click', async () => {
+const practicalNextButton = mustGetElementById('practical-next-btn')
+
+// Disabled from the question through the save, so the practical can't be saved twice
+practicalNextButton.addEventListener('click', async () => {
     practicalState.currentStationIdx++
 
     try {
-        if (practicalState.currentStationIdx >= practicalState.bodyPartQueue.length) {
-            const res = await window.api.dialogQuestion("End practical? Your results will be saved.")
+        await runWithButtonDisabled(practicalNextButton, async () => {
+            if (practicalState.currentStationIdx >= practicalState.bodyPartQueue.length) {
+                const confirmed = await confirmDialog({
+                    title:        'End practical',
+                    message:      'End practical? Your results will be saved.',
+                    confirmLabel: 'End practical',
+                    cancelLabel:  'Cancel',
+                })
 
-            if (res.response === 0) {
-                await endPractical()
+                if (confirmed) {
+                    await endPractical()
+                }
+            } else {
+                await loadCurrentStation()
             }
-        } else {
-            await loadCurrentStation()
-        }
+        })
     } catch (err) {
         console.error(err)
     }
@@ -505,7 +523,7 @@ const endPractical = async () => {
         navigate(PAGES.RESULTS)
     } catch (err) {
         console.error(err)
-        await window.api.popup('Could not save this practical.')
+        showToast(TOAST_TYPE.FAIL, 'Could not save this practical.')
     }
 }
 

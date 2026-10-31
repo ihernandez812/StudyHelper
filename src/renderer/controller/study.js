@@ -12,6 +12,9 @@ import {PAGE_SIZE} from "../enums/pageSize.js"
 import {TAG_COLORS} from "../enums/tagColors.js"
 import {DIFFICULTY} from "../enums/difficulty.js"
 import {createSearchCombobox} from "../HTMLUtils/searchCombobox.js"
+import {confirmDialog} from "../HTMLUtils/confirmDialog.js"
+import {showToast} from "../HTMLUtils/toast.js"
+import {TOAST_TYPE} from "../enums/toastType.js"
 
 // ── Study screen ──────────────────────────────────────────────────────────────
 
@@ -188,12 +191,14 @@ const confirmDiscardSelection = async () => {
         return true
     }
 
-    const count  = bodyPartSelection.size
-    const result = await window.api.dialogQuestion(
-        `You have ${count} body part${count !== 1 ? 's' : ''} selected.\nStarting this session will clear them.`
-    )
+    const count = bodyPartSelection.size
 
-    return result.response === 0
+    return await confirmDialog({
+        title:        'Clear selection',
+        message:      `You have ${count} body part${count !== 1 ? 's' : ''} selected.\nStarting this session will clear them.`,
+        confirmLabel: 'Start session',
+        cancelLabel:  'Cancel',
+    })
 }
 
 const updateSelectAll = (row) => {
@@ -723,8 +728,7 @@ mustGetElementById('study-hint-btn').addEventListener('click', () => {
     studyState.hintText = answer.substring(0, studyState.hintText.length + 1)
     studyState.hintsRemaining--
     updateHintButton()
-    window.api.popup(`Hint: word starts with "${studyState.hintText}"`)
-        .catch(err => console.error(err))
+    showToast(TOAST_TYPE.INFO, `Hint: word starts with "${studyState.hintText}"`)
 })
 
 // Label drawn for each tag, so hit areas match the pills on screen
@@ -827,9 +831,9 @@ mustGetElementById('study-answer-submit-btn').addEventListener('click', async ()
 
     if (submitAnswer(tagId, txt)) {
         studyAnswerModal.hide()
-        await window.api.popup('Correct!')
+        showToast(TOAST_TYPE.SUCCESS, 'Correct!')
     } else {
-        await window.api.popup('Not quite — try again.')
+        showToast(TOAST_TYPE.FAIL, 'Not quite — try again.')
     }
 })
 
@@ -958,9 +962,15 @@ const expandChecklistRow = async (id, row, toggle) => {
 
 mustGetElementById('study-end-btn').addEventListener('click', async () => {
     try {
-        const result = await window.api.dialogQuestion("Are you sure you want to end the current study session?")
+        const confirmed = await confirmDialog({
+            title:        'End study session',
+            message:      'Are you sure you want to end the current study session?',
+            confirmLabel: 'End session',
+            cancelLabel:  'Keep studying',
+            danger:       true,
+        })
 
-        if (result.response === 0) {
+        if (confirmed) {
             clearStudySession()
             await loadStudyPicker()
         }

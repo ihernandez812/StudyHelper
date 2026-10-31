@@ -91,24 +91,31 @@ interface NewPractical {
     queue: PracticalStation[]
 }
 
-/** Electron's MessageBoxReturnValue, narrowed to what this app reads. */
-interface DialogResult {
-    /** Index of the button clicked. The Yes/No dialogs treat 0 as Yes. */
-    response: number
-    checkboxChecked: boolean
+/** Sent with update-available. */
+interface UpdateInfo {
+    version: string
+}
+
+/** Sent with update-download-progress. */
+interface UpdateProgress {
+    /** 0–100, not rounded. */
+    percent: number
 }
 
 // ── The bridge ────────────────────────────────────────────────────────────────
 
 interface AnatoMeApi {
-    // Dialogs
-    /** Shows an OK message box. Resolves once dismissed; carries no value. */
-    popup(message: string): Promise<void>
-    /**
-     * Shows a Yes/No message box. Resolves to undefined if showMessageBox
-     * rejects — the handler swallows the error — so check `result` before use.
-     */
-    dialogQuestion(message: string): Promise<DialogResult | undefined>
+    // Updates — the renderer starts the check once its listeners are registered
+    /** No-op when unpackaged (unless UPDATER_DEV is set) or already checked. */
+    checkForUpdates(): Promise<void>
+    downloadUpdate(): Promise<void>
+    /** Quits and installs. Resolves only if quitting is somehow blocked. */
+    installUpdate(): Promise<void>
+    onUpdateAvailable(callback: (info: UpdateInfo) => void): void
+    onUpdateDownloadProgress(callback: (progress: UpdateProgress) => void): void
+    onUpdateDownloaded(callback: () => void): void
+    /** Covers check, download, and install failures; details are in main.log. */
+    onUpdateError(callback: () => void): void
 
     // Checklists
     getChecklists(): Promise<Record<string, Checklist>>
